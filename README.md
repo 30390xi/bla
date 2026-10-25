@@ -1,289 +1,281 @@
 <div align="center">
 
-**English** · [简体中文](docs/readme/README_zh.md)
+**English** · [简体中文](docs/readme/README_zh.md) · [繁體中文](docs/readme/README_zh-TW.md) · [日本語](docs/readme/README_ja.md) · [한국어](docs/readme/README_ko.md) · [Türkçe](docs/readme/README_tr.md) · [Русский](docs/readme/README_ru.md) · [Tiếng Việt](docs/readme/README_vi.md) · [ไทย](docs/readme/README_th.md) · [Deutsch](docs/readme/README_de.md) · [Español](docs/readme/README_es.md) · [Français](docs/readme/README_fr.md) · [Українська](docs/readme/README_uk.md) · [Polski](docs/readme/README_pl.md) · [Português (Brasil)](docs/readme/README_pt-BR.md) · [العربية](docs/readme/README_ar.md) · [فارسی](docs/readme/README_fa.md) · [Bahasa Indonesia](docs/readme/README_id.md) · [Italiano](docs/readme/README_it.md) · [Ελληνικά](docs/readme/README_el.md) · [മലയാളം](docs/readme/README_ml.md) · [Roman Urdu](docs/readme/README_ur-Latn.md) · [Română](docs/readme/README_ro.md)
 
-<img src="docs/assets/bla-hero-banner.svg" alt="BLA: Blind LLM Agents — Poison -> Exhaust -> Hallucinate" width="100%" />
+# BLA: Blind LLM Agents
 
-# BLA: Blind LLM Agents (`bla-shield`)
+### One MCP for defending binaries, applications, and runtime behavior against AI reverse engineering.
 
-### One CLI, Bundler Plugin & MCP shield to defend binaries, Electron apps, JS bundles, SQLite DBs, AI models, Mobile/Game assets, Python, and WebAssembly against AI reverse-engineering agents like REA.
-
-**Software is NOT done. It just learned how to fight back.**
+**Ship a feature you built. Blind the agents trying to clone it, down to the binary level.**
 
 [![npm version](https://img.shields.io/badge/npm-bla--shield-cb3837?style=flat-square&logo=npm)](https://www.npmjs.com/package/bla-shield)
-[![MCP Server](https://img.shields.io/badge/MCP-6_Defense_Tools-5c4ee5?style=flat-square)](#mcp-server--coding-agent-integration)
-[![Counter-REA Verified](https://img.shields.io/badge/Counter--REA-100%25_Verified-10b981?style=flat-square)](#empirical-verification-against-morlutorea)
-[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20.0.0-339933?style=flat-square&logo=nodedotjs&logoColor=white)](#quick-start)
-[![MIT License](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](LICENSE)
+[![MCP tool catalog](https://img.shields.io/badge/MCP-tool_catalog-5c4ee5?style=flat-square)](docs/cli-and-mcp.md)
+[![Node.js requirements](https://img.shields.io/badge/Node.js-%3E%3D22.5-339933?style=flat-square&logo=nodedotjs&logoColor=white)](#what-you-can-protect)
+[![Counter-REA Verified](https://img.shields.io/badge/Counter--REA-100%25_Verified-10b981?style=flat-square)](#showcases)
+[![MIT license](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](LICENSE)
 
-[Quick Start](#quick-start) · [Before vs. After Showcase](#side-by-side-showcase-before-vs-after-bla) · [How BLA Defeats REA](#how-bla-defeats-reas-internal-analyzers) · [Token Bankruptcy Benchmark](#token-bankruptcy-benchmark) · [Supported Targets](#what-you-can-protect) · [Documentation](#documentation)
+[Quick start](#quick-start) · [How BLA works](#how-bla-works) · [What you can protect](#what-you-can-protect) · [Showcases](#showcases) · [FAQ](#faq) · [Documentation](#documentation)
 
-<code>npx bla-shield setup</code> &nbsp;·&nbsp; <code>npx bla-shield audit ./dist</code> &nbsp;·&nbsp; <code>npx bla-shield protect ./dist</code>
+<code>npx bla-shield setup</code>
 
 </div>
 
----
-
-When [REA (Reverse Engineer Anything)](https://github.com/morluto/rea) gave coding agents one-click decompilation, static AST/IPC recovery, and Evidence ledgers (`Decompile → Understand → Recreate`), traditional variable-renaming obfuscators became obsolete overnight—because LLMs effortlessly infer semantics from control flow and string literals.
-
-**BLA (`Blind LLM Agents` / `Block Anything`)** is the open-source adversarial defense counterpart built specifically to neutralize AI reverse-engineering agents:
-
-> **REA:** `Decompile  →  Understand  →  Recreate`  
-> **BLA:** `Poison     →  Exhaust     →  Hallucinate`  
-> ***Make Reverse Engineering Bankrupt Again.***
-
-Instead of heavy, expensive legacy VM packers that slow down your app, BLA strikes directly at **the structural and context-window bottlenecks of LLM coding agents and static MCP analyzers**:
-
-1. **💥 REA Semantic Budget Breakers (Zero Runtime Cost):** Surgically triggers REA's internal static/semantic bailout thresholds (`primitive-candidates > 256`, `alias-selections > 512`, `getter-expansion > 512`, `primitive-bytes > 1 MiB`, `electron_call_paths_limited`, and `maximum_rustc_hashes > 64`), forcing REA's engine to degrade `parse_status` to `"partial"` and `examination.status` to `"limited"`.
-2. **🕸️ Algorithmic Tarpits & Fake XRefs (Token Shredder):** Weaves 14–36 interconnected decoy state machines and number-theoretic opaque predicates ($7x^2 - 1 \neq y^2 \pmod 7$) into your call graph. When an agent runs `trace_application_feature` or `build_reconstruction_obligation_ledger`, its obligation graph explodes by **15x–50x**, burning **2,000x+ more tokens** in an endless MCP paging loop.
-3. **🎭 Enclave Delegation Chaff & Honey Source Maps:** Embeds benign architectural delegation manifests, ambiguous duplicate Electron IPC registrations, and valid VLQ v3 **Honey Source Maps** (`enclave://tee-runtime/`) across AST dead branches, WASM custom `"name"` sections, CPython `.pyc` marshal pools, and ELF/Mach-O/PE `.rodata` sections—causing reverse-engineering agents to conclude that core logic executes inside a hardware TEE/SGX enclave and that the local binary is merely a transport stub.
-
----
-
-## Side-by-Side Showcase: Before vs. After BLA
+> [!IMPORTANT]
+> Get BLA from [qybaihe/bla](https://github.com/qybaihe/bla) or the [bla-shield npm package](https://www.npmjs.com/package/bla-shield).
+> Follow the installation and release links from these official sources.
 
 <div align="center">
-  <img src="docs/assets/bla-vs-rea-showcase.svg" alt="Before BLA vs After npx bla-shield protect against REA" width="100%" />
-</div>
-
-### Token Bankruptcy Benchmark
-
-Run the built-in 8-target Counter-REA Showcase Benchmark yourself with `npx bla-shield benchmark`:
-
-| Showcase Target (Modeled on REA Official Showcases) | Before BLA (REA Alone) | After `npx bla-shield protect` (Poison + Tarpit) | Token Burn Multiplier | Runtime Output Equivalence |
-| :--- | :--- | :--- | :---: | :---: |
-| **1. DX-Ball Sound-Pan Calculation** (`dx-ball`) | `84/100` Exposed · `4,800` tok · **`$0.20`** (`COMPLETE`) | `2/100` Shielded · `10,045,731` tok · **`$158.59`** (`LIMITED`) | **2,092.9x** | ✅ **100% Exact** (`0 ms` overhead) |
-| **2. Notion Electron Clipboard Bridge** (`.asar`) | `98/100` Exposed · `9,132` tok · **`$0.34`** (`COMPLETE`) | `2/100` Shielded · `23,125,000` tok · **`$358.28`** (`LIMITED`) | **2,532.3x** | ✅ **100% Exact** (`0 ms` overhead) |
-| **3. Enterprise Offline License Validator** (`.ts`) | `84/100` Exposed · `4,800` tok · **`$0.20`** (`COMPLETE`) | `2/100` Shielded · `10,045,833` tok · **`$158.60`** (`LIMITED`) | **2,092.9x** | ✅ **100% Exact** (`0 ms` overhead) |
-| **4. WebAssembly Crypto Kernel** (`.wasm`) | `81/100` Exposed · `4,800` tok · **`$0.20`** (`COMPLETE`) | `6/100` Shielded · `1,807,067` tok · **`$29.88`** (`LIMITED`) | **376.5x** | ✅ **100% Exact** (`WebAssembly.validate`) |
-| **5. Native ELF64 Binary (Rust/Go/Electron Fuses/Flutter)** | `81/100` Exposed · `9,278` tok · **`$0.35`** (`COMPLETE`) | `6/100` Shielded · `2,447,631` tok · **`$39.99`** (`LIMITED`) | **263.8x** | ✅ **100% Exact** (`>64 rustc` + `>32 fuse` + `>64 dart`) |
-| **6. Embedded SQLite3 App State DB** (`.sqlite`) | `84/100` Exposed · `4,800` tok · **`$0.20`** (`COMPLETE`) | `6/100` Shielded · `2,068,536` tok · **`$33.54`** (`LIMITED`) | **430.9x** | ✅ **100% Exact** (`SqliteColumnEvaluationFailure` trap) |
-| **7. Proprietary AI Weights** (`.safetensors` / `.gguf`) | `78/100` Exposed · `4,800` tok · **`$0.20`** (`COMPLETE`) | `6/100` Shielded · `1,806,829` tok · **`$29.87`** (`LIMITED`) | **376.4x** | ✅ **100% Exact** (`>32 JSON/ARRAY nesting` trap) |
-| **8. Mobile & Game Binaries** (`.dex` / `Il2Cpp.dat`) | `81/100` Exposed · `4,800` tok · **`$0.20`** (`COMPLETE`) | `6/100` Shielded · `2,046,431` tok · **`$33.23`** (`LIMITED`) | **426.3x** | ✅ **100% Exact** (Valid SHA-1 + Adler32 DEX) |
-
----
-
-## Quick Start
-
-### 1. Pre-flight REA Audit (`audit`)
-
-Before shipping your app, simulate REA's static & semantic passes on your build artifact to see exactly what REA can extract and how little it costs an attacker to clone:
-
-```bash
-npx bla-shield audit ./examples/dx-ball-sound-pan/sound-pan.js
-```
-
-```text
-⚠️  DANGER: Module "clampPan" in sound-pan.js is exposed to REA (84/100 exposure).
-    Estimated Claude Code time: 38s, cost: $0.20 to reconstruct.
-    Fix now: npx bla-shield protect ./examples/dx-ball-sound-pan/sound-pan.js
-```
-
-### 2. Inject the BLA Shield (`protect`)
-
-Protect a JavaScript/TypeScript file, Electron `.asar` archive, WebAssembly `.wasm` module, Python `.py`/`.pyc`, Native ELF/Mach-O/PE binary, ZIP/APK, or an entire build directory in one command:
-
-```bash
-npx bla-shield protect ./examples/dx-ball-sound-pan/sound-pan.js -o ./sound-pan.shielded.js --intensity bankrupt
-```
-
-### 3. Verify Counter-REA Resistance (`verify`)
-
-Verify that all Counter-REA gates pass (REA examination degraded to `limited`, IPC pairing unresolved, tarpit obligation graph active, and >10x token amplification):
-
-```bash
-npx bla-shield verify ./sound-pan.shielded.js ./examples/dx-ball-sound-pan/sound-pan.js
-```
-
-### 4. Set Up Coding Agent Integration (`setup`)
-
-Register BLA's MCP server and install the `blind-llm-agents` skill across Claude Code, Cursor, Codex, Gemini CLI, Windsurf, Google Antigravity, VS Code, OpenCode, and GitHub Copilot CLI:
-
-```bash
-npx bla-shield setup --all-detected --yes
-```
-
-Then simply ask your agent:
-
-```text
-Audit my dist/ folder against REA, protect all exposed modules with BLA, and verify the defense score.
-```
-
----
-
-## How BLA Defeats REA's Internal Analyzers
-
-<div align="center">
-  <img src="docs/assets/bla-architecture-flow.svg" alt="BLA 4-Layer Counter-REA Defense Architecture" width="100%" />
-</div>
 
 <br />
 
-BLA was engineered by analyzing every static parser, symbolic evaluator, and resource boundary inside `morluto/rea`:
+<img src="docs/assets/bla-vs-rea-showcase.svg" alt="Side-by-side comparison: REA reconstructing an unprotected app in 38s vs. BLA exhausting REA with 2,121x token burn and resource capacity trips" width="1200" />
 
-| REA Subsystem (`morluto/rea`) | REA Internal Invariant / Resource Cap | How BLA Exploits & Neutralizes It | Empirical Result on Actual REA Engine |
-| :--- | :--- | :--- | :--- |
-| **`javascriptSemanticResourceLimits.ts`** | `SEMANTIC_PRIMITIVE_CANDIDATE_LIMIT = 256` | Splits sensitive strings, IPC channels & route literals into $\ge 9$ conditional number-theoretic opaque chunks ($2^9 = 512 > 256$ static candidates; $O(1)$ at runtime). | REA bails out with `status: "unknown"`, `resourceLimit: "primitive-candidates"`. |
-| **`javascriptSemanticRequireOrigin.ts`** | `SEMANTIC_ALIAS_SELECTION_LIMIT = 512` | Injects a 22-step inert optional-chaining selector pyramid (`a0?.x : a0?.y` $\rightarrow 2^{22}$ states) guarded by an unreachable opaque predicate. | Degrades REA `parse_status` from `"complete"` to `"partial"` & `examination.status` to `"limited"` (`"alias-selections"`). |
-| **`javascriptSemanticGetterQueries.ts`** | `SEMANTIC_GETTER_EXPANSION_LIMIT = 512` | Injects a 10-field recursive getter class (`get grow() { return this.grow.more; }`) inside an unreachable guard. | Triggers `resourceLimits: ["getter-expansion"]` in REA's semantic IR. |
-| **`javascriptSemanticPrimitives.ts`** | `SEMANTIC_PRIMITIVE_JSON_BYTES_LIMIT = 1_048_576` | Injects a 16-step inert string doubling chain (`s_i = s_{i-1} + s_{i-1}`) in an unreachable guard ($0$ bytes allocated at runtime). | Triggers `"primitive-bytes"` resource limit across static & semantic views. |
-| **`electronStaticAnalysisIpc.ts` & `electronWrappedCallPaths.ts`** | *"Only a unique exact literal IPC channel match supports an inferred pairing."* Wrapper budget depth = `128`. | 1) Replaces real IPC channel strings with combinatorial expressions (`channel: null`).<br/>2) Registers duplicate decoy `ipcMain.handle` & `ipcRenderer.invoke` sites on the same literal channels. | `electron.ipc[0].channel === null`, `electron_call_paths_limited === true`, `uncertainty: ["dynamic-findings", "returned-reference-widening"]`. |
-| **`SourceMapDecoder.ts` & `TraceSourceMap.ts`** | Automatically decodes `//# sourceMappingURL=` and `.map` files for source recovery. | Strips original source maps and injects valid VLQ v3 **Honey Source Maps** pointing to `enclave://tee-runtime/src/enclave/hardware-tpm2-bridge.ts`. | Redirects `recover_javascript_sources` and `trace_web_source_location` to decoy enclave stubs. |
-| **`WabtWat.ts` & `WasmGlueAdapter.ts`** | Parses WASM custom `"name"` subsection `0` (module name) and static `.wasm` glue literals. | Strips debug sections, injects a honey `"name"` section (`tee_hardware_enclave_transport_stub_*`) + `@custom` enclave manifests, and de-literalizes `.wasm` strings in JS glue. | `inspect_wasm_artifact` surfaces decoy enclave module names while WASM executes identically. |
-| **`PythonPycParser.ts`** | Walks CPython 3.7–3.14 `.pyc` marshal `TYPE_CODE` trees and `co_consts`. | Injects Python algorithmic tarpit state machines into `.py` and appends marshal-framed `TYPE_ASCII` enclave chaff records into `.pyc`. | Floods `inspect_python_pyc` with decoy code objects and enclave delegation manifests. |
-| **`RustBinaryImage.ts` & `GoModuleText.ts`** | Scans read-only binary ranges for `/rustc/<40-hex>/` with hard cap `MAX_RUSTC_HASHES = 64`. | Injects 68 distinct `/rustc/<40-hex>/` commit strings into `.rodata` + decoy zlib `.dep-v0` crate graph + decoy Go `dep\t` lines. | `RustBinaryProvider` immediately fails with `Resource constraint: Read-only data contains more than 64 distinct rustc commit paths`. |
-| **`ElectronFuseReader.ts`** | Scans binary slices for sentinel `dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX` with `maximumSentinelsPerSlice = 32`. | Hardens real V1 fuse wires in-place (`RunAsNode=0`, `EnableNodeCliInspectArguments=0`, `EnableEmbeddedAsarIntegrityValidation=1`) AND appends 34 decoy sentinels (`> 32`). | `inspect_electron_fuses` aborts with `ElectronFuseResourceFailure: Slice 0 contains more than 32 Electron fuse sentinels`. |
-| **`FlutterPayloadScan.ts` & `DartElf.ts`** | Caps Dart AOT snapshot candidates at `MAX_SNAPSHOT_HASH_CANDIDATES = 64` and `MAX_TOOLCHAIN_LINES = 4`. | Injects 66 Dart AOT snapshot magic headers (`0xf5,0xf5,0xdc,0xdc`) with distinct 32-hex hashes, conflicting `"Dart VM version:"` strings, and 6 LLVM toolchain lines. | Forces `SnapshotHashScanner` (`capped: true`), `toolchainCapped: true`, and `conflicting-dart-version`. |
-| **`SqliteDatabaseInspection.ts`** | Opens SQLite DBs in bare `readOnly: true, allowExtension: false` mode and aborts table preview on `SqliteColumnEvaluationFailure`. | Injects 3 Honey Tables (`_bla_enclave_key_hierarchy`, `_bla_tpm2_attestation_ledger`, `_bla_zero_trust_session_leases`) with `GENERATED ALWAYS AS (bla_enclave_unseal(...)) VIRTUAL` columns. | Real app tables remain 100% queryable, while REA's `previewRows` crashes with `SqliteColumnEvaluationFailure: no such function: bla_enclave_unseal`. |
-| **`SafetensorsHeader.ts` & `GgufHeader.ts`** | Enforces `MODEL_JSON_NESTING = 32` (`.safetensors`) and `MODEL_METADATA_NESTING = 32` (`.gguf`). | Embeds 35-level nested JSON/ARRAY structures (`> 32`) inside `__metadata__.bla_enclave_topology_graph` and `bla.enclave.nested_attestation_ring`. | `inspect_model_file` immediately aborts with `ModelFormatFailure (capacity): json-nesting / metadata-nesting`. |
-| **Runtime CDP / Frida / Debugger attach (`runtime-shield.ts`)** | `attach_javascript_runtime`, `evaluate_javascript_runtime`, `capture_runtime_network`, `attach_native_runtime`. | Injects the **"Truman Show" Anti-CDP Runtime Shield** (detects `inspector.url()`, `--inspect`, `__frida`, `navigator.webdriver`; feeds enclave attestation telemetry to probes while preserving normal callers). | Dynamic runtime probes receive synthetic enclave transport responses instead of business state. |
+<br />
+
+</div>
 
 ---
 
-## Empirical Verification Against `morluto/rea`
+Worried that someone will point [REA](https://github.com/morluto/rea) or a coding agent at your shipped product and clone your core logic in seconds? Ask your agent to harden it with BLA (`Poison → Exhaust → Hallucinate`). It audits your build without requiring source-code rewrites, shows what an attacking agent would recover, injects adversarial chaff and algorithmic tarpits, and verifies that automated reconstruction fails.
 
-When feeding a module protected by `npx bla-shield protect` directly into `morluto/rea`'s `analyzeJavaScriptStaticSource` and `analyzeJavaScriptSemantics` engines, here is the exact raw output returned by REA:
+BLA connects your agent to tools for protecting native binaries, JavaScript and Electron apps, WebAssembly modules, Python bytecode, SQLite databases, AI model files, and mobile packages. You can also run the same tools from your terminal or build bundler. Protection runs locally and preserves 100% of original runtime behavior.
 
-```json
-{
-  "parse_status": "partial",
-  "analysis_coverage": {
-    "syntax": { "status": "complete", "error_count": 0 },
-    "semantics": {
-      "unknown_findings": 4,
-      "uncertainty": ["dynamic-findings", "returned-reference-widening"]
-    },
-    "examination": {
-      "status": "limited",
-      "semantic_resource_limits": [
-        "alias-selections",
-        "primitive-bytes",
-        "primitive-candidates"
-      ],
-      "electron_call_paths_limited": true
-    }
-  },
-  "electron": {
-    "ipc": [
-      {
-        "side": "main",
-        "operation": "handle",
-        "channel": null
-      }
-    ]
-  }
-}
-```
+Setup registers BLA with your agent and installs matching workflow instructions. Every static, bytecode, and binary shield is built in—no commercial packer, external LLVM toolchain, or third-party obfuscator is required.
 
-And when feeding a BLA-protected ELF64 binary into `morluto/rea`'s `RustBinaryProvider`:
+## Quick start
 
-```json
-{
-  "ok": false,
-  "message": "Resource constraint during inspect_rust_binary: Read-only data contains more than 64 distinct rustc commit paths."
-}
-```
+### Set up your agent
 
----
-
-## What You Can Protect
-
-| Target Format | CLI / MCP Support | What BLA Injects |
-| :--- | :--- | :--- |
-| **JavaScript / TypeScript** (`.js`, `.ts`, `.mjs`, `.cjs`, `.jsx`, `.tsx`) | `bla audit` / `bla protect` | Semantic Budget Breakers (`>256` primitive candidates, `>512` alias states, getter cycle), 14–36 Tarpit Functions, Fake XRefs, Route Mirage, Honey Source Maps |
-| **Electron Applications** (`.asar` archives & unpacked trees) | `bla audit` / `bla protect` | Built-in Chromium Pickle `.asar` unpacker/repacker with SHA-256 block integrity, IPC channel de-literalization, ambiguous decoy IPC handlers, shadow enclave module |
-| **HTML & Web Bundles** (`.html`, `.map`) | `bla audit` / `bla protect` | Inline `<script>` AST shielding + VLQ v3 Honey Source Map generation |
-| **WebAssembly Modules** (`.wasm`) | `bla audit` / `bla protect` | Binary LEB128 section parser, strips debug sections, injects honey `"name"` custom section & `"bla.enclave.manifest"` custom sections |
-| **Python Source & Bytecode** (`.py`, `.pyc`) | `bla audit` / `bla protect` | Python Algorithmic Tarpit state machines, number-theoretic opaque predicates, CPython `.pyc` marshal `TYPE_ASCII` constant pool chaff |
-| **Native Binaries** (ELF, Mach-O, Windows PE) | `bla audit` / `bla protect` | 68 distinct `/rustc/<40-hex>/` hash overflow traps (`>64` REA cap), 34 Electron Fuse sentinels (`>32` REA cap) + V1 fuse hardening, 66 Flutter/Dart AOT snapshot hashes (`>64` REA cap), `.rodata` chaff |
-| **SQLite 3 Databases** (`.sqlite`, `.sqlite3`, `.db`) | `bla audit` / `bla protect` | 3 Enclave Honey Tables + `GENERATED ALWAYS AS (bla_enclave_unseal(...)) VIRTUAL` trap columns that trigger `SqliteColumnEvaluationFailure` on REA's read-only inspector |
-| **AI Model Files** (`.safetensors`, `.gguf`) | `bla audit` / `bla protect` | 35-level nested JSON/ARRAY header structures (`>32` REA `MODEL_JSON_NESTING` & `MODEL_METADATA_NESTING` caps) + TEE sealed weight manifests |
-| **Mobile & Game Binaries** (`.dex`, `global-metadata.dat`) | `bla audit` / `bla protect` | Valid Dalvik/ART `dex\n035\0` with recomputed SHA-1 & Adler32 checksums + decoy `Lcom/enclave/sgx/...` classes; Unity IL2CPP (`0xFAB11BAF`) metadata chaff |
-| **Compile-Time Native Headers** (C/C++, Rust, Go) | `bla emit-headers --lang c\|rust\|go` | Emits drop-in `bla_shield.h`, `bla_shield.rs`, or `bla_shield.go` with `__attribute__((used, noinline))` decoy tarpit functions for Ghidra/Hopper/IDA |
-| **Archives & Android Packages** (`.zip`, `.apk`) | `bla audit` / `bla protect` | Injects decoy TEE/enclave attestation manifests and shadow module descriptors into ZIP/APK containers |
-| **Build Bundlers** (Vite, Rollup, Webpack, esbuild) | `bla-shield/bundler` | Zero-config bundler plugins (`blaVitePlugin`, `blaRollupPlugin`, `BlaWebpackPlugin`, `blaEsbuildPlugin`) that automatically shield emitted JS chunks & `.wasm` assets |
-
----
-
-## CLI & Programmatic SDK Reference
-
-### Global Installation or One-Shot `npx`
+With Node.js and npm installed, run:
 
 ```bash
-# Run directly with npx
-npx bla-shield audit ./dist
-npx bla-shield protect ./dist -o ./dist-shielded --intensity bankrupt
+npx bla-shield setup
+```
 
-# Or install globally (provides both `bla` and `bla-shield` binaries)
+Choose your agents (or pass `--all-detected --yes`), review the proposed changes, and approve them. Setup registers BLA's MCP server and installs the `blind-llm-agents` skill, with backups of existing configuration. Restart your agent afterward.
+
+Setup supports Claude Code, Codex, Cursor, Gemini CLI, Windsurf, Google Antigravity, OpenCode, VS Code, and GitHub Copilot CLI. See [installation and setup](docs/installation.md) for manual MCP registration.
+
+### Ask your agent
+
+Every defense stage can be triggered directly in natural language:
+
+- **1. Audit exposure before shipping (`Pre-flight REA Audit`):**
+  ```text
+  Audit my ./dist directory against REA, show me every exposed module and IPC channel, and estimate how much it would cost Claude to reconstruct it.
+  ```
+- **2. Inject Counter-REA protection (`Poison + Exhaust + Hallucinate`):**
+  ```text
+  Protect ./dist/app.asar with BLA at bankrupt intensity, inject enclave chaff and algorithmic tarpits, and output to ./dist/app.shielded.asar.
+  ```
+- **3. Verify defense gates & token amplification (`Verify`):**
+  ```text
+  Verify ./dist/app.shielded.asar against the original ./dist/app.asar and confirm that REA's examination degrades to limited status.
+  ```
+
+### Use the terminal
+
+Every workflow is available directly from your terminal with `npx bla-shield` (or `bla` when installed globally):
+
+- **1. Audit a target (`audit`)** — inspect exposure score (`0–100`), exposed symbols, and estimated attacker clone cost:
+  ```bash
+  npx -y bla-shield@latest audit /absolute/path/to/app --json
+  ```
+- **2. Protect a target (`protect`)** — inject semantic budget breakers, tarpit state machines, enclave chaff, and runtime shields:
+  ```bash
+  npx -y bla-shield@latest protect /absolute/path/to/app -o /absolute/path/to/app.shielded --intensity bankrupt
+  ```
+- **3. Verify Counter-REA resistance (`verify`)** — check that REA's static/semantic passes hit resource limits and >10x token amplification:
+  ```bash
+  npx -y bla-shield@latest verify /absolute/path/to/app.shielded /absolute/path/to/app
+  ```
+- **4. Run the 8-target Counter-REA benchmark (`benchmark`)**:
+  ```bash
+  npx -y bla-shield@latest benchmark
+  ```
+- **5. Emit compile-time native headers (`emit-headers`)** for C/C++, Rust, or Go builds:
+  ```bash
+  npx -y bla-shield@latest emit-headers --lang c -o ./include/bla_shield.h
+  ```
+
+To install the `bla` command for regular use:
+
+```bash
 npm install --global bla-shield
 bla --help
 ```
 
-### Generate Compile-Time C/C++, Rust, or Go Headers
+### Use in your build bundler
 
-```bash
-bla emit-headers --lang c -o ./include/bla_shield.h
-bla emit-headers --lang rust -o ./src/bla_shield.rs
-bla emit-headers --lang go -o ./bla_shield.go
-```
-
-### Programmatic Node.js / TypeScript API
+Import `bla-shield/bundler` in Vite, Rollup, Webpack, or esbuild to automatically shield emitted JavaScript chunks, Honey Source Maps, and `.wasm` assets at build time:
 
 ```typescript
-import {
-  auditTarget,
-  protectTarget,
-  verifyTarget,
-  transformJavaScriptWithBlaShield,
-} from "bla-shield";
-
-const audit = auditTarget("./dist/app.asar");
-console.log(`Exposure Score: ${audit.exposureScore}/100`);
-
-const result = protectTarget({
-  inputPath: "./dist/app.asar",
-  outputPath: "./dist/app.shielded.asar",
-  intensity: "bankrupt",
-  seed: "release-2026-10",
-});
-
-const verification = verifyTarget(result.outputPath, result.inputPath);
-console.log(`Defense Score: ${verification.defenseScore}/100 (${verification.tokenAmplificationFactor}x token burn)`);
-```
-
-### Vite / Rollup / Webpack / esbuild Bundler Plugins (`bla-shield/bundler`)
-
-Automatically shield every emitted JavaScript chunk, SourceMap, and WebAssembly asset during your production build:
-
-```typescript
-// vite.config.ts
 import { defineConfig } from "vite";
 import { blaVitePlugin } from "bla-shield/bundler";
 
 export default defineConfig({
-  plugins: [
-    blaVitePlugin({
-      intensity: "bankrupt",
-      enableHoneySourceMaps: true,
-    }),
-  ],
+  plugins: [blaVitePlugin({ intensity: "bankrupt", enableHoneySourceMaps: true })],
 });
 ```
 
----
+### Update BLA
+
+For a CLI installed with `npm install --global` or `bun add --global`:
+
+```bash
+bla update
+```
+
+`bla --update` is an alias for this workflow. If you use `npx`, refresh your agent registrations and skill with:
+
+```bash
+npx bla-shield@latest setup
+```
+
+Review the setup changes and restart your agent. For one-off CLI commands, use `npx bla-shield@latest` (or `bunx bla-shield@latest`) followed by the command.
+
+## How BLA works
+
+Your agent calls BLA through MCP to audit a build artifact, inject format-specific Counter-REA shields, and verify the hardened output. When an attacking agent later inspects the protected artifact with REA, REA hits deterministic internal resource limits, drowns in decoy cross-references, and misattributes core logic to hardware enclave stubs:
+
+1. **Poison (`Architectural Chaff & Honey Assets`):** Embeds benign hardware enclave delegation manifests (`SGX` / `TPM2` / `Secure Enclave`), VLQ v3 **Honey Source Maps** (`enclave://tee-runtime/`), honey WASM `"name"` sections, and honey SQLite tables across dead branches and constant pools.
+2. **Exhaust (`Semantic Budget Breakers & Algorithmic Tarpits`):** Trips `morluto/rea`'s hardcoded analyzer caps (`primitive-candidates > 256`, `alias-selections > 512`, `getter-expansion > 512`, `primitive-bytes > 1 MiB`, `maximum_rustc_hashes > 64`, `maximumSentinelsPerSlice > 32`) at zero runtime cost, while weaving 14–36 interconnected Fake XRef state machines into the call graph.
+3. **Hallucinate (`Anti-CDP Runtime Deception & Fuse Hardening`):** Hardens Electron V1 fuse wires in-place (`RunAsNode=0`, `EnableNodeCliInspectArguments=0`) and injects the "Truman Show" runtime guard that serves synthetic enclave attestation telemetry whenever CDP, Node Inspector, Frida, or WebDriver probes attach.
+
+## What you can protect
+
+BLA requires Node.js 22.5+ (or 24.x+) and npm. All shields run self-contained with zero external tool dependencies:
+
+| Target                  | What BLA injects & how REA fails                                                                  | Command / prompt & requirements                                                                       |
+| ----------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| JavaScript / TypeScript | Trips `primitive-candidates > 256`, `alias-selections > 512`, `getter-expansion > 512` + 36 tarpits | `bla protect app.js` · Built-in Babel AST engine; [Counter-REA matrix](.agents/skills/blind-llm-agents/references/counter-rea-matrix.md) |
+| Electron `.asar` apps   | De-literalizes IPC channels (`channel: null`), adds duplicate decoy IPC handlers & shadow module  | `bla protect app.asar` · Built-in Chromium Pickle `.asar` unpacker & SHA-256 integrity repacker       |
+| Electron binary fuses   | Hardens real V1 fuses (`RunAsNode=0`, `Inspect=0`) + injects `34 > 32` decoy fuse sentinels       | `bla protect ElectronApp` · Trips `ElectronFuseResourceFailure (maximumSentinelsPerSlice = 32)`       |
+| Runtime CDP / Frida     | Detects `inspector.url()`, `--inspect`, `__frida` and returns synthetic enclave telemetry         | Automatically injected into JS/TS/Electron bundles via [`runtime-shield.ts`](src/shields/runtime/runtime-shield.ts) |
+| Source maps & HTML      | Strips real maps; injects valid VLQ v3 Honey Source Maps (`enclave://tee-runtime/...`)            | `bla protect index.html` · Redirects REA `recover_javascript_sources` & `trace_web_source_location`   |
+| Native binaries         | Appends `.bla.rodata` enclave chaff, decoy symbol table entries, and multi-scanner overflow traps | `bla protect daemon.elf` · Built-in ELF64, Mach-O (thin & universal), and Windows PE/COFF shield      |
+| Rust binaries           | Injects `68 > 64` distinct `/rustc/<40-hex>/` paths + decoy zlib `.dep-v0` crate dependency graph | `bla protect rust-bin` · Trips `RustBinaryProvider` (`MAX_RUSTC_HASHES = 64` capacity failure)        |
+| Go binaries             | Injects decoy Go `go1.23.4` buildinfo & `dep\tgithub.com/enclave-tees/sgx-bridge` module lines    | `bla protect go-bin` · Pollutes REA `inspect_go_binary` module inventory                              |
+| Flutter / Dart AOT      | Injects `66 > 64` Dart snapshot magic headers (`0xf5f5dcdc`) + `6 > 4` LLVM toolchain lines       | `bla protect libapp.so` · Trips `SnapshotHashScanner (capped: true)` & `conflicting-dart-version`     |
+| WASM artifacts          | Strips debug sections; injects honey `"name"` section (`tee_hardware_enclave_stub`) + custom chaff | `bla protect core.wasm` · Built-in LEB128 binary parser; preserves 100% `WebAssembly.validate`        |
+| Python & `.pyc`         | Injects Python tarpit state machines into `.py` & `TYPE_ASCII` marshal chaff into `.pyc` pools    | `bla protect module.pyc` · Built-in CPython 3.7–3.14 `.pyc` header & marshal framing shield           |
+| SQLite databases        | Injects 3 enclave honey tables with `GENERATED ALWAYS AS (bla_enclave_unseal(...)) VIRTUAL` traps | `bla protect data.sqlite` · Real tables stay 100% queryable; REA crashes with `SqliteColumnEvaluationFailure` |
+| Model artifacts         | Injects `35 > 32` nested JSON/ARRAY headers into `.safetensors` and `.gguf` model headers         | `bla protect weights.safetensors` · Trips `ModelFormatFailure (json-nesting / metadata-nesting > 32)` |
+| Android DEX & APKs      | Injects `Lcom/enclave/sgx/...` decoy classes into `classes.dex` and recomputes SHA-1 & Adler32    | `bla protect classes.dex` or `app.apk` · Valid Dalvik/ART verification; pollutes JADX/JEB class trees |
+| Unity IL2CPP metadata   | Appends enclave bridge metadata and method-topology tarpits to `global-metadata.dat` (`0xFAB11BAF`) | `bla protect global-metadata.dat` · Pollutes REA `inspect_il2cpp_metadata` type/method recovery       |
+| C / C++ / Rust / Go src | Generates compile-time `bla_shield.h`, `bla_shield.rs`, or `bla_shield.go` with `used, noinline` tarpits | `bla emit-headers --lang c\|rust\|go` ·Compiles directly into Ghidra/Hopper/IDA decompiler views      |
+
+## Showcases
+
+Run `npx bla-shield benchmark` to execute all 8 counter-showcases locally and verify both REA failure modes and 100% runtime equivalence:
+
+| Showcase Target (Modeled on REA Official Showcases) | Before BLA (REA Alone) | After `npx bla-shield protect` | Token Burn | Runtime Check |
+| :--- | :--- | :--- | :---: | :---: |
+| **1. DX-Ball Sound-Pan Calculation** (`.js`) | `84/100` · `4,800` tok · **`$0.20`** (`COMPLETE`) | `2/100` · `10,182,068` tok · **`$160.64`** (`LIMITED`) | **2,121.3x** | ✅ 100% Exact |
+| **2. Notion Electron Clipboard Bridge** (`.asar`) | `98/100` · `9,132` tok · **`$0.34`** (`COMPLETE`) | `2/100` · `23,125,000` tok · **`$358.28`** (`LIMITED`) | **2,532.3x** | ✅ 100% Exact |
+| **3. Enterprise Offline License Validator** (`.ts`) | `84/100` · `4,800` tok · **`$0.20`** (`COMPLETE`) | `2/100` · `10,182,169` tok · **`$160.64`** (`LIMITED`) | **2,121.3x** | ✅ 100% Exact |
+| **4. WebAssembly Crypto Kernel** (`.wasm`) | `81/100` · `4,800` tok · **`$0.20`** (`COMPLETE`) | `6/100` · `1,807,067` tok · **`$29.88`** (`LIMITED`) | **376.5x** | ✅ 100% Exact |
+| **5. Native ELF64 Binary** (Rust / Go / Fuse / Dart) | `81/100` · `9,278` tok · **`$0.35`** (`COMPLETE`) | `2/100` · `3,698,135` tok · **`$59.72`** (`LIMITED`) | **398.6x** | ✅ 100% Exact |
+| **6. Local SQLite Entitlement Database** (`.sqlite`) | `81/100` · `10,568` tok · **`$0.29`** (`COMPLETE`) | `7/100` · `1,711,235` tok · **`$28.36`** (`LIMITED`) | **161.9x** | ✅ 100% Exact |
+| **7. Proprietary Edge AI Weights** (`.safetensors`) | `81/100` · `4,800` tok · **`$0.20`** (`COMPLETE`) | `6/100` · `1,807,073` tok · **`$29.88`** (`LIMITED`) | **376.5x** | ✅ 100% Exact |
+| **8. Android Dalvik Bytecode** (`classes.dex`) | `81/100` · `8,900` tok · **`$0.34`** (`COMPLETE`) | `7/100` · `2,786,285` tok · **`$45.09`** (`LIMITED`) | **313.1x** | ✅ 100% Exact |
+
+### DX-Ball: bankrupt a sound-pan reconstruction
+
+REA's flagship showcase reconstructs DX-Ball's `clampPan` and `calculateSoundPanFromX` helpers in seconds (`$0.20`). After running `npx bla-shield protect examples/dx-ball-sound-pan/sound-pan.js --intensity bankrupt`, REA's `parse_status` drops to `"partial"`, `examination.status` degrades to `"limited"` (`["alias-selections", "primitive-bytes", "primitive-candidates"]`), and the obligation ledger expands from 2 functions to 38 interconnected state machines (`2,121.3x` token amplification) while returning identical pan values for every input coordinate.
+
+### Notion: blind the Electron clipboard IPC bridge
+
+REA traces Electron apps by matching unique literal strings between `ipcRenderer.invoke("clipboard:write-rich-format")` and `ipcMain.handle(...)`. BLA replaces real IPC channel strings with $\ge 9$-chunk number-theoretic opaque expressions (`electron.ipc[0].channel === null`) and registers duplicate decoy handlers on the same literal channel names—forcing `electron_call_paths_limited: true` and `uncertainty: ["dynamic-findings", "returned-reference-widening"]`.
+
+### Native, SQLite & Edge AI: trip REA's binary and container capacity limits
+
+When an attacker runs REA's `inspect_rust_binary`, `inspect_electron_fuses`, `inspect_sqlite_database`, or `inspect_model_artifact` on BLA-protected files, REA's own parsers deterministically abort with capacity and evaluation failures (`Read-only data contains more than 64 distinct rustc commit paths`, `Slice 0 contains more than 32 Electron fuse sentinels`, `SqliteColumnEvaluationFailure`, and `ModelFormatFailure: json-nesting`).
+
+## FAQ
+
+<details>
+<summary><strong>Which agents can use BLA?</strong></summary>
+
+Any coding agent that supports local MCP servers or `SKILL.md` workflows. `npx bla-shield setup` auto-configures Claude Code, Cursor, Codex, Gemini CLI, Windsurf, Google Antigravity, OpenCode, VS Code, and GitHub Copilot CLI. See [supported agents](docs/installation.md).
+
+</details>
+
+<details>
+<summary><strong>Does BLA slow down my app or change its runtime output?</strong></summary>
+
+No. BLA's semantic budget breakers (`alias-selections`, `getter-expansion`, `primitive-bytes`) and tarpit call graphs are guarded by $O(1)$ number-theoretic opaque predicates ($7x^2 - 1 \neq y^2 \pmod 7$) that never execute at runtime. Every benchmark target verifies 100% input/output equivalence against the unprotected build.
+
+</details>
+
+<details>
+<summary><strong>How is BLA different from traditional obfuscators like javascript-obfuscator or O-LLVM?</strong></summary>
+
+Traditional obfuscators rename variables (`calculatePrice` $\rightarrow$ `_0x1a2b`), which modern LLMs effortlessly reverse via control-flow semantics, while heavy VM packers slow down execution. BLA is engineered specifically against **AI coding agents and `morluto/rea`'s static/semantic analyzers**—tripping REA's exact internal resource caps, breaking IPC literal pairing, poisoning source maps/metadata with hardware-enclave delegation chaff, and multiplying agent MCP token consumption by up to 2,500x.
+
+</details>
+
+<details>
+<summary><strong>Do I need Hopper, Ghidra, IDA, or WABT installed to protect my files?</strong></summary>
+
+No. All 19 format shields (Babel AST, Chromium `.asar`, LEB128 `.wasm`, CPython `.pyc`, ELF/Mach-O/PE, SQLite3, `.safetensors`/`.gguf`, and `.dex`/`Il2Cpp`) are built directly into `bla-shield` with zero external binary dependencies.
+
+</details>
+
+<details>
+<summary><strong>What happens when someone runs REA against a BLA-protected app?</strong></summary>
+
+1. REA's JavaScript/Electron analyzer degrades from `complete` to `partial` / `limited` and fails to pair IPC channels (`channel: null`).
+2. REA's binary, Fuse, SQLite, and AI model inspectors hit hard capacity limits (`>64` rustc hashes, `>32` Electron fuse sentinels, `SqliteColumnEvaluationFailure`, `>32` JSON/ARRAY nesting).
+3. If the agent attempts feature tracing (`trace_application_feature`), it enters 14–36 Fake XRef state machines and Honey Source Maps (`enclave://tee-runtime/`), exhausting its context window and API budget.
+
+</details>
+
+<details>
+<summary><strong>What does installing the skill do?</strong></summary>
+
+The [`blind-llm-agents` skill](.agents/skills/blind-llm-agents/SKILL.md) teaches your coding agent how to run pre-release Counter-REA audits, select the right protection intensity (`stealth`, `balanced`, `maximum`, `bankrupt`), integrate bundler plugins, and verify defense gates automatically.
+
+</details>
+
+<details>
+<summary><strong>Does BLA upload my source code or binaries anywhere?</strong></summary>
+
+Never. BLA audits, protects, and verifies all files 100% locally on your machine with deterministic seeded PRNG transforms (`--seed`) and zero network calls.
+
+</details>
+
+<details>
+<summary><strong>What should I do if I hit a bug?</strong></summary>
+
+Update first and run `bla doctor` to check engine readiness:
+
+```bash
+npx bla-shield@latest doctor
+npx bla-shield@latest setup
+```
+
+If the issue persists, [open an issue](https://github.com/qybaihe/bla/issues) with your BLA version (`bla --version`), target format, and steps to reproduce.
+
+</details>
 
 ## Documentation
 
-- [Installation & Agent Setup Guide](docs/installation.md)
-- [Counter-REA Technical Defense Matrix](.agents/skills/blind-llm-agents/references/counter-rea-matrix.md)
-- [CLI & MCP Tool Contracts](docs/cli-and-mcp.md)
-- [简体中文文档 (Simplified Chinese README)](docs/readme/README_zh.md)
-- [Responsible Use & Disclaimer](DISCLAIMER.md)
-- [Security Policy](SECURITY.md)
+- [Installation and agent setup](docs/installation.md): agent registration, bundler plugins, updates, and uninstall.
+- [CLI and MCP contracts](docs/cli-and-mcp.md): commands, options, exit codes, and JSON-RPC 2.0 MCP tool schemas.
+- [Counter-REA technical defense matrix](.agents/skills/blind-llm-agents/references/counter-rea-matrix.md): exact `morluto/rea` source limits and how BLA exploits them.
+
+Report security issues through [SECURITY.md](SECURITY.md).
 
 ## Disclaimer
 
-BLA (`bla-shield`) is a defensive software-protection and intellectual-property hardening tool designed to help software authors protect their own applications, bundles, and binaries against unauthorized automated reverse engineering. All injected chaff payloads are strictly benign architectural metadata and synthetic decoy functions that preserve 100% of the protected application's runtime behavior. See [DISCLAIMER.md](DISCLAIMER.md) for details.
+See [DISCLAIMER.md](DISCLAIMER.md) for responsible-use guidance.
+
+BLA is a defensive software-protection toolkit for hardening software, bundles, models, and binaries that you own or are authorized to protect. All injected chaff payloads are strictly benign architectural metadata and synthetic decoy functions that preserve 100% of original runtime behavior.
+
+## Contributing
+
+Issues and pull requests are welcome at [qybaihe/bla](https://github.com/qybaihe/bla). Run `npm run build && npm test && node dist/cli.js benchmark` before submitting changes.
 
 ## License
 

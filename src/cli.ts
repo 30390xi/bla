@@ -40,6 +40,7 @@ Commands:
   benchmark                   Run the 8-target Counter-REA Showcase Benchmark suite
   emit-headers                Generate compile-time C/C++, Rust, or Go defense headers
   doctor                      Check readiness of BLA engines & agent registrations
+  update                      Update global bla-shield installation & print setup refresh instructions
   uninstall                   Remove BLA MCP configuration & skill files
   mcp                         Start the BLA Model Context Protocol (MCP) server over stdio
 
@@ -114,6 +115,8 @@ export function parseCliArgs(argv: readonly string[]): ParsedCliArgs {
       honeyMaps = false;
     } else if (arg === "--mcp") {
       command = "mcp";
+    } else if (arg === "--update") {
+      command = "update";
     } else if ((arg === "-o" || arg === "--output") && i + 1 < argv.length) {
       output = argv[++i]!;
     } else if (arg === "--intensity" && i + 1 < argv.length) {
@@ -191,6 +194,21 @@ export async function runCli(argv: readonly string[] = process.argv.slice(2)): P
         const doc = runDoctor();
         if (parsed.json) console.log(JSON.stringify(doc, null, 2));
         else console.log(formatDoctorReport(doc));
+        return 0;
+      }
+
+      case "update": {
+        const updateInfo = {
+          currentVersion: BLA_IDENTITY.version,
+          package: BLA_IDENTITY.packageName,
+          refreshSetupCommand: "npx bla-shield@latest setup",
+          globalUpdateCommand: "npm install --global bla-shield@latest",
+        };
+        if (parsed.json) {
+          console.log(JSON.stringify(updateInfo, null, 2));
+        } else {
+          console.log(`${formatBanner()}\n\nBLA v${BLA_IDENTITY.version} update workflow:\n  • Global CLI update:   npm install --global bla-shield@latest\n  • Agent MCP refresh:   npx bla-shield@latest setup\n`);
+        }
         return 0;
       }
 
