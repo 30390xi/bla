@@ -7,6 +7,8 @@ import type { ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
 import { generateJsTarpitAndBudgetBreaker } from "../tarpit/tarpit-generator.js";
 import { generateRuntimeDeceptionSnippet } from "../runtime/runtime-shield.js";
+import { generateCounterReaExhaustionSuite } from "../exhaustion/index.js";
+import { generateCounterReaDeceptionSuite } from "../deception/index.js";
 
 // Handle ESM/CJS default export interop in NodeNext
 type TraverseFn = (typeof _traverse)["default"];
@@ -147,6 +149,8 @@ export function transformJavaScriptWithBlaShield(
   const chaffPayloads = generateChaffPayloads(prng, intensity);
   const tarpit = generateJsTarpitAndBudgetBreaker(prng, intensity, chaffPayloads);
   const runtimeShield = generateRuntimeDeceptionSnippet(prng, intensity, chaffPayloads);
+  const exhaustionSuite = generateCounterReaExhaustionSuite(prng, intensity);
+  const deceptionSuite = generateCounterReaDeceptionSuite(prng, intensity);
 
   const ast = parse(source, {
     sourceType: "unambiguous",
@@ -319,7 +323,13 @@ export function transformJavaScriptWithBlaShield(
     : tarpit.code;
 
   const combinedInjectedAst = parse(
-    `${mirageLines.join("\n")}\n${runtimeShield.code}\n${tarpitCodeNormalized}`,
+    [
+      mirageLines.join("\n"),
+      runtimeShield.code,
+      tarpitCodeNormalized,
+      exhaustionSuite.combinedJsCode,
+      deceptionSuite.combinedJsCode,
+    ].join("\n\n"),
     {
       sourceType: "unambiguous",
       plugins: ["typescript"],
@@ -360,12 +370,22 @@ export function transformJavaScriptWithBlaShield(
 
   return {
     code: generated.code,
-    decoyFunctionsInjected: tarpit.decoyFunctionNames.length + 1,
-    fakeCrossReferencesCreated,
+    decoyFunctionsInjected:
+      tarpit.decoyFunctionNames.length +
+      exhaustionSuite.totalLabyrinthNodes +
+      deceptionSuite.shadowLogic.shadowProceduresCreated.length +
+      deceptionSuite.semanticHoneypot.baitSymbols.length +
+      1,
+    fakeCrossReferencesCreated:
+      fakeCrossReferencesCreated + exhaustionSuite.totalCrossReferenceEdges,
     primitiveCandidateBranchesCreated,
     aliasSelectionStatesCreated: 4_194_304, // 2^22 selector states in aliasFn
-    ipcAmbiguitySitesInjected,
-    decoyRoutesInjected: selectedDecoyRoutes.length,
-    chaffPayloadsEmbedded: chaffPayloads.length,
+    ipcAmbiguitySitesInjected:
+      ipcAmbiguitySitesInjected + exhaustionSuite.totalDecoyObligations,
+    decoyRoutesInjected:
+      selectedDecoyRoutes.length +
+      deceptionSuite.architectureMirage.decoyRpcMethods.length,
+    chaffPayloadsEmbedded:
+      chaffPayloads.length + deceptionSuite.evidencePoison.lures.length,
   };
 }
