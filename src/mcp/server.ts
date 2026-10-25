@@ -3,6 +3,7 @@ import type { ProtectionIntensity } from "../core/types.js";
 import { auditTarget } from "../engine/auditor.js";
 import { protectTarget } from "../engine/protector.js";
 import { verifyTarget } from "../engine/verifier.js";
+import { defendTarget } from "../engine/defender.js";
 import { runShowcaseBenchmark } from "../engine/benchmark.js";
 import {
   emitCompileTimeNativeHeader,
@@ -29,6 +30,34 @@ export interface JsonRpcResponse {
 }
 
 export const BLA_MCP_TOOLS = Object.freeze([
+  {
+    name: "bla_defend",
+    description:
+      "One-click Counter-REA full defense hardening pipeline. Runs release source-map exposure inspection, 16-vector REA vulnerability audit, Resource-Exhaustion + Model-Misjudgment shield injection (default: bankrupt preset), and mathematical invariant verification in a single call.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        input_path: {
+          type: "string",
+          description: "Path to the artifact or directory to harden against REA",
+        },
+        output_path: {
+          type: "string",
+          description: "Optional output path for the hardened artifact",
+        },
+        intensity: {
+          type: "string",
+          enum: ["stealth", "balanced", "maximum", "bankrupt"],
+          description: "Protection intensity preset (default: bankrupt)",
+        },
+        emit_manifest: {
+          type: "boolean",
+          description: "Emit a signed .bla-manifest.json alongside the hardened artifact",
+        },
+      },
+      required: ["input_path"],
+    },
+  },
   {
     name: "bla_audit",
     description:
@@ -202,7 +231,19 @@ export async function handleMcpRequest(
         const args = (params.arguments as Record<string, unknown> | undefined) ?? {};
 
         let payload: unknown;
-        if (name === "bla_audit") {
+        if (name === "bla_defend") {
+          payload = defendTarget({
+            inputPath: String(args.input_path ?? ""),
+            ...(typeof args.output_path === "string"
+              ? { outputPath: args.output_path }
+              : {}),
+            intensity:
+              typeof args.intensity === "string"
+                ? (args.intensity as ProtectionIntensity)
+                : "bankrupt",
+            emitManifest: Boolean(args.emit_manifest),
+          });
+        } else if (name === "bla_audit") {
           payload = auditTarget(String(args.path ?? ""));
         } else if (name === "bla_protect") {
           payload = protectTarget({
