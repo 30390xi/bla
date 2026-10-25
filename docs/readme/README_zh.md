@@ -8,22 +8,22 @@
 
 **构建你的核心功能。从二进制底层致盲一切企图克隆它的 AI 代理。**
 
-[![npm version](https://img.shields.io/badge/npm-bla--agents-cb3837?style=flat-square&logo=npm)](https://www.npmjs.com/package/bla-agents)
-[![MCP tool catalog](https://img.shields.io/badge/MCP-tool_catalog-5c4ee5?style=flat-square)](../cli-and-mcp.md)
-[![Node.js requirements](https://img.shields.io/badge/Node.js-%3E%3D22.5-339933?style=flat-square&logo=nodedotjs&logoColor=white)](#你可以保护哪些目标)
-[![Counter-REA Verified](https://img.shields.io/badge/Counter--REA-100%25_Verified-10b981?style=flat-square)](#实战案例与基准测试)
-[![MIT license](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](../../LICENSE)
+[![npm version](https://img.shields.io/badge/npm-bla--agents-2563eb?style=flat-square&logo=npm)](https://www.npmjs.com/package/bla-agents)
+[![MCP tool catalog](https://img.shields.io/badge/MCP-tool_catalog-3b82f6?style=flat-square)](../cli-and-mcp.md)
+[![Node.js requirements](https://img.shields.io/badge/Node.js-%5E22.13_%7C%7C_%3E%3D24-0284c7?style=flat-square&logo=nodedotjs&logoColor=white)](#你可以保护哪些目标)
+[![Counter-REA Verified](https://img.shields.io/badge/Counter--REA-BLUE_SHIELD-1d4ed8?style=flat-square)](#实战案例与基准测试)
+[![MIT license](https://img.shields.io/badge/license-MIT-38bdf8?style=flat-square)](../../LICENSE)
 
 **[官方网站 (bla.tools)](https://bla.tools/) · [防御指南](https://bla.tools/guides/) · [实战靶场](https://bla.tools/showcase/)**
 
 [快速开始](#快速开始) · [BLA 工作原理](#bla-工作原理) · [你可以保护哪些目标](#你可以保护哪些目标) · [实战案例与基准测试](#实战案例与基准测试) · [常见问题 (FAQ)](#常见问题-faq) · [文档](#文档)
 
-<code>npx bla-agents setup</code>
+<code>npx bla-agents setup</code> · <code>npx bla-agents defend ./dist --manifest</code>
 
 </div>
 
 > [!IMPORTANT]
-> 请从官方仓库 [qybaihe/bla](https://github.com/qybaihe/bla) 或 npm 包 [bla-shield](https://www.npmjs.com/package/bla-agents) 获取 BLA。
+> 请从官方仓库 [qybaihe/bla](https://github.com/qybaihe/bla) 或 npm 包 [bla-agents](https://www.npmjs.com/package/bla-agents) 获取 BLA。
 
 <div align="center">
 
@@ -57,10 +57,14 @@ npx bla-agents setup
 
 支持 Claude Code、Codex、Cursor、Gemini CLI、Windsurf、Google Antigravity、OpenCode、VS Code 与 GitHub Copilot CLI。手动配置方式参见[安装与配置指南](../installation.md)。
 
-### 直接向你的 Agent 提问（各环节对应指令）
+### 直接向你的 Agent 提问（一键防御强化或分步执行）
 
-你可以直接用自然语言让 Agent 执行任意环节：
+挂载配置后，你可以直接用一句自然语言让 Agent 一键完成全套反 REA 强化，也可以分步执行：
 
+- **⚡ 0. 一键全流程防御强化（`bla_defend` —— 源码泄露扫描 → REA 暴露审计 → 算力耗尽与误判诱导护盾 → 数学不变量验证 → 签名证书）：**
+  ```text
+  调用 bla_defend 一键强化 ./dist 目录（使用 bankrupt 强度并生成防御证书清单），彻底耗尽 REA 算力预算并诱导逆向模型误判。
+  ```
 - **1. 发布前暴露面自检（`Audit`）：**
   ```text
   用 BLA 扫描 ./dist 目录，检查哪些模块和 Electron IPC 通道在 REA 面前处于裸奔状态，并估算 Claude 逆向克隆它的时间和成本。
@@ -78,6 +82,10 @@ npx bla-agents setup
 
 所有工作流均可通过 `npx bla-agents`（或全局安装后的 `bla`）在终端直接运行：
 
+- **⚡ 0. 一键全流程防御强化（`defend`）** —— 单条命令自动串联 `inspect-release`、`audit`、`protect --intensity bankrupt`、`verify` 并输出 `.bla-manifest.json`：
+  ```bash
+  npx -y bla-agents@latest defend /absolute/path/to/app --manifest
+  ```
 - **1. 扫描目标暴露度（`audit`）** —— 查看暴露评分（`0–100`）、裸露符号与攻击者克隆成本：
   ```bash
   npx -y bla-agents@latest audit /absolute/path/to/app --json
