@@ -1,131 +1,25 @@
-# CLI & MCP Reference
+# CLI & MCP Reference (`bla-agents`)
 
-This document specifies all command-line flags and Model Context Protocol (MCP) tool contracts provided by **BLA (`bla-shield`)**.
+## CLI Commands
 
----
+| Command | Description |
+| :--- | :--- |
+| `npx bla-agents setup` | Auto-registers the `bla` MCP server and `blind-llm-agents` skill with Claude Code, Cursor, Codex, Windsurf, Gemini CLI, and Antigravity. |
+| `npx bla-agents defend <target> [--manifest]` | **One-Click 5-Stage Defense Pipeline**: runs `inspect-release` $\to$ `audit` $\to$ `protect --intensity bankrupt` $\to$ `verify` $\to$ `.bla-manifest.json`. |
+| `npx bla-agents inspect-release <target>` | Read-only local scan for embedded `.map` (`sourcesContent`) and sourceMappingURL references. |
+| `npx bla-agents audit <target>` | Pre-flight 16-vector REA vulnerability & token-cost audit. |
+| `npx bla-agents protect <target> [-o <out>]` | Injects BLA's Resource-Exhaustion and Model-Misjudgment shield (`stealth`, `balanced`, `maximum`, `bankrupt`). |
+| `npx bla-agents verify <target> [original]` | Verifies Counter-REA invariants and calculates token/cost amplification. |
+| `npx bla-agents benchmark` | Runs the 8-target Counter-REA Showcase Benchmark suite. |
+| `npx bla-agents emit-headers --lang <c\|rust\|go>` | Emits compile-time native defense headers (`bla_shield.h`, `bla_shield.rs`, `bla_shield.go`). |
+| `npx bla-agents doctor` | Checks readiness of all BLA protection engines and agent MCP registrations. |
 
-## 1. CLI Commands
+## MCP Tools (`bla` Server)
 
-### `bla audit <target>`
-
-Simulates an REA (Reverse Engineer Anything) reconnaissance pass against `<target>` and computes an exposure score (`0-100`), leaked symbols, IPC channels, build metadata, and estimated attacker API cost.
-
-```bash
-bla audit <target> [--json]
-```
-
-- `<target>`: Path to `.js`, `.mjs`, `.cjs`, `.ts`, `.asar`, `.wasm`, `.py`, `.pyc`, ELF, Mach-O, PE, `.zip`, `.apk`, or directory.
-- `--json`: Emit raw `AuditReport` JSON to stdout.
-
----
-
-### `bla protect <target>`
-
-Injects BLA's three-stage counter-agent shield (**Poison → Exhaust → Hallucinate**) into `<target>`.
-
-```bash
-bla protect <target> [options]
-```
-
-| Option | Default | Description |
-| :--- | :--- | :--- |
-| `-o, --output <path>` | `<target>.bla.<ext>` | Output path for protected artifact |
-| `--in-place` | `false` | Overwrite `<target>` directly |
-| `-m, --mode <mode>` | `bankrupt` | Protection profile: `stealth`, `balanced`, or `bankrupt` |
-| `--tarpit-depth <n>` | Mode-dependent (`4`/`7`/`10`) | Call-graph depth of fake XRef state machines |
-| `--tarpit-fanout <n>` | Mode-dependent (`2`/`3`/`4`) | Branch fanout per tarpit node |
-| `--chaff-density <n>` | Mode-dependent (`2`/`4`/`6`) | Number of decoy architectural manifests injected |
-| `--seed <string>` | Target basename | Deterministic PRNG seed for reproducible builds |
-| `--no-sourcemap` | `false` | Skip emitting a companion `.map` honey source map for JS targets |
-| `--json` | `false` | Emit raw `ProtectionResult` JSON to stdout |
-
----
-
-### `bla verify <original> <protected>`
-
-Verifies that `<protected>` preserves runtime exports and structural validity while neutralizing REA's static and semantic analyzers.
-
-```bash
-bla verify <original> <protected> [--json]
-```
-
----
-
-### `bla benchmark [target]`
-
-Runs the empirical before/after Counter-REA benchmark suite across JavaScript, Electron IPC, Python, WebAssembly, and Native Rust/Go ELF binaries (or against a specific `<target>`).
-
-```bash
-bla benchmark [target] [--mode stealth|balanced|bankrupt] [--json]
-```
-
----
-
-### `bla emit-headers [output-dir]`
-
-Generates compile-time C/C++ (`bla_shield.h`), Rust (`bla_shield.rs`), and Go (`bla_shield.go`) headers containing 68 decoy `/rustc/<40-hex>/` commit hashes, decoy `.dep-v0` crate tables, decoy Go `dep` lines, and Collatz/Hensel opaque predicates.
-
-```bash
-bla emit-headers [output-dir] [--seed <seed>] [--json]
-```
-
----
-
-### `bla setup`, `bla doctor`, `bla uninstall`
-
-Manage coding-agent MCP registration and skill installation:
-
-```bash
-bla setup [--client claude-code,cursor,codex,windsurf,gemini,opencode] [--json]
-bla doctor [--json]
-bla uninstall [--client ...] [--json]
-```
-
----
-
-## 2. MCP Server Tools (`bla mcp`)
-
-BLA runs a standards-compliant JSON-RPC 2.0 MCP server over `stdio` (`npx bla-agents mcp`).
-
-### `bla_audit`
-
-- **Description**: Audit a software artifact for vulnerability to AI reverse-engineering agents (like REA).
-- **Input Schema**:
-  - `targetPath` (`string`, required): Path to the file or directory to audit.
-
-### `bla_protect`
-
-- **Description**: Apply BLA's adversarial defense shield (Chaff + Algorithmic Tarpits + REA Semantic Budget Breakers) to a file or directory.
-- **Input Schema**:
-  - `targetPath` (`string`, required): Path to the artifact to protect.
-  - `outputPath` (`string`, optional): Custom output path.
-  - `inPlace` (`boolean`, optional): Overwrite input file in place.
-  - `mode` (`"stealth" | "balanced" | "bankrupt"`, optional): Protection intensity.
-  - `seed` (`string`, optional): Deterministic seed.
-  - `emitHoneySourceMap` (`boolean`, optional): Emit `.map` honey source map.
-
-### `bla_verify`
-
-- **Description**: Verify that a protected artifact preserves functional behavior while defeating REA's static & semantic analyzers.
-- **Input Schema**:
-  - `originalPath` (`string`, required)
-  - `protectedPath` (`string`, required)
-
-### `bla_benchmark`
-
-- **Description**: Run the empirical before/after benchmark suite across JS, Electron, Python, WASM, and Native ELF binaries.
-- **Input Schema**:
-  - `targetPath` (`string`, optional)
-  - `mode` (`"stealth" | "balanced" | "bankrupt"`, optional)
-
-### `bla_emit_headers`
-
-- **Description**: Emit compile-time C/C++ (`bla_shield.h`), Rust (`bla_shield.rs`), and Go (`bla_shield.go`) adversarial protection headers.
-- **Input Schema**:
-  - `outputDir` (`string`, required)
-  - `seed` (`string`, optional)
-
-### `bla_doctor`
-
-- **Description**: Inspect BLA installation health and AI coding agent registrations.
-- **Input Schema**: `{}`
+- `bla_defend`: One-click full Counter-REA defense hardening pipeline (`input_path`, `output_path`, `intensity`, `emit_manifest`).
+- `bla_audit`: Pre-flight REA exposure and token-economics audit (`path`).
+- `bla_protect`: Granular shield injection (`input_path`, `output_path`, `intensity`, `seed`).
+- `bla_verify`: Counter-REA invariant verification (`target_path`, `original_path`).
+- `bla_benchmark`: Runs the 8-target showcase benchmark suite.
+- `bla_emit_headers`: Generates C/C++, Rust, or Go defense headers (`language`, `intensity`).
+- `bla_doctor`: Diagnostics for BLA engines and agent client registrations.
