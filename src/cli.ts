@@ -2,6 +2,7 @@
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { BLA_IDENTITY } from "./identity.js";
+import { inspectReleaseExposure } from "./core/release-exposure.js";
 import type { ProtectionIntensity } from "./core/types.js";
 import { auditTarget } from "./engine/auditor.js";
 import { protectTarget } from "./engine/protector.js";
@@ -35,6 +36,7 @@ Usage:
 
 Commands:
   setup                       Configure agent MCP integrations & install the BLA skill
+  inspect-release <target>    Read-only local source-map & symbol exposure check
   audit <target>              Pre-flight REA exposure & vulnerability scan
   protect <target>            Inject multi-layer Counter-REA adversarial shield
   verify <target> [original]  Verify Counter-REA defense invariants & token amplification
@@ -219,6 +221,17 @@ export async function runCli(argv: readonly string[] = process.argv.slice(2)): P
         if (parsed.json) console.log(JSON.stringify(res, null, 2));
         else console.log(`Removed BLA configuration from ${res.removedClients.length} client(s).`);
         return 0;
+      }
+
+      case "inspect-release": {
+        const target = parsed.positionals[0];
+        if (!target) {
+          console.error("Error: Missing <target> path for `bla inspect-release <target>`.");
+          return 1;
+        }
+        const report = inspectReleaseExposure(target);
+        console.log(JSON.stringify(report, null, 2));
+        return report.status === "complete" ? 0 : 2;
       }
 
       case "audit": {
