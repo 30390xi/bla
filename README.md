@@ -8,22 +8,22 @@
 
 **Ship a feature you built. Blind the agents trying to clone it, down to the binary level.**
 
-[![npm version](https://img.shields.io/badge/npm-bla--agents-cb3837?style=flat-square&logo=npm)](https://www.npmjs.com/package/bla-agents)
-[![MCP tool catalog](https://img.shields.io/badge/MCP-tool_catalog-5c4ee5?style=flat-square)](docs/cli-and-mcp.md)
-[![Node.js requirements](https://img.shields.io/badge/Node.js-%3E%3D22.5-339933?style=flat-square&logo=nodedotjs&logoColor=white)](#what-you-can-protect)
-[![Counter-REA Verified](https://img.shields.io/badge/Counter--REA-100%25_Verified-10b981?style=flat-square)](#showcases)
-[![MIT license](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](LICENSE)
+[![npm version](https://img.shields.io/badge/npm-bla--agents-2563eb?style=flat-square&logo=npm)](https://www.npmjs.com/package/bla-agents)
+[![MCP tool catalog](https://img.shields.io/badge/MCP-tool_catalog-3b82f6?style=flat-square)](docs/cli-and-mcp.md)
+[![Node.js requirements](https://img.shields.io/badge/Node.js-%5E22.13_%7C%7C_%3E%3D24-0284c7?style=flat-square&logo=nodedotjs&logoColor=white)](#what-you-can-protect)
+[![Counter-REA Verified](https://img.shields.io/badge/Counter--REA-BLUE_SHIELD-1d4ed8?style=flat-square)](#showcases)
+[![MIT license](https://img.shields.io/badge/license-MIT-38bdf8?style=flat-square)](LICENSE)
 
 **[Website](https://bla.tools/) · [Guides](https://bla.tools/guides/) · [Showcases](https://bla.tools/showcase/)**
 
 [Quick start](#quick-start) · [How BLA works](#how-bla-works) · [What you can protect](#what-you-can-protect) · [Showcases](#showcases) · [FAQ](#faq) · [Documentation](#documentation)
 
-<code>npx bla-agents setup</code>
+<code>npx bla-agents setup</code> · <code>npx bla-agents defend ./dist --manifest</code>
 
 </div>
 
 > [!IMPORTANT]
-> Get BLA from [qybaihe/bla](https://github.com/qybaihe/bla) or the [bla-shield npm package](https://www.npmjs.com/package/bla-agents).
+> Get BLA from [qybaihe/bla](https://github.com/qybaihe/bla) or the [bla-agents npm package](https://www.npmjs.com/package/bla-agents).
 > Follow the installation and release links from these official sources.
 
 <div align="center">
@@ -60,8 +60,12 @@ Setup supports Claude Code, Codex, Cursor, Gemini CLI, Windsurf, Google Antigrav
 
 ### Ask your agent
 
-Every defense stage can be triggered directly in natural language:
+Every defense stage—or the entire 5-stage pipeline—can be triggered directly in natural language once your agent is connected:
 
+- **⚡ One-Click Full Defense Hardening (`bla_defend` — Inspect → Audit → Bankrupt Protect → Verify → Manifest):**
+  ```text
+  Run bla_defend on ./dist with bankrupt intensity and emit a signed Counter-REA defense manifest.
+  ```
 - **1. Audit exposure before shipping (`Pre-flight REA Audit`):**
   ```text
   Audit my ./dist directory against REA, show me every exposed module and IPC channel, and estimate how much it would cost Claude to reconstruct it.
@@ -79,6 +83,10 @@ Every defense stage can be triggered directly in natural language:
 
 Every workflow is available directly from your terminal with `npx bla-agents` (or `bla` when installed globally):
 
+- **⚡ One-Click Full Defense Pipeline (`defend`)** — runs release exposure scan, pre-flight REA audit, bankrupt exhaustion + deception injection, verification, and `.bla-manifest.json` generation in one command:
+  ```bash
+  npx -y bla-agents@latest defend /absolute/path/to/app --manifest
+  ```
 - **1. Audit a target (`audit`)** — inspect exposure score (`0–100`), exposed symbols, and estimated attacker clone cost:
   ```bash
   npx -y bla-agents@latest audit /absolute/path/to/app --json
