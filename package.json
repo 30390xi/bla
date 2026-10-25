@@ -58,12 +58,15 @@
     "node": "^22.13.0 || >=24.0.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && chmod +x dist/cli.js",
+    "build": "node scripts/sync-version.mjs && tsc -p tsconfig.build.json && chmod +x dist/cli.js",
     "dev": "tsx src/cli.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "benchmark": "node dist/cli.js benchmark",
+    "version": "node scripts/sync-version.mjs && git add src/identity.ts",
+    "release:patch": "npm version patch -m 'chore(release): bla-agents v%s' && git push --follow-tags",
+    "release:minor": "npm version minor -m 'chore(release): bla-agents v%s' && git push --follow-tags",
     "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
