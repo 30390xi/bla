@@ -8,6 +8,7 @@ import {
 } from "node:fs";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { detectArtifactFormat } from "../core/detector.js";
+import { assertSafeOutputPath } from "../core/output-path.js";
 import { SeededPrng } from "../core/prng.js";
 import type {
   ProtectionMetrics,
@@ -57,6 +58,12 @@ export function protectTarget(options: ProtectionOptions): ProtectionResult {
   const beforeAudit = auditTarget(absInput);
   const absOutput = resolve(
     options.outputPath ?? deriveDefaultOutputPath(absInput, options.inPlace),
+  );
+  assertSafeOutputPath(
+    absInput,
+    absOutput,
+    format === "directory",
+    options.inPlace,
   );
 
   if (format !== "directory") {
