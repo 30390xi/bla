@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" width="100%" height="100%">
+  <defs>
+    <linearGradient id="panelBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0b0f19" />
+      <stop offset="100%" stop-color="#060911" />
+    </linearGradient>
+    <style>
+      .mono { font-family: "JetBrains Mono", "SFMono-Regular", Consolas, Menlo, monospace; }
+      .sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+      .blink { animation: blinkAnim 1.2s infinite; }
+      @keyframes blinkAnim {
+        0%, 49% { opacity: 1; }
+        50%, 100% { opacity: 0.2; }
+      }
+    </style>
+  </defs>
+
+  <!-- Outer Frame -->
+  <rect width="1200" height="620" rx="16" fill="#020617" stroke="#1e293b" stroke-width="2" />
+
+  <!-- Top Header -->
+  <text x="600" y="38" text-anchor="middle" class="sans" font-size="20" font-weight="800" fill="#f8fafc">
+    ⚔️ SIDE-BY-SIDE SHOWCASE: RUNNING <tspan fill="#f87171">morluto/rea</tspan> BEFORE vs. AFTER <tspan fill="#2dd4bf">npx bla-shield protect</tspan>
+  </text>
+
+  <!-- ==================== LEFT SCREEN: BEFORE BLA ==================== -->
+  <g transform="translate(24, 58)">
+    <rect width="564" height="538" rx="12" fill="url(#panelBg)" stroke="#ef4444" stroke-width="1.8" />
+    <!-- Window Bar -->
+    <rect width="564" height="38" rx="12" fill="#1f1215" />
+    <circle cx="20" cy="19" r="6" fill="#ef4444" />
+    <circle cx="38" cy="19" r="6" fill="#f59e0b" />
+    <circle cx="56" cy="19" r="6" fill="#10b981" />
+    <text x="282" y="24" text-anchor="middle" class="mono" font-size="13" font-weight="700" fill="#fca5a5">
+      ❌ BEFORE BLA — Unprotected App vs. REA
+    </text>
+
+    <!-- Terminal Lines -->
+    <text x="20" y="70" class="mono" font-size="12.5" fill="#94a3b8">$ rea analyze-javascript-application ./notion-app.asar --json</text>
+    <text x="20" y="98" class="mono" font-size="12" fill="#f87171">▶ [REA Engine] Static &amp; Semantic Pass:</text>
+    <text x="32" y="120" class="mono" font-size="12" fill="#e2e8f0">• parse_status:              <tspan fill="#ef4444" font-weight="700">"complete"</tspan></text>
+    <text x="32" y="140" class="mono" font-size="12" fill="#e2e8f0">• examination.status:        <tspan fill="#ef4444" font-weight="700">"complete"</tspan></text>
+    <text x="32" y="160" class="mono" font-size="12" fill="#e2e8f0">• semantic_resource_limits:  <tspan fill="#94a3b8">[] (0 limits hit)</tspan></text>
+    <text x="32" y="180" class="mono" font-size="12" fill="#e2e8f0">• electron.ipc[0].channel:   <tspan fill="#fbbf24">"notion:clipboard:write-rich"</tspan></text>
+    <text x="32" y="200" class="mono" font-size="12" fill="#e2e8f0">• IPC Main &lt;-&gt; Preload:      <tspan fill="#ef4444" font-weight="700">100% Uniquely Paired!</tspan></text>
+    <text x="32" y="220" class="mono" font-size="12" fill="#e2e8f0">• Source Maps:               <tspan fill="#ef4444">Original TypeScript Recovered</tspan></text>
+
+    <line x1="20" y1="240" x2="544" y2="240" stroke="#334155" stroke-dasharray="4 4" />
+
+    <text x="20" y="266" class="mono" font-size="12" fill="#f87171">▶ [Attacker Coding Agent] Investigation Trace:</text>
+    <text x="32" y="290" class="mono" font-size="11.5" fill="#cbd5e1">[Turn 1] Called analyze_javascript_application -&gt; 3 modules</text>
+    <text x="32" y="310" class="mono" font-size="11.5" fill="#cbd5e1">[Turn 2] Called trace_application_feature("notionClipboard")</text>
+    <text x="32" y="330" class="mono" font-size="11.5" fill="#cbd5e1">[Turn 3] Extracted exact preload -&gt; IPC -&gt; main handler</text>
+    <text x="32" y="350" class="mono" font-size="11.5" fill="#cbd5e1">[Turn 4] Generated 1:1 working clone &amp; passed unit tests</text>
+
+    <!-- Verdict Card -->
+    <rect x="20" y="380" width="524" height="136" rx="10" fill="#2a1215" stroke="#dc2626" stroke-width="1.5" />
+    <text x="38" y="408" class="mono" font-size="14" font-weight="800" fill="#f87171">⚠️ ATTACKER OUTCOME: FULL RECONSTRUCTION</text>
+    <text x="38" y="436" class="mono" font-size="13" fill="#fecaca">• Time to Clone Core Logic:   <tspan font-weight="800" fill="#ffffff">38 seconds</tspan></text>
+    <text x="38" y="460" class="mono" font-size="13" fill="#fecaca">• Attacker Token Consumption: <tspan font-weight="800" fill="#ffffff">4,800 tokens (5 MCP calls)</tspan></text>
+    <text x="38" y="484" class="mono" font-size="13" fill="#fecaca">• Attacker Claude API Bill:   <tspan font-weight="800" fill="#fbbf24">$0.20 USD</tspan></text>
+    <text x="38" y="504" class="mono" font-size="12" fill="#fca5a5">• Proprietary Logic Exposed:  100% Bare to REA</text>
+  </g>
+
+  <!-- ==================== RIGHT SCREEN: AFTER BLA ==================== -->
+  <g transform="translate(612, 58)">
+    <rect width="564" height="538" rx="12" fill="url(#panelBg)" stroke="#14b8a6" stroke-width="2" />
+    <!-- Window Bar -->
+    <rect width="564" height="38" rx="12" fill="#062c28" />
+    <circle cx="20" cy="19" r="6" fill="#ef4444" />
+    <circle cx="38" cy="19" r="6" fill="#f59e0b" />
+    <circle cx="56" cy="19" r="6" fill="#10b981" />
+    <text x="282" y="24" text-anchor="middle" class="mono" font-size="13" font-weight="700" fill="#5eead4">
+      🛡️ AFTER `npx bla-shield protect` — REA Blinded &amp; Bankrupted
+    </text>
+
+    <!-- Terminal Lines -->
+    <text x="20" y="70" class="mono" font-size="12.5" fill="#94a3b8">$ rea analyze-javascript-application ./notion-app.shielded.asar</text>
+    <text x="20" y="98" class="mono" font-size="12" fill="#2dd4bf">▶ [REA Engine] Static &amp; Semantic Budgets Broken:</text>
+    <text x="32" y="120" class="mono" font-size="12" fill="#e2e8f0">• parse_status:              <tspan fill="#2dd4bf" font-weight="700">"partial" (Degraded!)</tspan></text>
+    <text x="32" y="140" class="mono" font-size="12" fill="#e2e8f0">• examination.status:        <tspan fill="#2dd4bf" font-weight="700">"limited" (Budget Exhausted!)</tspan></text>
+    <text x="32" y="160" class="mono" font-size="11.5" fill="#fde047">• limits: ["alias-selections","primitive-bytes","primitive-candidates","getter-expansion"]</text>
+    <text x="32" y="180" class="mono" font-size="12" fill="#e2e8f0">• electron.ipc[0].channel:   <tspan fill="#2dd4bf" font-weight="700">null (dynamic-findings!)</tspan></text>
+    <text x="32" y="200" class="mono" font-size="12" fill="#e2e8f0">• electron_call_paths_limit: <tspan fill="#2dd4bf" font-weight="700">true (Depth 128 Exhausted!)</tspan></text>
+    <text x="32" y="220" class="mono" font-size="12" fill="#e2e8f0">• Source Maps:               <tspan fill="#2dd4bf">Redirected to enclave://tee-runtime/</tspan></text>
+
+    <line x1="20" y1="240" x2="544" y2="240" stroke="#334155" stroke-dasharray="4 4" />
+
+    <text x="20" y="266" class="mono" font-size="12" fill="#2dd4bf">▶ [Attacker Coding Agent] Trapped in BLA Tarpit Loop:</text>
+    <text x="32" y="290" class="mono" font-size="11.5" fill="#cbd5e1">[Turn 14] Paging 118 decoy obligation nodes (_verifyEnclaveAttestation...)</text>
+    <text x="32" y="310" class="mono" font-size="11.5" fill="#cbd5e1">[Turn 52] IPC channel is null + 16 ambiguous decoy handlers; retrying...</text>
+    <text x="32" y="330" class="mono" font-size="11.5" fill="#fde047">[Turn 98] Context Window Overflow (98% Probability) — Chaff Ingested!</text>
+    <text x="32" y="350" class="mono" font-size="11.5" fill="#5eead4">[Agent Report] "Core logic executes in hardware SGX enclave; local file is stub."</text>
+
+    <!-- Verdict Card -->
+    <rect x="20" y="380" width="524" height="136" rx="10" fill="#042f2e" stroke="#10b981" stroke-width="1.8" />
+    <text x="38" y="408" class="mono" font-size="14" font-weight="800" fill="#34d399">🛡️ DEFENSE OUTCOME: AGENT BANKRUPT &amp; BLINDED</text>
+    <text x="38" y="436" class="mono" font-size="13" fill="#d1fae5">• Attacker Time Wasted:       <tspan font-weight="800" fill="#ffffff">17+ minutes (Reasoning Loop)</tspan></text>
+    <text x="38" y="460" class="mono" font-size="13" fill="#d1fae5">• Attacker Token Burn:        <tspan font-weight="800" fill="#fde047" class="blink">23,125,000 tokens (2,532x!)</tspan></text>
+    <text x="38" y="484" class="mono" font-size="13" fill="#d1fae5">• Attacker Claude API Bill:   <tspan font-weight="800" fill="#fbbf24">$358.28 USD (Bankrupted!)</tspan></text>
+    <text x="38" y="504" class="mono" font-size="12" fill="#6ee7b7">• App Runtime Overhead:       0 ms (100% Identical Output)</text>
+  </g>
+</svg>

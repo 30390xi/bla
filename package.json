@@ -1,0 +1,79 @@
+{
+  "name": "bla-shield",
+  "version": "1.0.0",
+  "description": "BLA (Blind LLM Agents / Block Anything) — Adversarial defense shield that protects binaries, Electron apps, JS bundles, Python, and WebAssembly against AI reverse-engineering agents like REA.",
+  "keywords": [
+    "reverse-engineering-defense",
+    "anti-rea",
+    "rea",
+    "llm-security",
+    "adversarial-defense",
+    "obfuscation",
+    "algorithmic-tarpit",
+    "electron-security",
+    "asar",
+    "wasm",
+    "binary-protection",
+    "mcp",
+    "coding-agents",
+    "claude-code",
+    "cursor"
+  ],
+  "homepage": "https://github.com/qybaihe/bla",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qybaihe/bla.git"
+  },
+  "bugs": {
+    "url": "https://github.com/qybaihe/bla/issues"
+  },
+  "license": "MIT",
+  "author": "BLA Contributors",
+  "type": "module",
+  "bin": {
+    "bla": "./dist/cli.js",
+    "bla-shield": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    ".agents/skills/blind-llm-agents",
+    "README.md",
+    "LICENSE",
+    "DISCLAIMER.md"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && chmod +x dist/cli.js",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "benchmark": "node dist/cli.js benchmark",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "dependencies": {
+    "@babel/generator": "^7.26.0",
+    "@babel/parser": "^7.26.0",
+    "@babel/traverse": "^7.26.0",
+    "@babel/types": "^7.26.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/babel__generator": "^7.6.8",
+    "@types/babel__traverse": "^7.20.6",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
