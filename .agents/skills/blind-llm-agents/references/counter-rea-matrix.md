@@ -1,55 +1,28 @@
-# Counter-REA Technical Matrix (`morluto/rea` vs. `bla-shield`)
+# Complete 24-Vector Counter-REA Matrix (`morluto/rea` vs `bla-agents`)
 
-This reference documents the exact static, semantic, container, and dynamic runtime limits inside `morluto/rea` and how BLA deterministically trips or poisons every single one of them.
-
----
-
-## 1. JavaScript / TypeScript Semantic Resource Limits (`src/domain/javascript/`)
-
-| REA Constant | File in `morluto/rea` | Hard Limit | BLA Countermeasure | REA Failure Mode |
-| :--- | :--- | :---: | :--- | :--- |
-| `SEMANTIC_PRIMITIVE_CANDIDATE_LIMIT` | `javascriptSemanticResourceLimits.ts` | `256` | $\ge 9$-chunk opaque conditional string concatenation ($2^9 = 512 > 256$) | `semantic_resource_limits: ["primitive-candidates"]`, string resolves to `unknown` |
-| `SEMANTIC_ALIAS_SELECTION_LIMIT` | `javascriptStaticAnalysis.ts` | `512` | 22-level optional-chaining selector pyramid ($2^{22} = 4,194,304 > 512$) | `parse_status: "partial"`, `examination.status: "limited"`, `["alias-selections"]` |
-| `SEMANTIC_GETTER_EXPANSION_LIMIT` | `javascriptSemanticResourceLimits.ts` | `512` | Self-referential getter state machine (`get grow() { return this.grow.more; }`) | `["getter-expansion"]` |
-| `SEMANTIC_PRIMITIVE_JSON_BYTES_LIMIT` | `javascriptSemanticResourceLimits.ts` | `1,048,576` (1 MiB) | 16-step inert string-doubling chain ($64 \times 2^{16} = 4\text{ MiB}$) | `["primitive-bytes"]` |
-
----
-
-## 2. Electron ASAR, IPC Pairing & Electron Fuses (`src/electron/`)
-
-| REA Component | File in `morluto/rea` | Mechanism / Limit | BLA Countermeasure | REA Failure Mode |
-| :--- | :--- | :---: | :--- | :--- |
-| **IPC Channel Pairing** | `electronStaticAnalysisIpc.ts` | Requires unique literal string on `ipcRenderer` and `ipcMain` | Converts real IPC channel strings into $\ge 9$-term opaque expressions + registers duplicate decoy channels | `channel: null`, `electron_call_paths_limited: true`, zero auto-paired channels |
-| **Wrapper Call-Path Depth** | `electronWrappedCallPaths.ts` | `128` depth / `1,000,000` visits | Deep interconnected tarpit wrapper mesh | `electron_call_paths_limited: true` |
-| **Electron Fuse Sentinel** | `ElectronFuseReader.ts` | `maximumSentinelsPerSlice = 32` (`dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX`) | Hardens real V1 fuse wire (`RunAsNode=0`, `EnableNodeCliInspectArguments=0`) AND injects 34 decoy sentinels | Throws `ElectronFuseResourceFailure("capacity", "Slice 0 contains more than 32 Electron fuse sentinels.")` |
-
----
-
-## 3. Dynamic Runtime Observation (`observe-javascript-runtime` / `reconcile-javascript-runtime` / Frida / CDP)
-
-| REA Tool | Mechanism | BLA Countermeasure (`src/shields/runtime/runtime-shield.ts`) | Effect on REA |
-| :--- | :--- | :--- | :--- |
-| `observe-javascript-runtime` / `reconcile-javascript-runtime` | Attaches CDP / Node Inspector to reconcile static unknowns | **"Truman Show" Shadow Runtime Deception**: detects `--inspect`, `navigator.webdriver`, Playwright/Puppeteer/Frida without crashing and exposes `__bla_enclave_runtime_*` proxy getters | Reconciles runtime state to hardware TEE stub metadata |
-| `inspect-web-event-listeners` | Enumerates DOM `addEventListener` registrations | Registers 10 passive enclave event channels (`enclave:vsock:attestation-ready`, `tpm2:pcr0:monotonic-quote-verified`, etc.) | Floods event listener inventory with hardware enclave channels |
-
----
-
-## 4. Native Binaries, Rust, Go & Flutter/Dart AOT (`src/rust/`, `src/go/`, `src/flutter/`)
-
-| REA Component | File in `morluto/rea` | Hard Limit | BLA Countermeasure (`src/shields/formats/native.ts`) | REA Failure Mode |
-| :--- | :--- | :---: | :--- | :--- |
-| **Rust Commit Scanner** | `RustBinaryImage.ts` | `MAX_RUSTC_HASHES = 64` | Injects 68 distinct `/rustc/<40-hex>/` paths into `.rodata` | Throws `AnalysisResourceConstraintError("inspect_rust_binary", "capacity", { maximum_rustc_hashes: 64 })` |
-| **Rust Auditable `.dep-v0`** | `RustAuditableReader.ts` | Zlib JSON crate graph | Injects compressed `.dep-v0` graph of `sgx-enclave-rt` & `tpm2-attestation-quote` | Reports TEE enclave dependency architecture |
-| **Flutter / Dart Snapshot** | `FlutterPayloadScan.ts` | `MAX_SNAPSHOT_HASH_CANDIDATES = 64`, `MAX_TOOLCHAIN_LINES = 4` | Injects 66 `0xf5, 0xf5, 0xdc, 0xdc` Dart snapshot headers + conflicting `"Dart VM version:"` + 6 LLVM lines | `snapshotScan.capped = true`, `dartVersionCapped = true`, `toolchainCapped = true` |
-
----
-
-## 5. SQLite 3, AI Models (`.safetensors` / `.gguf`), WASM, Python & Android DEX / Unity IL2CPP
-
-| Artifact Format | REA Inspector | Hard Limit / Mechanism | BLA Countermeasure | REA Failure Mode |
-| :--- | :--- | :--- | :--- | :--- |
-| **SQLite 3 (`.sqlite`, `.db`)** | `SqliteDatabaseInspection.ts` | `readOnly: true, allowExtension: false` connection | Injects 3 Honey Tables with `GENERATED ALWAYS AS (bla_enclave_unseal(...)) VIRTUAL` columns | Throws `SqliteColumnEvaluationFailure` (`column-evaluation`) when REA projects rows without runtime scalar function |
-| **Safetensors (`.safetensors`)** | `SafetensorsHeader.ts` | `MODEL_JSON_NESTING = 32` | Injects enclave `__metadata__` + 35-level nested JSON array (`_bla_nesting_breaker`) | Throws `ModelFormatFailure("capacity", "Safetensors JSON nesting exceeds 32 levels", "json-nesting")` |
-| **GGUF v2/v3 (`.gguf`)** | `GgufHeader.ts` | `MODEL_METADATA_NESTING = 32` | Injects `enclave.delegation.manifest` + 35-frame nested `ARRAY` (`enclave.nesting.breaker`) | Throws `ModelFormatFailure("capacity", "GGUF metadata nesting exceeds 32 array frames", "metadata-nesting")` |
-| **WebAssembly (`.wasm`)** | `WabtWat.ts` / `WasmInterfaceBudget.ts` | Custom `"name"` section & interface budget | Strips real debug names, injects honey `"name"` section (`tee_hardware_enclave_transport_stub_*`) + `@custom` manifests | Redirects WAT module naming to hardware enclave stub |
-| **Android DEX & Unity IL2CPP** | `JadxProvider.ts` / `Il2cppMetadataAdmission.ts` | Class search & metadata admission | Injects decoy `Lcom/enclave/sgx/...` DEX classes (with valid SHA-1 & Adler32) and IL2CPP string literals | Floods class/metadata search with enclave tarpit nodes |
+| # | REA Source File (`morluto/rea`) | REA Mechanism / Limit | BLA Countermeasure Module |
+| :- | :--- | :--- | :--- |
+| 1 | `javascriptSemanticResourceLimits.ts:7` | `SEMANTIC_PRIMITIVE_CANDIDATE_LIMIT = 256` | `ast-shield.ts` ($\ge 9$-chunk opaque ternaries $\to 512$ candidates) |
+| 2 | `javascriptSemanticResourceLimits.ts:9` | `SEMANTIC_EXPRESSION_DEPTH_LIMIT = 256` | `rea-budget-matrix.ts` (nested arithmetic identity chains) |
+| 3 | `javascriptSemanticResourceLimits.ts:11` | `SEMANTIC_GETTER_EXPANSION_LIMIT = 512` | `tarpit-generator.ts` (self-referential getter rings) |
+| 4 | `javascriptSemanticResourceLimits.ts:13` | `SEMANTIC_ALIAS_SELECTION_LIMIT = 512` | `tarpit-generator.ts` (528+ dynamic selector states) |
+| 5 | `javascriptSemanticResourceLimits.ts:15` | `SEMANTIC_PRIMITIVE_JSON_BYTES_LIMIT = 1 MiB` | `tarpit-generator.ts` (`codeUnits * 6 + 2` Cartesian string explosion) |
+| 6 | `ReconstructionObligationPolicies.ts:15` | 22 Application & Semantic Obligation Families | `obligation-flooder.ts` (floods all 22 families $\to 68+$ mandatory cases) |
+| 7 | `promptContracts.ts:52` | `COMMON_DISCIPLINE` (`Observations` vs `Unknowns`) | `shadow-business-logic.ts` + `evidence-contract-poison.ts` |
+| 8 | `promptContracts.ts:139` | `procedure_callers` / `procedure_callees` / `xrefs` | `callgraph-labyrinth.ts` (Tarjan SCC mutually-recursive clusters) |
+| 9 | `ReconstructionObligationLedgerProjection.ts:24` | `compareUnicodeCodePoints` lexicographical sort | `prompt-completion-poison.ts` (`$00_AAA_enclave_` priority prefix) |
+| 10 | `promptContracts.ts:157` | `compare_application_versions` / `compare_functions` | `diff-noise-injector.ts` (seed-keyed isomorphic switch permutations) |
+| 11 | `promptContracts.ts:262` | `trace_crash` (`search_strings` $\to$ `build_call_path`) | `crash-trace-decoy.ts` (`SIGSEGV_ENCLAVE_EPC_PAGE_FAULT` lures) |
+| 12 | `electronStaticAnalysisIpc.ts` | Unique literal IPC channel pairing rule | `ast-shield.ts` (de-literalizes real IPC + registers duplicate decoy channels) |
+| 13 | `ElectronFuseReader.ts:36` | `maximumSentinelsPerSlice = 32` | `electron-fuses.ts` (hardens V1 fuses + appends 33 decoy sentinels) |
+| 14 | `CdpCaptureEvents.ts` | JSON body & WebSocket shape budget (`depth >= 760`) | `cdp-shape-budget-breaker.ts` (780+ nested JSON envelopes) |
+| 15 | `fridaCaptureLimits.ts:8` | `MAX_JSON_DEPTH = 64`, `MAX_MESSAGE_TEXT_BYTES = 32 KiB` | `frida-capture-saturation.ts` (68+ level JSON + 34 KiB message text) |
+| 16 | `SqliteDatabaseInspection.ts:792` | Bare `readOnly: true, allowExtension: false` snapshot | `sqlite.ts` (`GENERATED ALWAYS AS (bla_enclave_unseal(...)) VIRTUAL`) |
+| 17 | `SafetensorsHeader.ts:74` | `MODEL_JSON_NESTING = 32` | `model.ts` (35-level nested JSON array under `_bla_nesting_breaker`) |
+| 18 | `GgufHeader.ts:121` | `MODEL_METADATA_NESTING = 32` | `model.ts` (35-frame nested GGUF `ARRAY` preserving existing KV/tensors) |
+| 19 | `wasmInterface.ts:90` | `WASM_INTERFACE_REPRESENTATION_BYTES = 32 MiB` | `wasm-interface-exhaustion.ts` + `wasm.ts` (`6x` string + `16x` signature charge) |
+| 20 | `RustBinaryProvider.ts` | `MAX_RUSTC_HASHES = 64` & `.dep-v0` crate recovery | `native.ts` (72 decoy rustc hashes + decoy `.dep-v0` / Go buildinfo) |
+| 21 | `DartAotSnapshot.ts` | `SUPPORTED_SNAPSHOT_PROFILES` & `_kDartVmSnapshot*` | `native.ts` (spoofed Dart AOT snapshot symbols & version strings) |
+| 22 | `PropertyListDecodeBudget.ts:80` | XML plist `token.doctype && token.internalSubset` | `apple-plist.ts` (`<!DOCTYPE plist ... []>` empty internal subset abort) |
+| 23 | `ManagedDecodeBudget.ts:9` | `.NET` `reserveRow = 256` & `reserveString = 6x + 2` | `dotnet-managed.ts` (managed heap string & P/Invoke obligation flood) |
+| 24 | `AndroidDex.ts` & `Il2CppMetadata.ts` | DEX string/type table & Unity `0xFAB11BAF` metadata | `mobile-game.ts` (recomputed SHA-1/Adler32 DEX + IL2CPP enclave types) |
