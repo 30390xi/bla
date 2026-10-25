@@ -76,7 +76,15 @@ export {
 export { auditTarget } from "./engine/auditor.js";
 export { protectTarget } from "./engine/protector.js";
 export { verifyTarget } from "./engine/verifier.js";
+export {
+  defendTarget,
+  type OneClickDefenseOptions,
+  type OneClickDefenseReport,
+  type OneClickDefenseStageSummary,
+} from "./engine/defender.js";
 export { runShowcaseBenchmark } from "./engine/benchmark.js";
+export * from "./shields/exhaustion/index.js";
+export * from "./shields/deception/index.js";
 export {
   resolveSupportedAgentClients,
   type SupportedAgentClientId,
