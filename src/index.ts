@@ -85,6 +85,8 @@ export {
 export { runShowcaseBenchmark } from "./engine/benchmark.js";
 export * from "./shields/exhaustion/index.js";
 export * from "./shields/deception/index.js";
+export * from "./shields/formats/apple-plist.js";
+export * from "./shields/formats/dotnet-managed.js";
 export {
   resolveSupportedAgentClients,
   type SupportedAgentClientId,
