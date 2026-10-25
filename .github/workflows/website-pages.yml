@@ -29,7 +29,10 @@ jobs:
             website/faq/index.html \
             website/assets/styles.css \
             website/assets/main.js \
+            website/assets/i18n.js \
             website/assets/home.js \
+            website/assets/logo.png \
+            website/assets/favicon.png \
             website/assets/favicon.svg \
             website/assets/social-card.svg; do
             test -f "$f" || (echo "Missing required website file: $f" && exit 1)
