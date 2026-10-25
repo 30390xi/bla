@@ -65,6 +65,7 @@
     "typecheck": "tsc --noEmit",
     "benchmark": "node dist/cli.js benchmark",
     "version": "node scripts/sync-version.mjs && git add src/identity.ts",
+    "sync:site": "node scripts/sync-site.mjs",
     "release:patch": "npm version patch -m 'chore(release): bla-agents v%s' && git push --follow-tags",
     "release:minor": "npm version minor -m 'chore(release): bla-agents v%s' && git push --follow-tags",
     "prepublishOnly": "npm run build && npm test"
