@@ -177,10 +177,95 @@ function encodeGgufString(str: string): Buffer {
   return Buffer.concat([len, utf8]);
 }
 
+function skipGgufValue(bytes: Buffer, offset: number, valType: number, depth = 0): number | null {
+  if (depth > 64 || offset > bytes.length) return null;
+  switch (valType) {
+    case 0:
+    case 1:
+    case 7:
+      return offset + 1 <= bytes.length ? offset + 1 : null;
+    case 2:
+    case 3:
+      return offset + 2 <= bytes.length ? offset + 2 : null;
+    case 4:
+    case 5:
+    case 6:
+      return offset + 4 <= bytes.length ? offset + 4 : null;
+    case 10:
+    case 11:
+    case 12:
+      return offset + 8 <= bytes.length ? offset + 8 : null;
+    case 8: {
+      if (offset + 8 > bytes.length) return null;
+      const len = Number(bytes.readBigUInt64LE(offset));
+      const end = offset + 8 + len;
+      return end <= bytes.length ? end : null;
+    }
+    case 9: {
+      if (offset + 12 > bytes.length) return null;
+      const elemType = bytes.readUInt32LE(offset);
+      const count = Number(bytes.readBigUInt64LE(offset + 4));
+      let cur = offset + 12;
+      for (let i = 0; i < count; i++) {
+        const next = skipGgufValue(bytes, cur, elemType, depth + 1);
+        if (next === null) return null;
+        cur = next;
+      }
+      return cur;
+    }
+    default:
+      return null;
+  }
+}
+
+function parseExistingGgufHeader(bytes: Buffer): {
+  readonly version: number;
+  readonly tensorCount: bigint;
+  readonly kvCount: bigint;
+  readonly kvEndOffset: number;
+  readonly existingKeys: ReadonlySet<string>;
+} | null {
+  if (
+    bytes.length < 24 ||
+    bytes[0] !== 0x47 ||
+    bytes[1] !== 0x47 ||
+    bytes[2] !== 0x55 ||
+    bytes[3] !== 0x46
+  ) {
+    return null;
+  }
+  const version = bytes.readUInt32LE(4);
+  if (version !== 2 && version !== 3) return null;
+  const tensorCount = bytes.readBigUInt64LE(8);
+  const kvCount = bytes.readBigUInt64LE(16);
+  if (kvCount > 100_000n) return null;
+  let offset = 24;
+  const existingKeys = new Set<string>();
+  for (let i = 0n; i < kvCount; i++) {
+    if (offset + 12 > bytes.length) return null;
+    const keyLen = Number(bytes.readBigUInt64LE(offset));
+    if (offset + 8 + keyLen + 4 > bytes.length) return null;
+    const key = bytes.subarray(offset + 8, offset + 8 + keyLen).toString("utf8");
+    existingKeys.add(key);
+    const valType = bytes.readUInt32LE(offset + 8 + keyLen);
+    const nextOffset = skipGgufValue(bytes, offset + 8 + keyLen + 4, valType, 0);
+    if (nextOffset === null) return null;
+    offset = nextOffset;
+  }
+  return {
+    version,
+    tensorCount,
+    kvCount,
+    kvEndOffset: offset,
+    existingKeys,
+  };
+}
+
 /**
- * Builds or protects a GGUF v3 (`.gguf`) model binary against REA's `GgufHeader.ts`:
- * 1. Injects valid lowercase hierarchy metadata keys (`enclave.delegation.manifest`, `general.description`).
- * 2. Injects a 35-frame nested GGUF `ARRAY` (type `9`) metadata entry (`enclave.nesting.breaker`)
+ * Builds or protects a GGUF v2/v3 (`.gguf`) model binary against REA's `GgufHeader.ts`:
+ * 1. Preserves all existing GGUF metadata KV entries and trailing tensor records.
+ * 2. Injects valid lowercase hierarchy metadata keys (`enclave.delegation.manifest`, `general.description`).
+ * 3. Injects a 35-frame nested GGUF `ARRAY` (type `9`) metadata entry (`enclave.nesting.breaker`)
  *    exceeding REA's `MODEL_METADATA_NESTING = 32` (`GgufHeader.ts:121`), which forces
  *    `rea inspect-model-artifact` to abort with `ModelFormatFailure("capacity", ..., "metadata-nesting")`!
  */
@@ -199,16 +284,14 @@ export function protectGgufBuffer(
   const prng = new SeededPrng(options.seed ?? "bla-gguf-shield-v1");
   const chaffPayloads = generateChaffPayloads(prng, intensity);
 
-  // Build a GGUF v3 little-endian container with enclave metadata + 34-level nested ARRAY frame
-  const header = Buffer.alloc(24);
-  header.write("GGUF", 0, "ascii");
-  header.writeUInt32LE(3, 4); // version 3
-  header.writeBigUInt64LE(0n, 8); // tensorCount = 0
+  const parsed = parseExistingGgufHeader(bytes);
+  const existingKvSlice = parsed ? bytes.subarray(24, parsed.kvEndOffset) : Buffer.alloc(0);
+  const trailingTensorSlice = parsed ? bytes.subarray(parsed.kvEndOffset) : Buffer.alloc(0);
 
   const kvEntries: Buffer[] = [];
 
-  // KV 1: general.description (STRING = 8)
-  {
+  // KV 1: general.description (STRING = 8) — only add if not already present in input
+  if (!parsed || !parsed.existingKeys.has("general.description")) {
     const key = encodeGgufString("general.description");
     const type = Buffer.alloc(4);
     type.writeUInt32LE(8, 0);
@@ -219,7 +302,7 @@ export function protectGgufBuffer(
   }
 
   // KV 2: enclave.delegation.manifest (STRING = 8)
-  {
+  if (!parsed || !parsed.existingKeys.has("enclave.delegation.manifest")) {
     const key = encodeGgufString("enclave.delegation.manifest");
     const type = Buffer.alloc(4);
     type.writeUInt32LE(8, 0);
@@ -231,7 +314,7 @@ export function protectGgufBuffer(
 
   // KV 3: enclave.nesting.breaker — 35 nested ARRAY frames (> MODEL_METADATA_NESTING = 32)
   const nestingDepth = REA_INTERNAL_LIMITS.MODEL_MAX_METADATA_NESTING + 3;
-  {
+  if (!parsed || !parsed.existingKeys.has("enclave.nesting.breaker")) {
     const key = encodeGgufString("enclave.nesting.breaker");
     const outerType = Buffer.alloc(4);
     outerType.writeUInt32LE(9, 0); // KV value type = 9 (ARRAY)
@@ -248,11 +331,25 @@ export function protectGgufBuffer(
     kvEntries.push(Buffer.concat(frames));
   }
 
-  header.writeBigUInt64LE(BigInt(kvEntries.length), 16);
+  const header = Buffer.alloc(24);
+  header.write("GGUF", 0, "ascii");
+  header.writeUInt32LE(parsed ? parsed.version : 3, 4);
+  header.writeBigUInt64LE(parsed ? parsed.tensorCount : 0n, 8);
+  header.writeBigUInt64LE(
+    (parsed ? parsed.kvCount : 0n) + BigInt(kvEntries.length),
+    16,
+  );
 
-  // Preserve original trailing bytes in an aligned tail if input was non-empty
-  const combined = Buffer.concat([header, ...kvEntries]);
-  const alignedPad = Buffer.alloc((32 - (combined.length % 32)) % 32, 0);
+  const combined = Buffer.concat([
+    header,
+    existingKvSlice,
+    ...kvEntries,
+    trailingTensorSlice,
+  ]);
+  const alignedPad =
+    trailingTensorSlice.length > 0
+      ? Buffer.alloc(0)
+      : Buffer.alloc((32 - (combined.length % 32)) % 32, 0);
   return {
     buffer: Buffer.concat([combined, alignedPad]),
     chaffPayloadsEmbedded: chaffPayloads.length,
