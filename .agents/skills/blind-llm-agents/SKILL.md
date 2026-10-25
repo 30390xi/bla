@@ -1,11 +1,11 @@
 ---
 name: blind-llm-agents
-description: Audit, protect, and verify software artifacts (JavaScript/TypeScript, Electron ASAR, WebAssembly, Python .py/.pyc, SQLite, Safetensors/GGUF AI Models, Android DEX/IL2CPP, and Native ELF/Mach-O/PE Binaries) against AI reverse-engineering agents like REA using BLA (Blind LLM Agents / Block Anything).
+description: Audit, protect, and verify software artifacts (JavaScript/TypeScript, Electron ASAR, WebAssembly, Python .py/.pyc, SQLite, Safetensors/GGUF AI Models, Android DEX/IL2CPP, and Native ELF/Mach-O/PE Binaries) against AI reverse-engineering agents like REA using BLA (Blind LLM Agents).
 metadata:
   version: "1.1.0"
 ---
 
-# BLA: Blind LLM Agents (Block Anything)
+# BLA: Blind LLM Agents
 
 Use BLA whenever the user asks to harden a project against AI reverse-engineering agents (`morluto/rea`), audit exposure, exhaust attacker token/compute budgets, or induce model misjudgment on proprietary logic.
 

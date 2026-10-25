@@ -1,6 +1,6 @@
 # Legal & Technical Disclaimer
 
-**BLA (`bla-shield` — Blind LLM Agents / Block Anything)** is a defensive software engineering and intellectual-property protection tool designed for software authors, independent developers, and security researchers to protect their own first-party software artifacts against automated AI reverse-engineering pipelines.
+**BLA (`bla-agents` — Blind LLM Agents)** is a defensive software engineering and intellectual-property protection tool designed for software authors, independent developers, and security researchers to protect their own first-party software artifacts against automated AI reverse-engineering pipelines.
 
 ## 1. Defensive & Benign Operation Only
 

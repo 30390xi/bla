@@ -1,6 +1,6 @@
 # AGENTS.md — Repository Guide for Coding Agents
 
-This repository contains **BLA (`bla-agents` — Blind LLM Agents / Block Anything)**, an open-source adversarial Blue Defense toolkit engineered to protect software artifacts against AI reverse-engineering agents (specifically `morluto/rea`).
+This repository contains **BLA (`bla-agents` — Blind LLM Agents)**, an open-source adversarial Blue Defense toolkit engineered to protect software artifacts against AI reverse-engineering agents (specifically `morluto/rea`).
 
 ## Project Layout
 

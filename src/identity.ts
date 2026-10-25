@@ -1,6 +1,6 @@
 export const BLA_IDENTITY = Object.freeze({
   name: "BLA",
-  fullName: "Blind LLM Agents (Block Anything)",
+  fullName: "Blind LLM Agents",
   packageName: "bla-agents",
   packageAlias: "bla-shield",
   cliBinary: "bla",
