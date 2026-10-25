@@ -21,7 +21,7 @@
 </div>
 
 > [!IMPORTANT]
-> Get BLA from [qybaihe/bla](https://github.com/qybaihe/bla) or the [bla-shield npm package](https://www.npmjs.com/package/bla-agents).
+> Get BLA from [qybaihe/bla](https://github.com/qybaihe/bla) or the [bla-agents npm package](https://www.npmjs.com/package/bla-agents).
 
 <div align="center">
 
@@ -35,7 +35,7 @@
 
 ---
 
-Befürchten Sie, dass jemand [REA](https://github.com/morluto/rea) auf Ihre ausgelieferte App ansetzt und Ihre Kernlogik in Sekunden klont? Härten Sie Ihren Build mit BLA (`Poison → Exhaust → Hallucinate`).
+Befürchten Sie, dass jemand REA auf Ihre ausgelieferte App ansetzt und Ihre Kernlogik in Sekunden klont? Härten Sie Ihren Build mit BLA (`Poison → Exhaust → Hallucinate`).
 
 BLA verbindet Ihren Agenten mit Schutzwerkzeugen für native Binärdateien, JavaScript- und Electron-Apps, WebAssembly, Python-Bytecode, SQLite-Datenbanken und KI-Modelle – 100 % lokal und ohne Laufzeiteinbußen.
 
@@ -110,7 +110,7 @@ npx bla-agents@latest setup
 ## Wie BLA funktioniert
 
 1. **Poison (`Architectural Chaff & Honey Assets`):** Embeds hardware enclave delegation manifests (`SGX` / `TPM2` / `Secure Enclave`), VLQ v3 Honey Source Maps (`enclave://tee-runtime/`), honey WASM `"name"` sections, and honey SQLite tables.
-2. **Exhaust (`Semantic Budget Breakers & Algorithmic Tarpits`):** Trips `morluto/rea`'s internal analyzer limits (`primitive-candidates > 256`, `alias-selections > 512`, `getter-expansion > 512`, `primitive-bytes > 1 MiB`, `maximum_rustc_hashes > 64`, `maximumSentinelsPerSlice > 32`) and weaves 14–36 Fake XRef state machines.
+2. **Exhaust (`Semantic Budget Breakers & Algorithmic Tarpits`):** Trips `REA`'s internal analyzer limits (`primitive-candidates > 256`, `alias-selections > 512`, `getter-expansion > 512`, `primitive-bytes > 1 MiB`, `maximum_rustc_hashes > 64`, `maximumSentinelsPerSlice > 32`) and weaves 14–36 Fake XRef state machines.
 3. **Hallucinate (`Anti-CDP Runtime Deception & Fuse Hardening`):** Hardens Electron V1 fuse wires (`RunAsNode=0`, `EnableNodeCliInspectArguments=0`) and serves synthetic enclave telemetry to CDP/Inspector/Frida probes.
 
 <a id="what-you-can-protect"></a>
@@ -166,7 +166,7 @@ No. All semantic budget breakers and tarpits are guarded by $O(1)$ number-theore
 <details>
 <summary><strong>Do I need Hopper, Ghidra, IDA, or WABT installed?</strong></summary>
 
-No. All 19 format shields are built directly into `bla-shield` with zero external dependencies.
+No. All 19 format shields are built directly into `bla-agents` with zero external dependencies.
 
 </details>
 

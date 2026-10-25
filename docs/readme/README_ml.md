@@ -21,7 +21,7 @@
 </div>
 
 > [!IMPORTANT]
-> Get BLA from [qybaihe/bla](https://github.com/qybaihe/bla) or the [bla-shield npm package](https://www.npmjs.com/package/bla-agents).
+> Get BLA from [qybaihe/bla](https://github.com/qybaihe/bla) or the [bla-agents npm package](https://www.npmjs.com/package/bla-agents).
 
 <div align="center">
 
@@ -35,7 +35,7 @@
 
 ---
 
-[REA](https://github.com/morluto/rea) ഉപയോഗിച്ച് നിങ്ങളുടെ ആപ്പ് നിമിഷങ്ങൾക്കുള്ളിൽ ക്ലോൺ ചെയ്യപ്പെടുമെന്ന് ആശങ്കയുണ്ടോ? BLA (`Poison → Exhaust → Hallucinate`) ഉപയോഗിച്ച് ബിൽഡ് സുരക്ഷിതമാക്കാൻ നിങ്ങളുടെ ഏജന്റിനോട് ആവശ്യപ്പെടുക.
+REA ഉപയോഗിച്ച് നിങ്ങളുടെ ആപ്പ് നിമിഷങ്ങൾക്കുള്ളിൽ ക്ലോൺ ചെയ്യപ്പെടുമെന്ന് ആശങ്കയുണ്ടോ? BLA (`Poison → Exhaust → Hallucinate`) ഉപയോഗിച്ച് ബിൽഡ് സുരക്ഷിതമാക്കാൻ നിങ്ങളുടെ ഏജന്റിനോട് ആവശ്യപ്പെടുക.
 
 നേറ്റീവ് ബൈനറികൾ, JavaScript/Electron ആപ്പുകൾ, WebAssembly, Python ബൈറ്റ്കോഡ്, SQLite ഡാറ്റാബേസുകൾ, AI മോഡലുകൾ എന്നിവ 100% റൺടൈം കൃത്യതയോടെ പ്രാദേശികമായി സംരക്ഷിക്കാൻ BLA സഹായിക്കുന്നു.
 
@@ -110,7 +110,7 @@ npx bla-agents@latest setup
 ## BLA എങ്ങനെ പ്രവർത്തിക്കുന്നു
 
 1. **Poison (`Architectural Chaff & Honey Assets`):** Embeds hardware enclave delegation manifests (`SGX` / `TPM2` / `Secure Enclave`), VLQ v3 Honey Source Maps (`enclave://tee-runtime/`), honey WASM `"name"` sections, and honey SQLite tables.
-2. **Exhaust (`Semantic Budget Breakers & Algorithmic Tarpits`):** Trips `morluto/rea`'s internal analyzer limits (`primitive-candidates > 256`, `alias-selections > 512`, `getter-expansion > 512`, `primitive-bytes > 1 MiB`, `maximum_rustc_hashes > 64`, `maximumSentinelsPerSlice > 32`) and weaves 14–36 Fake XRef state machines.
+2. **Exhaust (`Semantic Budget Breakers & Algorithmic Tarpits`):** Trips `REA`'s internal analyzer limits (`primitive-candidates > 256`, `alias-selections > 512`, `getter-expansion > 512`, `primitive-bytes > 1 MiB`, `maximum_rustc_hashes > 64`, `maximumSentinelsPerSlice > 32`) and weaves 14–36 Fake XRef state machines.
 3. **Hallucinate (`Anti-CDP Runtime Deception & Fuse Hardening`):** Hardens Electron V1 fuse wires (`RunAsNode=0`, `EnableNodeCliInspectArguments=0`) and serves synthetic enclave telemetry to CDP/Inspector/Frida probes.
 
 <a id="what-you-can-protect"></a>
@@ -166,7 +166,7 @@ No. All semantic budget breakers and tarpits are guarded by $O(1)$ number-theore
 <details>
 <summary><strong>Do I need Hopper, Ghidra, IDA, or WABT installed?</strong></summary>
 
-No. All 19 format shields are built directly into `bla-shield` with zero external dependencies.
+No. All 19 format shields are built directly into `bla-agents` with zero external dependencies.
 
 </details>
 

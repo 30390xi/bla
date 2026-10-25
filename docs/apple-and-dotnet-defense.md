@@ -2,7 +2,7 @@
 
 ## 1. Apple `.plist` Internal Subset Budget Trap (`src/shields/formats/apple-plist.ts`)
 
-In `morluto/rea/src/artifacts/apple/PropertyListDecodeBudget.ts:80`:
+In `REA/src/artifacts/apple/PropertyListDecodeBudget.ts:80`:
 ```ts
 if (token.doctype) {
   if (token.internalSubset)
@@ -15,4 +15,4 @@ REA rejects any XML `.plist` whose `<!DOCTYPE plist ...>` tag contains a `[` bra
 
 ## 2. .NET Managed Metadata Representation Amplification (`src/shields/formats/dotnet-managed.ts`)
 
-In `morluto/rea/src/dotnet/ManagedDecodeBudget.ts`, every metadata table row reserves `256` bytes and every UTF-8 string reserves `encodedBytes * 6 + 2` bytes against a 64 MiB ceiling, while `managed-pinvoke-import` entries trigger mandatory native ABI reconstruction obligations.
+In `REA/src/dotnet/ManagedDecodeBudget.ts`, every metadata table row reserves `256` bytes and every UTF-8 string reserves `encodedBytes * 6 + 2` bytes against a 64 MiB ceiling, while `managed-pinvoke-import` entries trigger mandatory native ABI reconstruction obligations.

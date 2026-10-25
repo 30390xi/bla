@@ -1,8 +1,8 @@
 # Counter-REA Resource Exhaustion Architecture (`src/shields/exhaustion/`)
 
-BLA's Resource Exhaustion Engine is engineered directly from a line-by-line audit of `morluto/rea`'s internal resource caps, worker admission budgets, and obligation ledger rules.
+BLA's Resource Exhaustion Engine is engineered directly from a line-by-line audit of `REA`'s internal resource caps, worker admission budgets, and obligation ledger rules.
 
-## 1. Exact `morluto/rea` Internal Budget Breakers
+## 1. Exact `REA` Internal Budget Breakers
 
 | REA Subsystem File | Constant | Hard Cap | BLA Countermeasure |
 | :--- | :--- | :--- | :--- |
@@ -16,6 +16,6 @@ BLA's Resource Exhaustion Engine is engineered directly from a line-by-line audi
 
 ## 2. 22-Family `ReconstructionObligationLedger` Flood (`obligation-flooder.ts`)
 
-In `morluto/rea/src/application/ReconstructionObligationPolicies.ts`, every detected application or semantic boundary node (`context-bridge-api`, `ipc-channel`, `ipc-handler`, `endpoint`, `storage`, `worker`, `service-worker`, `native-addon`, `child-process`, `stdio`, `signal`, `config-source`, `request`, `response`, `boundary`, `resource`, `event`, `timer`, `promise`, `task`) forces the coding agent to construct 3–4 separate verification fixtures (`positive`, `negative`, `malformed`, `cancellation`, `teardown`).
+In `REA/src/application/ReconstructionObligationPolicies.ts`, every detected application or semantic boundary node (`context-bridge-api`, `ipc-channel`, `ipc-handler`, `endpoint`, `storage`, `worker`, `service-worker`, `native-addon`, `child-process`, `stdio`, `signal`, `config-source`, `request`, `response`, `boundary`, `resource`, `event`, `timer`, `promise`, `task`) forces the coding agent to construct 3–4 separate verification fixtures (`positive`, `negative`, `malformed`, `cancellation`, `teardown`).
 
 BLA injects dead-branch AST patterns matching all 22 obligation families, multiplying the agent's mandatory proof workload by **20x–60x** with zero runtime cost.

@@ -32,11 +32,11 @@ npx bla-agents verify ./dist/app.js ./dist/app.bla.js
 ### Install as a Dev Dependency (Recommended for CI/CD Release Pipelines)
 
 ```bash
-npm install --save-dev bla-shield
+npm install --save-dev bla-agents
 # or
-pnpm add -D bla-shield
+pnpm add -D bla-agents
 # or
-bun add -d bla-shield
+bun add -d bla-agents
 ```
 
 Then add a post-build protection script to your `package.json`:
@@ -53,11 +53,11 @@ Then add a post-build protection script to your `package.json`:
 ### Install Globally
 
 ```bash
-npm install -g bla-shield
+npm install -g bla-agents
 
-# Both `bla` and `bla-shield` binaries are registered:
+# Both `bla` and `bla-agents` binaries are registered:
 bla --version
-bla-shield doctor
+bla-agents doctor
 ```
 
 ---
