@@ -13,7 +13,7 @@ on:
         default: "1.1.0"
         type: string
       publish_npm:
-        description: "Publish bla-agents and bla-shield alias to npm (requires NPM_TOKEN secret)"
+        description: "Publish bla-agents to npm (requires NPM_TOKEN secret)"
         required: false
         default: true
         type: boolean
@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   release:
-    name: Build, Verify & Publish Release (bla-agents + bla-shield)
+    name: Build, Verify & Publish Release (bla-agents)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -53,7 +53,7 @@ jobs:
           npm test
           npm run benchmark
 
-      - name: Package bla-agents & bla-shield release artifacts
+      - name: Package bla-agents release artifact
         id: pack
         run: |
           VERSION=$(node -p "require('./package.json').version")
@@ -61,19 +61,7 @@ jobs:
           echo "tag=bla-agents-$VERSION" >> "$GITHUB_OUTPUT"
           mkdir -p release-assets
 
-          # Pack primary package: bla-agents
           npm pack --pack-destination release-assets
-
-          # Pack alias mirror package: bla-shield
-          cp package.json package.json.bak
-          node -e '
-            const fs = require("fs");
-            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-            pkg.name = "bla-shield";
-            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
-          '
-          npm pack --pack-destination release-assets
-          mv package.json.bak package.json
 
           cd release-assets
           shasum -a 256 *.tgz > SHA256SUMS.txt
@@ -97,18 +85,9 @@ jobs:
               --generate-notes
           fi
 
-      - name: Publish bla-agents & bla-shield to npm (if NPM_TOKEN is configured)
+      - name: Publish bla-agents to npm (if NPM_TOKEN is configured)
         if: ${{ (inputs.publish_npm != false) && env.NODE_AUTH_TOKEN != '' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           npm publish --provenance --access public
-          cp package.json package.json.bak
-          node -e '
-            const fs = require("fs");
-            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-            pkg.name = "bla-shield";
-            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
-          '
-          npm publish --provenance --access public
-          mv package.json.bak package.json
