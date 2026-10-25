@@ -24,10 +24,31 @@ import {
   planWasmInterfaceBudgetExhaustion,
   type WasmInterfaceExhaustionPlan,
 } from "./wasm-interface-exhaustion.js";
+import {
+  generateCdpShapeBudgetBreaker,
+  type CdpShapeBudgetBreakerResult,
+} from "./cdp-shape-budget-breaker.js";
+import {
+  REA_FRIDA_CAPTURE_LIMITS,
+  generateFridaCaptureSaturation,
+  type FridaCaptureSaturationResult,
+} from "./frida-capture-saturation.js";
+import {
+  REA_REGEX_WORKER_LIMITS,
+  generateRegexWorkerTarpit,
+  type RegexWorkerTarpitResult,
+} from "./regex-worker-tarpit.js";
+import {
+  REA_ASAR_HEADER_LIMITS,
+  generateAsarHeaderDecoyFiles,
+} from "./asar-header-amplifier.js";
 
 export {
   REA_BUDGET_BREAKER_MATRIX,
   REA_OBLIGATION_FAMILIES,
+  REA_FRIDA_CAPTURE_LIMITS,
+  REA_REGEX_WORKER_LIMITS,
+  REA_ASAR_HEADER_LIMITS,
   computeReaCartesianStringByteCharge,
   computeReaWasmInterfaceCharge,
   getExhaustionProfileForIntensity,
@@ -35,11 +56,18 @@ export {
   generateCallGraphLabyrinth,
   generateBpeTokenAmplifier,
   planWasmInterfaceBudgetExhaustion,
+  generateCdpShapeBudgetBreaker,
+  generateFridaCaptureSaturation,
+  generateRegexWorkerTarpit,
+  generateAsarHeaderDecoyFiles,
   type ReaSubsystemBudgetSpec,
   type ObligationFloodResult,
   type CallGraphLabyrinthResult,
   type BpeTokenAmplifierResult,
   type WasmInterfaceExhaustionPlan,
+  type CdpShapeBudgetBreakerResult,
+  type FridaCaptureSaturationResult,
+  type RegexWorkerTarpitResult,
 };
 
 export interface CounterReaExhaustionSuiteResult {
@@ -66,11 +94,17 @@ export function generateCounterReaExhaustionSuite(
   const obligationFlood = generateObligationLedgerFlood(prng, intensity);
   const callGraphLabyrinth = generateCallGraphLabyrinth(prng, intensity);
   const bpeAmplifier = generateBpeTokenAmplifier(prng, intensity);
+  const cdpBreaker = generateCdpShapeBudgetBreaker(prng, intensity);
+  const fridaSaturation = generateFridaCaptureSaturation(prng, intensity);
+  const regexTarpit = generateRegexWorkerTarpit(prng, intensity);
 
   const combinedJsCode = [
     obligationFlood.code,
     callGraphLabyrinth.code,
     bpeAmplifier.code,
+    cdpBreaker.code,
+    fridaSaturation.code,
+    regexTarpit.code,
   ].join("\n\n");
 
   return {
