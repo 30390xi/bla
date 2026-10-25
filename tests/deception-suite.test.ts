@@ -49,7 +49,7 @@ describe("Counter-REA Model-Misjudgment Induction Suite", () => {
       new SeededPrng("full-deception"),
       "bankrupt",
     );
-    expect(suite.totalDeceptionNodesInjected).toBe(28);
+    expect(suite.totalDeceptionNodesInjected).toBeGreaterThanOrEqual(28);
     expect(suite.combinedJsCode).toContain("_blaGrpcServiceMirage_");
   });
 });

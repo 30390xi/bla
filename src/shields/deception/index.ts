@@ -22,6 +22,18 @@ import {
   generateDecompilerPseudocodeIllusion,
   type DecompilerIllusionResult,
 } from "./decompiler-illusion.js";
+import {
+  generatePromptCompletionPoison,
+  type PromptCompletionPoisonResult,
+} from "./prompt-completion-poison.js";
+import {
+  generateVersionDiffNoise,
+  type DiffNoiseInjectionResult,
+} from "./diff-noise-injector.js";
+import {
+  generateCrashTraceDecoy,
+  type CrashTraceDecoyResult,
+} from "./crash-trace-decoy.js";
 
 export {
   generateShadowBusinessLogic,
@@ -29,6 +41,9 @@ export {
   generateArchitectureMirage,
   generateSemanticHoneypot,
   generateDecompilerPseudocodeIllusion,
+  generatePromptCompletionPoison,
+  generateVersionDiffNoise,
+  generateCrashTraceDecoy,
   type ShadowBusinessLogicResult,
   type ShadowLogicArchetype,
   type CompetingExplanationLure,
@@ -36,6 +51,9 @@ export {
   type ArchitectureMirageResult,
   type SemanticHoneypotResult,
   type DecompilerIllusionResult,
+  type PromptCompletionPoisonResult,
+  type DiffNoiseInjectionResult,
+  type CrashTraceDecoyResult,
 };
 
 export interface CounterReaDeceptionSuiteResult {
@@ -62,6 +80,9 @@ export function generateCounterReaDeceptionSuite(
   const architectureMirage = generateArchitectureMirage(prng, intensity);
   const semanticHoneypot = generateSemanticHoneypot(prng, intensity);
   const decompilerIllusion = generateDecompilerPseudocodeIllusion(prng, intensity);
+  const promptCompletionPoison = generatePromptCompletionPoison(prng, intensity);
+  const diffNoise = generateVersionDiffNoise(prng, intensity);
+  const crashDecoy = generateCrashTraceDecoy(prng, intensity);
 
   const combinedJsCode = [
     shadowLogic.code,
@@ -69,6 +90,9 @@ export function generateCounterReaDeceptionSuite(
     architectureMirage.code,
     semanticHoneypot.code,
     decompilerIllusion.code,
+    promptCompletionPoison.code,
+    diffNoise.code,
+    crashDecoy.code,
   ].join("\n\n");
 
   const totalDeceptionNodesInjected =
@@ -76,7 +100,10 @@ export function generateCounterReaDeceptionSuite(
     evidencePoison.lures.length +
     architectureMirage.decoyRpcMethods.length +
     semanticHoneypot.baitSymbols.length +
-    decompilerIllusion.illusionPatternsInjected;
+    decompilerIllusion.illusionPatternsInjected +
+    promptCompletionPoison.prioritySortedSymbols.length +
+    diffNoise.permutedBlocksCount +
+    crashDecoy.decoyCrashSignalsEmbedded.length;
 
   return {
     combinedJsCode,
