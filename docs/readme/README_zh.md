@@ -14,6 +14,8 @@
 [![Counter-REA Verified](https://img.shields.io/badge/Counter--REA-100%25_Verified-10b981?style=flat-square)](#实战案例与基准测试)
 [![MIT license](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](../../LICENSE)
 
+**[官方网站 (bla.tools)](https://bla.tools/) · [防御指南](https://bla.tools/guides/) · [实战靶场](https://bla.tools/showcase/)**
+
 [快速开始](#快速开始) · [BLA 工作原理](#bla-工作原理) · [你可以保护哪些目标](#你可以保护哪些目标) · [实战案例与基准测试](#实战案例与基准测试) · [常见问题 (FAQ)](#常见问题-faq) · [文档](#文档)
 
 <code>npx bla-shield setup</code>
