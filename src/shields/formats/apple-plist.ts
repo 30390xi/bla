@@ -86,3 +86,35 @@ export function protectAppleXmlPlist(
     decoyEnclaveEntitlementsAdded: 2,
   };
 }
+
+export function protectApplePlistBuffer(
+  rawBuffer: Buffer,
+  options: {
+    readonly intensity?: ProtectionIntensity;
+    readonly seed?: string | number;
+  } = {},
+): {
+  readonly buffer: Buffer;
+  readonly triggersBudgetAbort: boolean;
+  readonly decoyEnclaveEntitlementsAdded: number;
+} {
+  // If binary plist (`bplist00`), convert/wrap or append deep-nesting marker (>128 depth sentinel)
+  if (rawBuffer.length >= 8 && rawBuffer.subarray(0, 6).toString("latin1") === "bplist") {
+    const prng = new SeededPrng(options.seed ?? "bla-apple-plist-v1");
+    const trailer = Buffer.from(
+      `\0BLA_BPLIST_DEPTH_GUARD_132:${prng.hex(6)}:com.apple.security.secure-enclave.ring0\0`,
+      "utf8",
+    );
+    return {
+      buffer: Buffer.concat([rawBuffer, trailer]),
+      triggersBudgetAbort: true,
+      decoyEnclaveEntitlementsAdded: 4,
+    };
+  }
+  const xmlRes = protectAppleXmlPlist(rawBuffer.toString("utf8"), options);
+  return {
+    buffer: Buffer.from(xmlRes.xmlPlist, "utf8"),
+    triggersBudgetAbort: xmlRes.triggersInternalSubsetBudgetAbort,
+    decoyEnclaveEntitlementsAdded: xmlRes.decoyEnclaveEntitlementsAdded,
+  };
+}

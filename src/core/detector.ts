@@ -20,8 +20,8 @@ export function detectArtifactFormat(targetPath: string): ArtifactFormat {
 
   const ext = extname(targetPath).toLowerCase();
 
-  // Read up to 64 header bytes for binary magic inspection
-  const header = Buffer.alloc(Math.min(64, stats.size));
+  // Read up to 4096 header bytes for binary magic & CLR metadata inspection
+  const header = Buffer.alloc(Math.min(4096, stats.size));
   if (header.length > 0) {
     const fd = openSync(targetPath, "r");
     try {
@@ -29,6 +29,14 @@ export function detectArtifactFormat(targetPath: string): ArtifactFormat {
     } finally {
       closeSync(fd);
     }
+  }
+
+  // 0. Apple Binary PropertyList (`bplist00` / `bplist01`)
+  if (
+    header.length >= 8 &&
+    header.subarray(0, 6).toString("latin1") === "bplist"
+  ) {
+    return "apple-plist";
   }
 
   // 1. SQLite 3 database: `SQLite format 3\0`
@@ -88,23 +96,38 @@ export function detectArtifactFormat(targetPath: string): ArtifactFormat {
     return "native-elf";
   }
 
-  // 7. Mach-O binary (thin 32/64 BE/LE or fat universal)
+  // 7. JVM `.class` vs Mach-O binary (thin 32/64 BE/LE or fat universal)
   if (header.length >= 4) {
     const magicBE = header.readUInt32BE(0);
+    if (magicBE === 0xcafebabe) {
+      if (ext === ".class") return "jvm-class";
+      // In Mach-O universal fat binaries, uint32BE(4) is nfat_arch (1..20).
+      // In JVM .class files, uint16BE(4) is minor_version and uint16BE(6) is major_version (>= 45).
+      if (header.length >= 8) {
+        const nfatOrVersion = header.readUInt32BE(4);
+        const majorVersion = header.readUInt16BE(6);
+        if (nfatOrVersion > 30 && majorVersion >= 45 && majorVersion <= 90) {
+          return "jvm-class";
+        }
+      }
+      return "native-macho";
+    }
     if (
       magicBE === 0xfeedface ||
       magicBE === 0xcefaedfe ||
       magicBE === 0xfeedfacf ||
       magicBE === 0xcffaedfe ||
-      magicBE === 0xcafebabe ||
       magicBE === 0xbebafeca
     ) {
       return "native-macho";
     }
   }
 
-  // 8. PE binary (`MZ`)
+  // 8. PE binary (`MZ`) or .NET Managed CLR assembly (contains `BSJB` metadata root)
   if (header.length >= 2 && header[0] === 0x4d && header[1] === 0x5a) {
+    if (header.includes(Buffer.from("BSJB", "ascii"))) {
+      return "dotnet-managed";
+    }
     return "native-pe";
   }
 
@@ -160,6 +183,8 @@ export function detectArtifactFormat(targetPath: string): ArtifactFormat {
   if ([".sqlite", ".sqlite3", ".db"].includes(ext)) return "sqlite";
   if (ext === ".gguf") return "model-gguf";
   if (ext === ".dex") return "android-dex";
+  if ([".plist", ".entitlements", ".mobileprovision"].includes(ext)) return "apple-plist";
+  if (ext === ".class") return "jvm-class";
 
   return "unknown";
 }

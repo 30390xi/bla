@@ -59,3 +59,25 @@ export function planDotnetManagedBudgetExhaustion(
     totalReaRepresentationChargeBytes,
   };
 }
+
+export function protectDotnetManagedBuffer(
+  rawBuffer: Buffer,
+  options: {
+    readonly intensity?: ProtectionIntensity;
+    readonly seed?: string | number;
+  } = {},
+): {
+  readonly buffer: Buffer;
+  readonly plan: DotnetManagedExhaustionPlan;
+} {
+  const prng = new SeededPrng(options.seed ?? "bla-dotnet-v1");
+  const plan = planDotnetManagedBudgetExhaustion(prng, options.intensity ?? "balanced");
+  const metadataSection = Buffer.from(
+    `\0BLA_DOTNET_CLR_SHIELD_V1\0${plan.decoyPInvokeImports.join("\0")}\0charge:${plan.totalReaRepresentationChargeBytes}\0`,
+    "utf8",
+  );
+  return {
+    buffer: Buffer.concat([rawBuffer, metadataSection]),
+    plan,
+  };
+}
