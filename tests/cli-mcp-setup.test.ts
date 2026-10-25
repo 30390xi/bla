@@ -78,6 +78,8 @@ describe("CLI Setup, Doctor, Benchmark & MCP Server", () => {
         "bla_benchmark",
         "bla_emit_headers",
         "bla_doctor",
+        "bla_inspect_release",
+        "bla_init",
       ]);
 
       // Test bla_audit + bla_protect + bla_verify via MCP tool calls
@@ -138,7 +140,7 @@ describe("CLI Setup, Doctor, Benchmark & MCP Server", () => {
 
   it("runs the full 8-target Counter-REA benchmark suite and achieves >30x token amplification", async () => {
     const report = await runShowcaseBenchmark();
-    expect(report.cases.length).toBe(8);
+    expect(report.cases.length).toBe(10);
     expect(report.cases.every((c) => c.functionalCheckPassed)).toBe(true);
     expect(report.aggregateTokenMultiplier).toBeGreaterThanOrEqual(30);
     expect(report.aggregateCostMultiplier).toBeGreaterThanOrEqual(30);

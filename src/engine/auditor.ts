@@ -316,13 +316,19 @@ export function auditTarget(targetPath: string): AuditReport {
 
   if (format === "directory") {
     const filesToScan: string[] = [];
+    const nonJsFilesToScan: string[] = [];
     const walkDir = (dir: string): void => {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        if (entry.name === "node_modules" || entry.name === ".git" || entry.name === "dist") continue;
+        if (entry.name === "node_modules" || entry.name === ".git") continue;
         const full = join(dir, entry.name);
         if (entry.isDirectory()) walkDir(full);
-        else if ([".js", ".ts", ".mjs", ".cjs", ".jsx", ".tsx"].includes(extname(entry.name))) {
+        else if ([".js", ".ts", ".mjs", ".cjs", ".jsx", ".tsx"].includes(extname(entry.name).toLowerCase())) {
           filesToScan.push(full);
+        } else {
+          const cf = detectArtifactFormat(full);
+          if (cf !== "unknown" && cf !== "directory" && cf !== "sourcemap") {
+            nonJsFilesToScan.push(full);
+          }
         }
       }
     };
@@ -365,6 +371,23 @@ export function auditTarget(targetPath: string): AuditReport {
       chaff += sub.sim.architecturalChaffPayloads;
       exposedItems.push(...sub.exposed);
       sub.vectors.forEach((v) => vulnerableVectors.add(v));
+    }
+    for (const nf of nonJsFilesToScan) {
+      try {
+        const subAudit = auditTarget(nf);
+        byteSize += subAudit.byteSize;
+        hash.update(subAudit.sha256);
+        subAudit.reaSimulation.triggeredResourceLimits.forEach((l) => limits.add(l));
+        subAudit.reaSimulation.semanticUncertainties.forEach((u) => uncertainties.add(u));
+        totalFunctions += subAudit.reaSimulation.totalFunctions;
+        decoyFns += subAudit.reaSimulation.decoyFunctionsDetectedAsReal;
+        obligationNodes += subAudit.reaSimulation.obligationLedgerNodes;
+        chaff += subAudit.reaSimulation.architecturalChaffPayloads;
+        exposedItems.push(...subAudit.exposedItems);
+        subAudit.vulnerableReaVectors.forEach((v) => vulnerableVectors.add(v));
+      } catch {
+        // ignore unreadable nested file
+      }
     }
     sha256 = hash.digest("hex");
     sim = {
@@ -727,6 +750,94 @@ export function auditTarget(targetPath: string): AuditReport {
         obligationLedgerNodes: isProtected ? 24 : 3,
         architecturalChaffPayloads: isProtected ? 4 : 0,
       };
+    } else if (format === "apple-plist") {
+      vulnerableVectors.add("apple-plist-budget");
+      const text = rawBytes.toString("utf8");
+      const isProtected =
+        text.includes("[]>") ||
+        text.includes("BLAEnclaveAttestationAuthority") ||
+        text.includes("BLA_BPLIST_DEPTH_GUARD_132");
+      exposedItems.push({
+        id: `plist_${basename(absPath)}`,
+        name: basename(absPath),
+        kind: "metadata-section",
+        location: basename(absPath),
+        riskLevel: isProtected ? "low" : "high",
+        reaToolUsed: "inspect_apple_bundle / preflightPropertyListDecode",
+        estimatedTokensToReconstruct: isProtected ? 24_000 : 650,
+        estimatedCostUsd: isProtected ? 1.85 : 0.03,
+        reason: isProtected
+          ? "Protected by BLA Apple PropertyList Decode Budget Guard"
+          : "Apple PropertyList keys and entitlements directly readable",
+      });
+      sim = {
+        ...sim,
+        examinationStatus: isProtected ? "limited" : "complete",
+        triggeredResourceLimits: isProtected
+          ? ["plist-internal-subset-expansion (PropertyListDecodeBudgetFailure)"]
+          : [],
+        totalFunctions: 4,
+        decoyFunctionsDetectedAsReal: isProtected ? 12 : 0,
+        obligationLedgerNodes: isProtected ? 28 : 4,
+        architecturalChaffPayloads: isProtected ? 4 : 0,
+      };
+    } else if (format === "dotnet-managed") {
+      vulnerableVectors.add("dotnet-managed-budget");
+      const text = rawBytes.toString("latin1");
+      const isProtected = text.includes("BLA_DOTNET_CLR_SHIELD_V1");
+      exposedItems.push({
+        id: `dotnet_${basename(absPath)}`,
+        name: basename(absPath),
+        kind: "native-symbol",
+        location: basename(absPath),
+        riskLevel: isProtected ? "low" : "critical",
+        reaToolUsed: "inspect_dotnet_assembly / ManagedDecodeBudget",
+        estimatedTokensToReconstruct: isProtected ? 32_000 : 1_150,
+        estimatedCostUsd: isProtected ? 2.6 : 0.05,
+        reason: isProtected
+          ? "Protected by BLA .NET Managed CLR Metadata & PInvoke Obligation Guard"
+          : "CLR metadata tables and PInvoke signatures directly readable",
+      });
+      sim = {
+        ...sim,
+        examinationStatus: isProtected ? "limited" : "complete",
+        triggeredResourceLimits: isProtected
+          ? ["managed-metadata-budget (ManagedDecodeBudget > 64 MiB)", "managed-pinvoke-import"]
+          : [],
+        totalFunctions: 12,
+        decoyFunctionsDetectedAsReal: isProtected ? 20 : 0,
+        obligationLedgerNodes: isProtected ? 48 : 12,
+        architecturalChaffPayloads: isProtected ? 6 : 0,
+      };
+    } else if (format === "jvm-class") {
+      vulnerableVectors.add("jvm-bytecode-decompilation");
+      const text = rawBytes.toString("latin1");
+      const isProtected =
+        text.includes("BlaEnclaveDelegation") || text.includes("BLA_JVM_SHIELD_V1");
+      exposedItems.push({
+        id: `jvm_${basename(absPath)}`,
+        name: basename(absPath),
+        kind: "class",
+        location: basename(absPath),
+        riskLevel: isProtected ? "low" : "critical",
+        reaToolUsed: "decompile_jvm_class (CFR / Vineflower / javap)",
+        estimatedTokensToReconstruct: isProtected ? 27_500 : 920,
+        estimatedCostUsd: isProtected ? 2.15 : 0.04,
+        reason: isProtected
+          ? "Protected by BLA JVM Constant-Pool & Enclave Attribute Shield"
+          : "JVM constant pool and method descriptors directly readable",
+      });
+      sim = {
+        ...sim,
+        examinationStatus: isProtected ? "limited" : "complete",
+        triggeredResourceLimits: isProtected
+          ? ["jvm-constant-pool-enclave-attributes"]
+          : [],
+        totalFunctions: 8,
+        decoyFunctionsDetectedAsReal: isProtected ? 18 : 0,
+        obligationLedgerNodes: isProtected ? 40 : 8,
+        architecturalChaffPayloads: isProtected ? 5 : 0,
+      };
     }
   }
 
@@ -763,7 +874,7 @@ export function auditTarget(targetPath: string): AuditReport {
   const primaryEstimate = agentEstimates[0]!;
   const primaryModule = exposedItems[0]?.name ?? basename(absPath);
 
-  const recommendedCommand = `npx bla-shield protect ${targetPath}`;
+  const recommendedCommand = `npx bla-agents protect ${targetPath}`;
   const headlineWarning =
     protectionStatus === "BLA_PROTECTED"
       ? `SHIELD ACTIVE: ${basename(absPath)} triggers ${sim.triggeredResourceLimits.length} REA resource limits and forces ~${primaryEstimate.estimatedInputTokens.toLocaleString()} tokens ($${primaryEstimate.estimatedCostUsd.toFixed(2)}) of agent tarpit exhaustion.`

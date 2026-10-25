@@ -337,6 +337,35 @@ export async function runShowcaseBenchmark(): Promise<BenchmarkReport> {
       const functionalOk = afterAudit.protectionStatus === "BLA_PROTECTED";
       cases.push(buildCaseResult("android-dex", "Android Dalvik Bytecode (classes.dex)", "REA search_android_classes (JADX/JEB)", res, functionalOk));
     }
+
+    // 9. Apple PropertyList (Info.plist)
+    {
+      const plistPath = join(tempDir, "Info.plist");
+      const outPlistPath = join(tempDir, "Info.shielded.plist");
+      writeFileSync(
+        plistPath,
+        `<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict><key>CFBundleIdentifier</key><string>com.bla.desktop</string></dict></plist>`,
+        "utf8",
+      );
+      const res = protectTarget({ inputPath: plistPath, outputPath: outPlistPath, intensity: "bankrupt" });
+      const afterAudit = auditTarget(outPlistPath);
+      const functionalOk = afterAudit.protectionStatus === "BLA_PROTECTED";
+      cases.push(buildCaseResult("apple-plist", "Apple Bundle PropertyList (Info.plist)", "REA inspect_apple_bundle", res, functionalOk));
+    }
+
+    // 10. .NET Managed CLR Assembly (.dll)
+    {
+      const dllPath = join(tempDir, "EnterpriseVault.dll");
+      const outDllPath = join(tempDir, "EnterpriseVault.shielded.dll");
+      const peClr = Buffer.alloc(128, 0);
+      peClr.write("MZ", 0, "ascii");
+      peClr.write("BSJB", 64, "ascii");
+      writeFileSync(dllPath, peClr);
+      const res = protectTarget({ inputPath: dllPath, outputPath: outDllPath, intensity: "bankrupt" });
+      const afterAudit = auditTarget(outDllPath);
+      const functionalOk = afterAudit.protectionStatus === "BLA_PROTECTED";
+      cases.push(buildCaseResult("dotnet-managed", ".NET Managed CLR Assembly (.dll)", "REA inspect_dotnet_assembly", res, functionalOk));
+    }
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }

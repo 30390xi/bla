@@ -2,7 +2,9 @@
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { BLA_IDENTITY } from "./identity.js";
+import { initBlaConfig, loadBlaConfig } from "./core/config.js";
 import { inspectReleaseExposure } from "./core/release-exposure.js";
+import { buildSarifReport } from "./core/sarif.js";
 import type { ProtectionIntensity } from "./core/types.js";
 import { auditTarget } from "./engine/auditor.js";
 import { protectTarget } from "./engine/protector.js";
@@ -70,6 +72,7 @@ interface ParsedCliArgs {
   readonly command: string;
   readonly positionals: string[];
   readonly output?: string;
+  readonly configPath?: string;
   readonly inPlace: boolean;
   readonly intensity: ProtectionIntensity;
   readonly seed?: string;
@@ -79,6 +82,8 @@ interface ParsedCliArgs {
   readonly dryRun: boolean;
   readonly yes: boolean;
   readonly json: boolean;
+  readonly sarif: boolean;
+  readonly failUnder?: number;
   readonly honeyMaps: boolean;
   readonly help: boolean;
   readonly version: boolean;
@@ -88,6 +93,7 @@ export function parseCliArgs(argv: readonly string[]): ParsedCliArgs {
   let command = "";
   const positionals: string[] = [];
   let output: string | undefined;
+  let configPath: string | undefined;
   let inPlace = false;
   let intensity: ProtectionIntensity = "balanced";
   let seed: string | undefined;
@@ -97,6 +103,8 @@ export function parseCliArgs(argv: readonly string[]): ParsedCliArgs {
   let dryRun = false;
   let yes = false;
   let json = false;
+  let sarif = false;
+  let failUnder: number | undefined;
   let honeyMaps = true;
   let help = false;
   let version = false;
@@ -109,6 +117,8 @@ export function parseCliArgs(argv: readonly string[]): ParsedCliArgs {
       version = true;
     } else if (arg === "--json") {
       json = true;
+    } else if (arg === "--sarif") {
+      sarif = true;
     } else if (arg === "-y" || arg === "--yes") {
       yes = true;
     } else if (arg === "--dry-run") {
@@ -125,6 +135,11 @@ export function parseCliArgs(argv: readonly string[]): ParsedCliArgs {
       command = "update";
     } else if ((arg === "-o" || arg === "--output") && i + 1 < argv.length) {
       output = argv[++i]!;
+    } else if ((arg === "-c" || arg === "--config") && i + 1 < argv.length) {
+      configPath = argv[++i]!;
+    } else if (arg === "--fail-under" && i + 1 < argv.length) {
+      const n = Number(argv[++i]!);
+      if (Number.isFinite(n)) failUnder = n;
     } else if (arg === "--intensity" && i + 1 < argv.length) {
       const val = argv[++i]! as ProtectionIntensity;
       if (["stealth", "balanced", "maximum", "bankrupt"].includes(val)) {
@@ -149,6 +164,7 @@ export function parseCliArgs(argv: readonly string[]): ParsedCliArgs {
     command,
     positionals,
     ...(output !== undefined ? { output } : {}),
+    ...(configPath !== undefined ? { configPath } : {}),
     inPlace,
     intensity,
     ...(seed !== undefined ? { seed } : {}),
@@ -158,6 +174,8 @@ export function parseCliArgs(argv: readonly string[]): ParsedCliArgs {
     dryRun,
     yes,
     json,
+    sarif,
+    ...(failUnder !== undefined ? { failUnder } : {}),
     honeyMaps,
     help,
     version,
@@ -226,6 +244,21 @@ export async function runCli(argv: readonly string[] = process.argv.slice(2)): P
         return 0;
       }
 
+      case "init": {
+        const dir = parsed.positionals[0] ?? process.cwd();
+        const res = initBlaConfig(dir, parsed.inPlace);
+        if (parsed.json) {
+          console.log(JSON.stringify(res, null, 2));
+        } else {
+          console.log(
+            res.created
+              ? `Created ${res.configPath} (default input: "${res.config.input}", intensity: "${res.config.intensity}").`
+              : `Config already exists at ${res.configPath}. Pass --in-place to overwrite.`,
+          );
+        }
+        return 0;
+      }
+
       case "inspect-release": {
         const target = parsed.positionals[0];
         if (!target) {
@@ -238,51 +271,80 @@ export async function runCli(argv: readonly string[] = process.argv.slice(2)): P
       }
 
       case "defend": {
-        const target = parsed.positionals[0];
+        const loaded = loadBlaConfig(process.cwd(), parsed.configPath);
+        const target = parsed.positionals[0] ?? loaded.config.input;
         if (!target) {
           console.error("Error: Missing <target> path for `bla defend <target>`.");
           return 1;
         }
         const explicitIntensity = argv.includes("--intensity")
           ? parsed.intensity
-          : "bankrupt";
+          : (loaded.config.intensity ?? "bankrupt");
         const report = defendTarget({
           inputPath: target,
-          ...(parsed.output !== undefined ? { outputPath: parsed.output } : {}),
+          ...((parsed.output ?? loaded.config.output) !== undefined
+            ? { outputPath: (parsed.output ?? loaded.config.output)! }
+            : {}),
           inPlace: parsed.inPlace,
           intensity: explicitIntensity,
-          ...(parsed.seed !== undefined ? { seed: parsed.seed } : {}),
-          emitManifest: argv.includes("--manifest"),
+          ...((parsed.seed ?? loaded.config.seed) !== undefined
+            ? { seed: (parsed.seed ?? loaded.config.seed)! }
+            : {}),
+          emitManifest: argv.includes("--manifest") || Boolean(loaded.config.emitManifest),
         });
-        if (parsed.json) console.log(JSON.stringify(report, null, 2));
-        else console.log(formatOneClickDefenseReport(report));
+        if (parsed.sarif) {
+          console.log(
+            JSON.stringify(buildSarifReport(report.beforeAudit, report.releaseExposure), null, 2),
+          );
+        } else if (parsed.json) {
+          console.log(JSON.stringify(report, null, 2));
+        } else {
+          console.log(formatOneClickDefenseReport(report));
+        }
+        const threshold = parsed.failUnder ?? loaded.config.minDefenseScore;
+        if (threshold !== undefined && report.verification.defenseScore < threshold) {
+          return 2;
+        }
         return report.overallSuccess ? 0 : 2;
       }
 
       case "audit": {
-        const target = parsed.positionals[0];
+        const loaded = loadBlaConfig(process.cwd(), parsed.configPath);
+        const target = parsed.positionals[0] ?? loaded.config.input;
         if (!target) {
           console.error("Error: Missing <target> path for `bla audit <target>`.");
           return 1;
         }
         const report = auditTarget(target);
-        if (parsed.json) console.log(JSON.stringify(report, null, 2));
-        else console.log(formatAuditReport(report));
+        if (parsed.sarif) {
+          console.log(JSON.stringify(buildSarifReport(report), null, 2));
+        } else if (parsed.json) {
+          console.log(JSON.stringify(report, null, 2));
+        } else {
+          console.log(formatAuditReport(report));
+        }
         return 0;
       }
 
       case "protect": {
-        const target = parsed.positionals[0];
+        const loaded = loadBlaConfig(process.cwd(), parsed.configPath);
+        const target = parsed.positionals[0] ?? loaded.config.input;
         if (!target) {
           console.error("Error: Missing <target> path for `bla protect <target>`.");
           return 1;
         }
         const res = protectTarget({
           inputPath: target,
-          ...(parsed.output !== undefined ? { outputPath: parsed.output } : {}),
+          ...((parsed.output ?? loaded.config.output) !== undefined
+            ? { outputPath: (parsed.output ?? loaded.config.output)! }
+            : {}),
           inPlace: parsed.inPlace,
-          intensity: parsed.intensity,
-          ...(parsed.seed !== undefined ? { seed: parsed.seed } : {}),
+          intensity: argv.includes("--intensity")
+            ? parsed.intensity
+            : (loaded.config.intensity ?? parsed.intensity),
+          ...((parsed.seed ?? loaded.config.seed) !== undefined
+            ? { seed: (parsed.seed ?? loaded.config.seed)! }
+            : {}),
           honeySourceMaps: parsed.honeyMaps,
         });
         if (parsed.json) console.log(JSON.stringify(res, null, 2));
@@ -299,6 +361,9 @@ export async function runCli(argv: readonly string[] = process.argv.slice(2)): P
         const report = verifyTarget(target, parsed.positionals[1]);
         if (parsed.json) console.log(JSON.stringify(report, null, 2));
         else console.log(formatVerificationReport(report));
+        if (parsed.failUnder !== undefined && report.defenseScore < parsed.failUnder) {
+          return 2;
+        }
         return report.overallPassed ? 0 : 2;
       }
 

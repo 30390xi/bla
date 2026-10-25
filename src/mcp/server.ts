@@ -1,4 +1,6 @@
 import { BLA_IDENTITY } from "../identity.js";
+import { initBlaConfig } from "../core/config.js";
+import { inspectReleaseExposure } from "../core/release-exposure.js";
 import type { ProtectionIntensity } from "../core/types.js";
 import { auditTarget } from "../engine/auditor.js";
 import { protectTarget } from "../engine/protector.js";
@@ -158,6 +160,39 @@ export const BLA_MCP_TOOLS = Object.freeze([
       properties: {},
     },
   },
+  {
+    name: "bla_inspect_release",
+    description:
+      "Read-only local source-map and symbol exposure scan for build directories and release artifacts.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: {
+          type: "string",
+          description: "Path to the build directory or artifact to inspect",
+        },
+      },
+      required: ["path"],
+    },
+  },
+  {
+    name: "bla_init",
+    description:
+      "Creates a starter bla.config.json in a project directory for zero-argument `bla defend` workflows.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        directory: {
+          type: "string",
+          description: "Target project directory (defaults to current working directory)",
+        },
+        overwrite: {
+          type: "boolean",
+          description: "Overwrite an existing bla.config.json if present",
+        },
+      },
+    },
+  },
 ]);
 
 export async function handleMcpRequest(
@@ -272,6 +307,13 @@ export async function handleMcpRequest(
           );
         } else if (name === "bla_doctor") {
           payload = runDoctor();
+        } else if (name === "bla_inspect_release") {
+          payload = inspectReleaseExposure(String(args.path ?? ""));
+        } else if (name === "bla_init") {
+          payload = initBlaConfig(
+            typeof args.directory === "string" ? args.directory : process.cwd(),
+            Boolean(args.overwrite),
+          );
         } else {
           return {
             jsonrpc: "2.0",

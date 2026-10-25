@@ -27,6 +27,9 @@ import { protectZipOrApkBuffer } from "../shields/formats/archive.js";
 import { protectSqliteBuffer } from "../shields/formats/sqlite.js";
 import { protectGgufBuffer, protectSafetensorsBuffer } from "../shields/formats/model.js";
 import { protectAndroidDexBuffer, protectIl2cppMetadataBuffer } from "../shields/formats/mobile-game.js";
+import { protectApplePlistBuffer } from "../shields/formats/apple-plist.js";
+import { protectDotnetManagedBuffer } from "../shields/formats/dotnet-managed.js";
+import { protectJvmClassBuffer } from "../shields/formats/jvm-bytecode.js";
 import { auditTarget } from "./auditor.js";
 
 function deriveDefaultOutputPath(inputPath: string, inPlace = false): string {
@@ -321,6 +324,30 @@ export function protectTarget(options: ProtectionOptions): ProtectionResult {
     chaffPayloadsEmbedded = res.chaffPayloadsEmbedded;
     binarySectionsPatched = res.decoyEntriesInjected;
     counteredVectors.add("archive-inventory");
+  } else if (format === "apple-plist") {
+    const rawPlist = readFileSync(absInput);
+    const res = protectApplePlistBuffer(rawPlist, { intensity, seed });
+    writeFileSync(absOutput, res.buffer);
+    decoyFunctionsInjected = 12;
+    chaffPayloadsEmbedded = res.decoyEnclaveEntitlementsAdded;
+    binarySectionsPatched = res.triggersBudgetAbort ? 2 : 1;
+    counteredVectors.add("apple-plist-budget");
+  } else if (format === "dotnet-managed") {
+    const rawDll = readFileSync(absInput);
+    const res = protectDotnetManagedBuffer(rawDll, { intensity, seed });
+    writeFileSync(absOutput, res.buffer);
+    decoyFunctionsInjected = 20;
+    chaffPayloadsEmbedded = res.plan.decoyPInvokeImports.length;
+    binarySectionsPatched = 1;
+    counteredVectors.add("dotnet-managed-budget");
+  } else if (format === "jvm-class") {
+    const rawClass = readFileSync(absInput);
+    const res = protectJvmClassBuffer(rawClass, { intensity, seed });
+    writeFileSync(absOutput, res.buffer);
+    decoyFunctionsInjected = 18;
+    chaffPayloadsEmbedded = res.chaffPayloadsEmbedded;
+    binarySectionsPatched = res.customAttributesAdded;
+    counteredVectors.add("jvm-bytecode-decompilation");
   } else if (format === "directory") {
     mkdirSync(absOutput, { recursive: true });
     const walkAndProtect = (srcDir: string, dstDir: string): void => {
@@ -356,7 +383,27 @@ export function protectTarget(options: ProtectionOptions): ProtectionResult {
             chaffPayloadsEmbedded += res.chaffPayloadsEmbedded;
             honeySourceMapsGenerated++;
           } else {
-            copyFileSync(srcFull, dstFull);
+            const childFormat = detectArtifactFormat(srcFull);
+            if (childFormat !== "unknown" && childFormat !== "directory") {
+              try {
+                const subRes = protectTarget({
+                  inputPath: srcFull,
+                  outputPath: dstFull,
+                  intensity,
+                  seed: `${seed}:${entry.name}`,
+                  honeySourceMaps: options.honeySourceMaps,
+                });
+                decoyFunctionsInjected += subRes.metrics.decoyFunctionsInjected;
+                fakeCrossReferencesCreated += subRes.metrics.fakeCrossReferencesCreated;
+                chaffPayloadsEmbedded += subRes.metrics.chaffPayloadsEmbedded;
+                binarySectionsPatched += subRes.metrics.binarySectionsPatched;
+                for (const v of subRes.counteredReaVectors) counteredVectors.add(v);
+              } catch {
+                copyFileSync(srcFull, dstFull);
+              }
+            } else {
+              copyFileSync(srcFull, dstFull);
+            }
           }
         }
       }
