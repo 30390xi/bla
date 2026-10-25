@@ -7,6 +7,7 @@ import type { ProtectionIntensity } from "./core/types.js";
 import { auditTarget } from "./engine/auditor.js";
 import { protectTarget } from "./engine/protector.js";
 import { verifyTarget } from "./engine/verifier.js";
+import { defendTarget } from "./engine/defender.js";
 import { runShowcaseBenchmark } from "./engine/benchmark.js";
 import {
   emitCompileTimeNativeHeader,
@@ -21,6 +22,7 @@ import {
   formatBanner,
   formatBenchmarkReport,
   formatDoctorReport,
+  formatOneClickDefenseReport,
   formatProtectionResult,
   formatSetupReport,
   formatVerificationReport,
@@ -36,6 +38,7 @@ Usage:
 
 Commands:
   setup                       Configure agent MCP integrations & install the BLA skill
+  defend <target>             One-click full Counter-REA pipeline (inspect -> audit -> bankrupt protect -> verify)
   inspect-release <target>    Read-only local source-map & symbol exposure check
   audit <target>              Pre-flight REA exposure & vulnerability scan
   protect <target>            Inject multi-layer Counter-REA adversarial shield
@@ -232,6 +235,28 @@ export async function runCli(argv: readonly string[] = process.argv.slice(2)): P
         const report = inspectReleaseExposure(target);
         console.log(JSON.stringify(report, null, 2));
         return report.status === "complete" ? 0 : 2;
+      }
+
+      case "defend": {
+        const target = parsed.positionals[0];
+        if (!target) {
+          console.error("Error: Missing <target> path for `bla defend <target>`.");
+          return 1;
+        }
+        const explicitIntensity = argv.includes("--intensity")
+          ? parsed.intensity
+          : "bankrupt";
+        const report = defendTarget({
+          inputPath: target,
+          ...(parsed.output !== undefined ? { outputPath: parsed.output } : {}),
+          inPlace: parsed.inPlace,
+          intensity: explicitIntensity,
+          ...(parsed.seed !== undefined ? { seed: parsed.seed } : {}),
+          emitManifest: argv.includes("--manifest"),
+        });
+        if (parsed.json) console.log(JSON.stringify(report, null, 2));
+        else console.log(formatOneClickDefenseReport(report));
+        return report.overallSuccess ? 0 : 2;
       }
 
       case "audit": {
