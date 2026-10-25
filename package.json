@@ -1,7 +1,7 @@
 {
   "name": "bla-shield",
-  "version": "1.0.0",
-  "description": "BLA (Blind LLM Agents / Block Anything) — Adversarial defense shield that protects binaries, Electron apps, JS bundles, Python, and WebAssembly against AI reverse-engineering agents like REA.",
+  "version": "1.1.0",
+  "description": "BLA (Blind LLM Agents / Block Anything) — Adversarial defense shield that protects binaries, Electron apps, JS bundles, Python, WebAssembly, SQLite, AI Models, and Android DEX/IL2CPP against AI reverse-engineering agents like REA.",
   "keywords": [
     "reverse-engineering-defense",
     "anti-rea",
@@ -40,6 +40,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./bundler": {
+      "types": "./dist/bundler/index.d.ts",
+      "default": "./dist/bundler/index.js"
     }
   },
   "files": [

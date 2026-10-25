@@ -37,14 +37,16 @@
   <img src="../assets/bla-vs-rea-showcase.svg" alt="Before BLA vs After npx bla-shield protect" width="100%" />
 </div>
 
-### 三大核心反制杀手锏
+### 四大核心反制杀手锏（100% 覆盖 REA 静态、动态与垂直逆向面）
 
-1. **💥 REA 语义预算精准爆破（Zero Runtime Overhead）：**
-   针对 `morluto/rea` 内部源码的静态与语义分析器阈值（`primitive-candidates > 256`、`alias-selections > 512`、`getter-expansion > 512`、`primitive-bytes > 1 MiB`、`maximum_rustc_hashes > 64`），植入运行时零开销的数论不透明谓词与组合选择器，直接将 REA 的分析状态从 `complete` 击穿降级为 `partial` / `limited`！
+1. **💥 REA 语义与容器容量上限精准爆破（Zero Runtime Overhead）：**
+   针对 `morluto/rea` 内部源码的静态与语义分析器阈值（JS `primitive-candidates > 256`、`alias-selections > 512`、`getter-expansion > 512`、`primitive-bytes > 1 MiB`；Rust `maximum_rustc_hashes > 64`；Electron Fuses `maximumSentinelsPerSlice > 32`；Flutter/Dart `MAX_SNAPSHOT_HASH_CANDIDATES > 64`；Safetensors/GGUF `MODEL_JSON_NESTING > 32`；SQLite `SqliteColumnEvaluationFailure` 虚拟生成列陷阱），植入运行时零开销的防御结构，直接将 REA 的分析状态击穿降级为 `partial` / `limited` 或直接触发容量熔断！
 2. **🕸️ Token 粉碎机 / 算法算力沼泽（Algorithmic Tarpits）：**
    自动在核心业务函数周围编织 14–36 个高逼真度、互相层层交叉引用（Fake XRefs）的诱饵状态机。当攻击者使用 REA 的 `trace_application_feature` 或 `build_reconstruction_obligation_ledger` 时，取证图节点暴增 **15x–50x**，诱导 AI Agent 陷入死胡同疯狂调用 MCP 工具查证，将单次逆向的 Token 账单放大 **2,000 倍以上**！
-3. **🎭 飞地托管幻觉与蜜罐 SourceMap（Enclave Chaff & Honey SourceMaps）：**
-   在 AST 不可达分支、Electron IPC 通道、WASM `"name"` 自定义段、CPython `.pyc` 常量池与原生二进制 `.rodata` 段植入安全的**硬件飞地托管声明（TEE/SGX Enclave Delegation Mirage）**与 **VLQ v3 蜜罐 SourceMap**，误导逆向大模型得出“核心逻辑托管于硬件 Enclave，当前文件仅为兼容层空壳”的结论。
+3. **🎭 飞地托管幻觉与蜜罐资产（Enclave Chaff, Honey SourceMaps & Honey SQLite Tables）：**
+   在 AST 不可达分支、Electron IPC 通道、WASM `"name"` 自定义段、CPython `.pyc` 常量池、原生二进制 `.rodata` 段、SQLite3 蜜罐表以及 Android DEX 类定义表中植入安全的**硬件飞地托管声明（TEE/SGX Enclave Delegation Mirage）**与 **VLQ v3 蜜罐 SourceMap**，误导逆向大模型得出“核心逻辑托管于硬件 Enclave，当前文件仅为兼容层空壳”的结论。
+4. **🛡️ “楚门的世界”动态 CDP / Frida 运行时反制护盾（Truman Show Runtime Shield）：**
+   自动检测 `inspector.url()`、`--inspect`、CDP 调试会话与 Frida/WebDriver 探针；并将 Electron 二进制中的 Fuse 位原地加固（关闭 `RunAsNode` 与 `EnableNodeCliInspectArguments`），向动态调试探针返回合成飞地遥测数据，同时保证正常用户 100% 原生运行体验。
 
 ---
 
@@ -54,13 +56,13 @@
 # 1. 发布前自检（模拟 REA 扫描暴露面与克隆成本）
 npx bla-shield audit ./examples/dx-ball-sound-pan/sound-pan.js
 
-# 2. 一键注入对抗护盾（支持 JS/TS、Electron .asar、WASM、Python .py/.pyc、ELF/Mach-O/PE、ZIP/APK）
+# 2. 一键注入对抗护盾（支持 JS/TS、Electron .asar、WASM、Python .py/.pyc、ELF/Mach-O/PE、SQLite3、Safetensors/GGUF、DEX/IL2CPP、ZIP/APK）
 npx bla-shield protect ./examples/dx-ball-sound-pan/sound-pan.js -o ./sound-pan.shielded.js --intensity bankrupt
 
 # 3. 验证防线有效性与 Token 放大倍率
 npx bla-shield verify ./sound-pan.shielded.js ./examples/dx-ball-sound-pan/sound-pan.js
 
-# 4. 运行 5 大靶场对比基准测试（对标 REA 官方 DX-Ball 与 Notion 案例）
+# 4. 运行 8 大靶场全维度对比基准测试（对标 REA 官方 DX-Ball、Notion、SQLite、AI 模型与原生二进制案例）
 npx bla-shield benchmark
 
 # 5. 一键配置 Claude Code / Cursor / Codex / Antigravity 等 Agent 的 MCP 与 Skill

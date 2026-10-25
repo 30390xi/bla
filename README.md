@@ -6,7 +6,7 @@
 
 # BLA: Blind LLM Agents (`bla-shield`)
 
-### One CLI & MCP shield to defend binaries, Electron apps, JS bundles, Python, and WebAssembly against AI reverse-engineering agents like REA.
+### One CLI, Bundler Plugin & MCP shield to defend binaries, Electron apps, JS bundles, SQLite DBs, AI models, Mobile/Game assets, Python, and WebAssembly against AI reverse-engineering agents like REA.
 
 **Software is NOT done. It just learned how to fight back.**
 
@@ -48,7 +48,7 @@ Instead of heavy, expensive legacy VM packers that slow down your app, BLA strik
 
 ### Token Bankruptcy Benchmark
 
-Run the built-in 5-target Counter-REA Showcase Benchmark yourself with `npx bla-shield benchmark`:
+Run the built-in 8-target Counter-REA Showcase Benchmark yourself with `npx bla-shield benchmark`:
 
 | Showcase Target (Modeled on REA Official Showcases) | Before BLA (REA Alone) | After `npx bla-shield protect` (Poison + Tarpit) | Token Burn Multiplier | Runtime Output Equivalence |
 | :--- | :--- | :--- | :---: | :---: |
@@ -56,7 +56,10 @@ Run the built-in 5-target Counter-REA Showcase Benchmark yourself with `npx bla-
 | **2. Notion Electron Clipboard Bridge** (`.asar`) | `98/100` Exposed · `9,132` tok · **`$0.34`** (`COMPLETE`) | `2/100` Shielded · `23,125,000` tok · **`$358.28`** (`LIMITED`) | **2,532.3x** | ✅ **100% Exact** (`0 ms` overhead) |
 | **3. Enterprise Offline License Validator** (`.ts`) | `84/100` Exposed · `4,800` tok · **`$0.20`** (`COMPLETE`) | `2/100` Shielded · `10,045,833` tok · **`$158.60`** (`LIMITED`) | **2,092.9x** | ✅ **100% Exact** (`0 ms` overhead) |
 | **4. WebAssembly Crypto Kernel** (`.wasm`) | `81/100` Exposed · `4,800` tok · **`$0.20`** (`COMPLETE`) | `6/100` Shielded · `1,807,067` tok · **`$29.88`** (`LIMITED`) | **376.5x** | ✅ **100% Exact** (`WebAssembly.validate`) |
-| **5. Native ELF64 Rust/Go Binary** (`.elf`) | `81/100` Exposed · `9,278` tok · **`$0.35`** (`COMPLETE`) | `6/100` Shielded · `2,447,505` tok · **`$39.99`** (`LIMITED`) | **263.8x** | ✅ **100% Exact** (`>64 rustc hash trap`) |
+| **5. Native ELF64 Binary (Rust/Go/Electron Fuses/Flutter)** | `81/100` Exposed · `9,278` tok · **`$0.35`** (`COMPLETE`) | `6/100` Shielded · `2,447,631` tok · **`$39.99`** (`LIMITED`) | **263.8x** | ✅ **100% Exact** (`>64 rustc` + `>32 fuse` + `>64 dart`) |
+| **6. Embedded SQLite3 App State DB** (`.sqlite`) | `84/100` Exposed · `4,800` tok · **`$0.20`** (`COMPLETE`) | `6/100` Shielded · `2,068,536` tok · **`$33.54`** (`LIMITED`) | **430.9x** | ✅ **100% Exact** (`SqliteColumnEvaluationFailure` trap) |
+| **7. Proprietary AI Weights** (`.safetensors` / `.gguf`) | `78/100` Exposed · `4,800` tok · **`$0.20`** (`COMPLETE`) | `6/100` Shielded · `1,806,829` tok · **`$29.87`** (`LIMITED`) | **376.4x** | ✅ **100% Exact** (`>32 JSON/ARRAY nesting` trap) |
+| **8. Mobile & Game Binaries** (`.dex` / `Il2Cpp.dat`) | `81/100` Exposed · `4,800` tok · **`$0.20`** (`COMPLETE`) | `6/100` Shielded · `2,046,431` tok · **`$33.23`** (`LIMITED`) | **426.3x** | ✅ **100% Exact** (Valid SHA-1 + Adler32 DEX) |
 
 ---
 
@@ -129,6 +132,11 @@ BLA was engineered by analyzing every static parser, symbolic evaluator, and res
 | **`WabtWat.ts` & `WasmGlueAdapter.ts`** | Parses WASM custom `"name"` subsection `0` (module name) and static `.wasm` glue literals. | Strips debug sections, injects a honey `"name"` section (`tee_hardware_enclave_transport_stub_*`) + `@custom` enclave manifests, and de-literalizes `.wasm` strings in JS glue. | `inspect_wasm_artifact` surfaces decoy enclave module names while WASM executes identically. |
 | **`PythonPycParser.ts`** | Walks CPython 3.7–3.14 `.pyc` marshal `TYPE_CODE` trees and `co_consts`. | Injects Python algorithmic tarpit state machines into `.py` and appends marshal-framed `TYPE_ASCII` enclave chaff records into `.pyc`. | Floods `inspect_python_pyc` with decoy code objects and enclave delegation manifests. |
 | **`RustBinaryImage.ts` & `GoModuleText.ts`** | Scans read-only binary ranges for `/rustc/<40-hex>/` with hard cap `MAX_RUSTC_HASHES = 64`. | Injects 68 distinct `/rustc/<40-hex>/` commit strings into `.rodata` + decoy zlib `.dep-v0` crate graph + decoy Go `dep\t` lines. | `RustBinaryProvider` immediately fails with `Resource constraint: Read-only data contains more than 64 distinct rustc commit paths`. |
+| **`ElectronFuseReader.ts`** | Scans binary slices for sentinel `dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX` with `maximumSentinelsPerSlice = 32`. | Hardens real V1 fuse wires in-place (`RunAsNode=0`, `EnableNodeCliInspectArguments=0`, `EnableEmbeddedAsarIntegrityValidation=1`) AND appends 34 decoy sentinels (`> 32`). | `inspect_electron_fuses` aborts with `ElectronFuseResourceFailure: Slice 0 contains more than 32 Electron fuse sentinels`. |
+| **`FlutterPayloadScan.ts` & `DartElf.ts`** | Caps Dart AOT snapshot candidates at `MAX_SNAPSHOT_HASH_CANDIDATES = 64` and `MAX_TOOLCHAIN_LINES = 4`. | Injects 66 Dart AOT snapshot magic headers (`0xf5,0xf5,0xdc,0xdc`) with distinct 32-hex hashes, conflicting `"Dart VM version:"` strings, and 6 LLVM toolchain lines. | Forces `SnapshotHashScanner` (`capped: true`), `toolchainCapped: true`, and `conflicting-dart-version`. |
+| **`SqliteDatabaseInspection.ts`** | Opens SQLite DBs in bare `readOnly: true, allowExtension: false` mode and aborts table preview on `SqliteColumnEvaluationFailure`. | Injects 3 Honey Tables (`_bla_enclave_key_hierarchy`, `_bla_tpm2_attestation_ledger`, `_bla_zero_trust_session_leases`) with `GENERATED ALWAYS AS (bla_enclave_unseal(...)) VIRTUAL` columns. | Real app tables remain 100% queryable, while REA's `previewRows` crashes with `SqliteColumnEvaluationFailure: no such function: bla_enclave_unseal`. |
+| **`SafetensorsHeader.ts` & `GgufHeader.ts`** | Enforces `MODEL_JSON_NESTING = 32` (`.safetensors`) and `MODEL_METADATA_NESTING = 32` (`.gguf`). | Embeds 35-level nested JSON/ARRAY structures (`> 32`) inside `__metadata__.bla_enclave_topology_graph` and `bla.enclave.nested_attestation_ring`. | `inspect_model_file` immediately aborts with `ModelFormatFailure (capacity): json-nesting / metadata-nesting`. |
+| **Runtime CDP / Frida / Debugger attach (`runtime-shield.ts`)** | `attach_javascript_runtime`, `evaluate_javascript_runtime`, `capture_runtime_network`, `attach_native_runtime`. | Injects the **"Truman Show" Anti-CDP Runtime Shield** (detects `inspector.url()`, `--inspect`, `__frida`, `navigator.webdriver`; feeds enclave attestation telemetry to probes while preserving normal callers). | Dynamic runtime probes receive synthetic enclave transport responses instead of business state. |
 
 ---
 
@@ -187,9 +195,13 @@ And when feeding a BLA-protected ELF64 binary into `morluto/rea`'s `RustBinaryPr
 | **HTML & Web Bundles** (`.html`, `.map`) | `bla audit` / `bla protect` | Inline `<script>` AST shielding + VLQ v3 Honey Source Map generation |
 | **WebAssembly Modules** (`.wasm`) | `bla audit` / `bla protect` | Binary LEB128 section parser, strips debug sections, injects honey `"name"` custom section & `"bla.enclave.manifest"` custom sections |
 | **Python Source & Bytecode** (`.py`, `.pyc`) | `bla audit` / `bla protect` | Python Algorithmic Tarpit state machines, number-theoretic opaque predicates, CPython `.pyc` marshal `TYPE_ASCII` constant pool chaff |
-| **Native Binaries** (ELF, Mach-O, Windows PE) | `bla audit` / `bla protect` | 68 distinct `/rustc/<40-hex>/` hash overflow traps (`>64` REA cap), decoy `cargo-auditable` `.dep-v0` zlib graph, decoy Go `dep\t` module lines, `.rodata` chaff |
+| **Native Binaries** (ELF, Mach-O, Windows PE) | `bla audit` / `bla protect` | 68 distinct `/rustc/<40-hex>/` hash overflow traps (`>64` REA cap), 34 Electron Fuse sentinels (`>32` REA cap) + V1 fuse hardening, 66 Flutter/Dart AOT snapshot hashes (`>64` REA cap), `.rodata` chaff |
+| **SQLite 3 Databases** (`.sqlite`, `.sqlite3`, `.db`) | `bla audit` / `bla protect` | 3 Enclave Honey Tables + `GENERATED ALWAYS AS (bla_enclave_unseal(...)) VIRTUAL` trap columns that trigger `SqliteColumnEvaluationFailure` on REA's read-only inspector |
+| **AI Model Files** (`.safetensors`, `.gguf`) | `bla audit` / `bla protect` | 35-level nested JSON/ARRAY header structures (`>32` REA `MODEL_JSON_NESTING` & `MODEL_METADATA_NESTING` caps) + TEE sealed weight manifests |
+| **Mobile & Game Binaries** (`.dex`, `global-metadata.dat`) | `bla audit` / `bla protect` | Valid Dalvik/ART `dex\n035\0` with recomputed SHA-1 & Adler32 checksums + decoy `Lcom/enclave/sgx/...` classes; Unity IL2CPP (`0xFAB11BAF`) metadata chaff |
 | **Compile-Time Native Headers** (C/C++, Rust, Go) | `bla emit-headers --lang c\|rust\|go` | Emits drop-in `bla_shield.h`, `bla_shield.rs`, or `bla_shield.go` with `__attribute__((used, noinline))` decoy tarpit functions for Ghidra/Hopper/IDA |
 | **Archives & Android Packages** (`.zip`, `.apk`) | `bla audit` / `bla protect` | Injects decoy TEE/enclave attestation manifests and shadow module descriptors into ZIP/APK containers |
+| **Build Bundlers** (Vite, Rollup, Webpack, esbuild) | `bla-shield/bundler` | Zero-config bundler plugins (`blaVitePlugin`, `blaRollupPlugin`, `BlaWebpackPlugin`, `blaEsbuildPlugin`) that automatically shield emitted JS chunks & `.wasm` assets |
 
 ---
 
@@ -237,6 +249,25 @@ const result = protectTarget({
 
 const verification = verifyTarget(result.outputPath, result.inputPath);
 console.log(`Defense Score: ${verification.defenseScore}/100 (${verification.tokenAmplificationFactor}x token burn)`);
+```
+
+### Vite / Rollup / Webpack / esbuild Bundler Plugins (`bla-shield/bundler`)
+
+Automatically shield every emitted JavaScript chunk, SourceMap, and WebAssembly asset during your production build:
+
+```typescript
+// vite.config.ts
+import { defineConfig } from "vite";
+import { blaVitePlugin } from "bla-shield/bundler";
+
+export default defineConfig({
+  plugins: [
+    blaVitePlugin({
+      intensity: "bankrupt",
+      enableHoneySourceMaps: true,
+    }),
+  ],
+});
 ```
 
 ---

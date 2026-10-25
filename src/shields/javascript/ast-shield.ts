@@ -6,6 +6,7 @@ import { SeededPrng } from "../../core/prng.js";
 import type { ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
 import { generateJsTarpitAndBudgetBreaker } from "../tarpit/tarpit-generator.js";
+import { generateRuntimeDeceptionSnippet } from "../runtime/runtime-shield.js";
 
 // Handle ESM/CJS default export interop in NodeNext
 type TraverseFn = (typeof _traverse)["default"];
@@ -145,6 +146,7 @@ export function transformJavaScriptWithBlaShield(
   const prng = new SeededPrng(options.seed ?? "bla-js-shield-v1");
   const chaffPayloads = generateChaffPayloads(prng, intensity);
   const tarpit = generateJsTarpitAndBudgetBreaker(prng, intensity, chaffPayloads);
+  const runtimeShield = generateRuntimeDeceptionSnippet(prng, intensity, chaffPayloads);
 
   const ast = parse(source, {
     sourceType: "unambiguous",
@@ -317,7 +319,7 @@ export function transformJavaScriptWithBlaShield(
     : tarpit.code;
 
   const combinedInjectedAst = parse(
-    `${mirageLines.join("\n")}\n${tarpitCodeNormalized}`,
+    `${mirageLines.join("\n")}\n${runtimeShield.code}\n${tarpitCodeNormalized}`,
     {
       sourceType: "unambiguous",
       plugins: ["typescript"],

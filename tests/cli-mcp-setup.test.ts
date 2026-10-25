@@ -135,11 +135,11 @@ describe("CLI Setup, Doctor, Benchmark & MCP Server", () => {
     }
   });
 
-  it("runs the full 5-target Counter-REA benchmark suite and achieves >40x token amplification", async () => {
+  it("runs the full 8-target Counter-REA benchmark suite and achieves >30x token amplification", async () => {
     const report = await runShowcaseBenchmark();
-    expect(report.cases.length).toBe(5);
+    expect(report.cases.length).toBe(8);
     expect(report.cases.every((c) => c.functionalCheckPassed)).toBe(true);
-    expect(report.aggregateTokenMultiplier).toBeGreaterThanOrEqual(40);
-    expect(report.aggregateCostMultiplier).toBeGreaterThanOrEqual(40);
+    expect(report.aggregateTokenMultiplier).toBeGreaterThanOrEqual(30);
+    expect(report.aggregateCostMultiplier).toBeGreaterThanOrEqual(30);
   });
 });

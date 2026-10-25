@@ -154,7 +154,7 @@ export function formatBenchmarkReport(bench: BenchmarkReport): string {
   const lines: string[] = [
     formatBanner(),
     "",
-    `${ANSI.bold}${ANSI.magenta}⚡ BLA vs. REA — 5-Target Counter-Showcase Benchmark Suite${ANSI.reset}`,
+    `${ANSI.bold}${ANSI.magenta}⚡ BLA vs. REA — ${bench.cases.length}-Target Counter-Showcase Benchmark Suite${ANSI.reset}`,
     "",
     `${ANSI.bold}Showcase Target                          | Before BLA (REA Alone)        | After BLA Shield (Poison + Tarpit)       | Token Mult | Runtime Check${ANSI.reset}`,
     `─────────────────────────────────────────┼───────────────────────────────┼──────────────────────────────────────────┼────────────┼──────────────`,
@@ -172,7 +172,7 @@ export function formatBenchmarkReport(bench: BenchmarkReport): string {
 
   lines.push(
     `─────────────────────────────────────────┴───────────────────────────────┴──────────────────────────────────────────┴────────────┴──────────────`,
-    `${ANSI.bold}Aggregate Token Amplification:${ANSI.reset} ${ANSI.yellow}${ANSI.bold}${bench.aggregateTokenMultiplier}x${ANSI.reset}   |   ${ANSI.bold}Aggregate Cost Multiplier:${ANSI.reset} ${ANSI.yellow}${ANSI.bold}${bench.aggregateCostMultiplier}x${ANSI.reset}   |   ${ANSI.green}${ANSI.bold}All 5 Targets: 100% Runtime-Equivalent & REA-Resistant${ANSI.reset}`,
+    `${ANSI.bold}Aggregate Token Amplification:${ANSI.reset} ${ANSI.yellow}${ANSI.bold}${bench.aggregateTokenMultiplier}x${ANSI.reset}   |   ${ANSI.bold}Aggregate Cost Multiplier:${ANSI.reset} ${ANSI.yellow}${ANSI.bold}${bench.aggregateCostMultiplier}x${ANSI.reset}   |   ${ANSI.green}${ANSI.bold}All ${bench.cases.length} Targets: 100% Runtime-Equivalent & REA-Resistant${ANSI.reset}`,
   );
 
   return lines.join("\n");

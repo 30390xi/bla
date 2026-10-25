@@ -18,6 +18,9 @@ import { inspectWasmBinary } from "../shields/formats/wasm.js";
 import { inspectPythonPyc } from "../shields/formats/python.js";
 import { inspectNativeBinary } from "../shields/formats/native.js";
 import { readZipEntries } from "../shields/formats/archive.js";
+import { inspectSqliteBuffer } from "../shields/formats/sqlite.js";
+import { inspectModelBuffer } from "../shields/formats/model.js";
+import { inspectAndroidDex } from "../shields/formats/mobile-game.js";
 
 type TraverseFn = (typeof _traverse)["default"];
 const traverse: TraverseFn =
@@ -551,10 +554,18 @@ export function auditTarget(targetPath: string): AuditReport {
       vulnerableVectors.add("native-decompiler-pseudocode");
       vulnerableVectors.add("native-rust-auditable");
       vulnerableVectors.add("native-go-buildinfo");
+      vulnerableVectors.add("electron-fuses-inspection");
+      vulnerableVectors.add("flutter-dart-aot-snapshot");
       const nat = inspectNativeBinary(rawBytes);
       const limits: string[] = [];
       if (nat.rustcCommitHashesCount > 64) {
         limits.push("maximum_rustc_hashes (capacity > 64)");
+      }
+      if (nat.electronFuseSentinelsCount > 32) {
+        limits.push("maximum_sentinels_per_slice (ElectronFuseReader > 32)");
+      }
+      if (nat.dartSnapshotHashesCount > 64) {
+        limits.push("max_snapshot_hash_candidates (FlutterPayloadScan > 64)");
       }
       if (nat.blaProtected) {
         limits.push("native-rodata-chaff-mirage");
@@ -565,11 +576,11 @@ export function auditTarget(targetPath: string): AuditReport {
         kind: "native-symbol",
         location: basename(absPath),
         riskLevel: nat.blaProtected ? "low" : "critical",
-        reaToolUsed: "open_binary / inspect_rust_binary / inspect_go_binary",
-        estimatedTokensToReconstruct: nat.blaProtected ? 32_000 : 1_450,
-        estimatedCostUsd: nat.blaProtected ? 2.6 : 0.08,
+        reaToolUsed: "open_binary / inspect_rust_binary / inspect_electron_fuses / identify_flutter_build",
+        estimatedTokensToReconstruct: nat.blaProtected ? 36_000 : 1_450,
+        estimatedCostUsd: nat.blaProtected ? 2.9 : 0.08,
         reason: nat.blaProtected
-          ? `Protected by BLA Native Shield (${nat.rustcCommitHashesCount} rustc commit traps > 64 capacity limit)`
+          ? `Protected by BLA Native Shield (${nat.rustcCommitHashesCount} rustc commits > 64, ${nat.electronFuseSentinelsCount} fuse sentinels > 32, ${nat.dartSnapshotHashesCount} Dart snapshots > 64)`
           : "Native binary metadata, sections, and strings directly inspectable by REA",
       });
       sim = {
@@ -577,9 +588,106 @@ export function auditTarget(targetPath: string): AuditReport {
         examinationStatus: nat.blaProtected ? "limited" : "complete",
         triggeredResourceLimits: limits,
         totalFunctions: 8,
-        decoyFunctionsDetectedAsReal: nat.blaProtected ? 20 : 0,
-        obligationLedgerNodes: nat.blaProtected ? 48 : 8,
+        decoyFunctionsDetectedAsReal: nat.blaProtected ? 24 : 0,
+        obligationLedgerNodes: nat.blaProtected ? 56 : 8,
         architecturalChaffPayloads: nat.blaProtected ? 6 : 0,
+      };
+    } else if (format === "sqlite") {
+      vulnerableVectors.add("sqlite-database-inspection");
+      const sqInfo = inspectSqliteBuffer(rawBytes);
+      const limits: string[] = [];
+      if (sqInfo.hasGeneratedTrapColumns) {
+        limits.push("column-evaluation (SqliteColumnEvaluationFailure)");
+      }
+      if (sqInfo.honeyTablesCount > 0) {
+        limits.push("sqlite-enclave-honey-tables");
+      }
+      exposedItems.push({
+        id: `sqlite_${basename(absPath)}`,
+        name: `${basename(absPath)} (${sqInfo.tableNames.length} tables)`,
+        kind: "sqlite-table",
+        location: basename(absPath),
+        riskLevel: sqInfo.blaProtected ? "low" : "critical",
+        reaToolUsed: "inspect_sqlite_database",
+        estimatedTokensToReconstruct: sqInfo.blaProtected ? 28_000 : 880,
+        estimatedCostUsd: sqInfo.blaProtected ? 2.25 : 0.04,
+        reason: sqInfo.blaProtected
+          ? `Protected by BLA SQLite Shield (${sqInfo.honeyTablesCount} honey tables + virtual generated column traps)`
+          : "SQLite tables and rows directly readable by REA inspect-sqlite-database",
+      });
+      sim = {
+        ...sim,
+        examinationStatus: sqInfo.blaProtected ? "limited" : "complete",
+        triggeredResourceLimits: limits,
+        totalFunctions: Math.max(1, sqInfo.tableNames.length),
+        decoyFunctionsDetectedAsReal: sqInfo.blaProtected ? 15 : 0,
+        obligationLedgerNodes: sqInfo.blaProtected ? 36 : Math.max(2, sqInfo.tableNames.length),
+        architecturalChaffPayloads: sqInfo.blaProtected ? 6 : 0,
+      };
+    } else if (format === "model-safetensors" || format === "model-gguf") {
+      vulnerableVectors.add("model-artifact-inspection");
+      const modInfo = inspectModelBuffer(rawBytes);
+      const limits: string[] = [];
+      if (modInfo.exceedsReaNestingLimit) {
+        limits.push(
+          modInfo.format === "safetensors"
+            ? "json-nesting (MODEL_JSON_NESTING > 32)"
+            : "metadata-nesting (MODEL_METADATA_NESTING > 32)",
+        );
+      }
+      if (modInfo.blaProtected) {
+        limits.push("model-enclave-partition-chaff");
+      }
+      exposedItems.push({
+        id: `model_${basename(absPath)}`,
+        name: `${basename(absPath)} (${modInfo.format}, ${modInfo.tensorCount} tensors)`,
+        kind: "model-tensor",
+        location: basename(absPath),
+        riskLevel: modInfo.blaProtected ? "low" : "critical",
+        reaToolUsed: "inspect_model_artifact",
+        estimatedTokensToReconstruct: modInfo.blaProtected ? 31_000 : 950,
+        estimatedCostUsd: modInfo.blaProtected ? 2.45 : 0.05,
+        reason: modInfo.blaProtected
+          ? "Protected by BLA Model Shield (enclave metadata + nesting capacity breaker > 32)"
+          : "Model tensor shapes, dtypes, and metadata directly readable by REA",
+      });
+      sim = {
+        ...sim,
+        examinationStatus: modInfo.blaProtected ? "limited" : "complete",
+        triggeredResourceLimits: limits,
+        totalFunctions: Math.max(1, modInfo.tensorCount),
+        decoyFunctionsDetectedAsReal: modInfo.blaProtected ? 16 : 0,
+        obligationLedgerNodes: modInfo.blaProtected ? 38 : Math.max(2, modInfo.tensorCount),
+        architecturalChaffPayloads: modInfo.blaProtected ? 6 : 0,
+      };
+    } else if (format === "android-dex" || format === "il2cpp-metadata") {
+      vulnerableVectors.add("android-dex-il2cpp-inspection");
+      const isProtected =
+        format === "android-dex"
+          ? inspectAndroidDex(rawBytes).blaProtected
+          : rawBytes.toString("latin1").includes("BLA-IL2CPP-SHIELD");
+      exposedItems.push({
+        id: `mobile_${basename(absPath)}`,
+        name: basename(absPath),
+        kind: "dex-class",
+        location: basename(absPath),
+        riskLevel: isProtected ? "low" : "critical",
+        reaToolUsed:
+          format === "android-dex" ? "search_android_classes (JADX/JEB)" : "inspect_il2cpp_metadata",
+        estimatedTokensToReconstruct: isProtected ? 29_000 : 1_100,
+        estimatedCostUsd: isProtected ? 2.35 : 0.06,
+        reason: isProtected
+          ? "Protected by BLA DEX / IL2CPP Enclave Class & Metadata Shield"
+          : "Class/type descriptors and string literals exposed to REA",
+      });
+      sim = {
+        ...sim,
+        examinationStatus: isProtected ? "limited" : "complete",
+        triggeredResourceLimits: isProtected ? ["dex-il2cpp-enclave-tarpit"] : [],
+        totalFunctions: 10,
+        decoyFunctionsDetectedAsReal: isProtected ? 28 : 0,
+        obligationLedgerNodes: isProtected ? 52 : 10,
+        architecturalChaffPayloads: isProtected ? 6 : 0,
       };
     } else if (format === "archive-zip" || format === "android-apk") {
       vulnerableVectors.add("archive-inventory");

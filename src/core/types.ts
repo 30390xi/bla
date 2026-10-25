@@ -10,6 +10,11 @@ export type ArtifactFormat =
   | "native-elf"
   | "native-macho"
   | "native-pe"
+  | "sqlite"
+  | "model-safetensors"
+  | "model-gguf"
+  | "android-dex"
+  | "il2cpp-metadata"
   | "archive-zip"
   | "android-apk"
   | "directory"
@@ -20,6 +25,8 @@ export type ProtectionIntensity = "stealth" | "balanced" | "maximum" | "bankrupt
 export type ReaAttackVectorId =
   | "js-static-semantics"
   | "electron-ipc-bridge"
+  | "electron-fuses-inspection"
+  | "runtime-cdp-frida-reconciliation"
   | "js-route-rpc-inventory"
   | "sourcemap-recovery"
   | "call-graph-tracing"
@@ -29,6 +36,10 @@ export type ReaAttackVectorId =
   | "native-go-buildinfo"
   | "native-rust-auditable"
   | "native-decompiler-pseudocode"
+  | "flutter-dart-aot-snapshot"
+  | "sqlite-database-inspection"
+  | "model-artifact-inspection"
+  | "android-dex-il2cpp-inspection"
   | "archive-inventory";
 
 export interface ExposedSymbolOrModule {
@@ -45,7 +56,11 @@ export interface ExposedSymbolOrModule {
     | "pyc-code-object"
     | "native-symbol"
     | "metadata-section"
-    | "sourcemap-source";
+    | "sourcemap-source"
+    | "sqlite-table"
+    | "model-tensor"
+    | "electron-fuse"
+    | "dex-class";
   readonly location: string;
   readonly riskLevel: "critical" | "high" | "medium" | "low";
   readonly reaToolUsed: string;
@@ -117,6 +132,7 @@ export interface ProtectionOptions {
   readonly protectElectronIpc?: boolean;
   readonly injectRouteMirage?: boolean;
   readonly honeySourceMaps?: boolean;
+  readonly runtimeDeception?: boolean;
 }
 
 export interface ProtectionMetrics {

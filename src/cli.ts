@@ -37,7 +37,7 @@ Commands:
   audit <target>              Pre-flight REA exposure & vulnerability scan
   protect <target>            Inject multi-layer Counter-REA adversarial shield
   verify <target> [original]  Verify Counter-REA defense invariants & token amplification
-  benchmark                   Run the 5-target Counter-REA Showcase Benchmark suite
+  benchmark                   Run the 8-target Counter-REA Showcase Benchmark suite
   emit-headers                Generate compile-time C/C++, Rust, or Go defense headers
   doctor                      Check readiness of BLA engines & agent registrations
   uninstall                   Remove BLA MCP configuration & skill files

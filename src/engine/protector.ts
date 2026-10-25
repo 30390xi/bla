@@ -23,6 +23,9 @@ import { protectWasmBinary } from "../shields/formats/wasm.js";
 import { protectPythonPycBuffer, protectPythonSource } from "../shields/formats/python.js";
 import { protectNativeBinary } from "../shields/formats/native.js";
 import { protectZipOrApkBuffer } from "../shields/formats/archive.js";
+import { protectSqliteBuffer } from "../shields/formats/sqlite.js";
+import { protectGgufBuffer, protectSafetensorsBuffer } from "../shields/formats/model.js";
+import { protectAndroidDexBuffer, protectIl2cppMetadataBuffer } from "../shields/formats/mobile-game.js";
 import { auditTarget } from "./auditor.js";
 
 function deriveDefaultOutputPath(inputPath: string, inPlace = false): string {
@@ -250,13 +253,55 @@ export function protectTarget(options: ProtectionOptions): ProtectionResult {
     const rawBin = readFileSync(absInput);
     const res = protectNativeBinary(rawBin, { intensity, seed });
     writeFileSync(absOutput, res.buffer);
-    decoyFunctionsInjected = 20;
-    fakeCrossReferencesCreated = 40;
+    decoyFunctionsInjected = 24;
+    fakeCrossReferencesCreated = 48;
     chaffPayloadsEmbedded = res.chaffPayloadsEmbedded;
     binarySectionsPatched = res.binarySectionsPatched;
     counteredVectors.add("native-rust-auditable");
     counteredVectors.add("native-go-buildinfo");
     counteredVectors.add("native-decompiler-pseudocode");
+    counteredVectors.add("electron-fuses-inspection");
+    counteredVectors.add("flutter-dart-aot-snapshot");
+  } else if (format === "sqlite") {
+    const rawDb = readFileSync(absInput);
+    const res = protectSqliteBuffer(rawDb, { intensity, seed });
+    writeFileSync(absOutput, res.buffer);
+    decoyFunctionsInjected = res.honeyTablesInjected * 5;
+    chaffPayloadsEmbedded = res.chaffPayloadsEmbedded;
+    binarySectionsPatched = res.honeyTablesInjected + res.generatedTrapColumnsAdded;
+    counteredVectors.add("sqlite-database-inspection");
+  } else if (format === "model-safetensors") {
+    const rawModel = readFileSync(absInput);
+    const res = protectSafetensorsBuffer(rawModel, { intensity, seed });
+    writeFileSync(absOutput, res.buffer);
+    decoyFunctionsInjected = 16;
+    chaffPayloadsEmbedded = res.chaffPayloadsEmbedded;
+    binarySectionsPatched = res.triggeredJsonNestingBreaker ? 2 : 1;
+    counteredVectors.add("model-artifact-inspection");
+  } else if (format === "model-gguf") {
+    const rawModel = readFileSync(absInput);
+    const res = protectGgufBuffer(rawModel, { intensity, seed });
+    writeFileSync(absOutput, res.buffer);
+    decoyFunctionsInjected = 16;
+    chaffPayloadsEmbedded = res.chaffPayloadsEmbedded;
+    binarySectionsPatched = res.triggeredMetadataNestingBreaker ? 2 : 1;
+    counteredVectors.add("model-artifact-inspection");
+  } else if (format === "android-dex") {
+    const rawDex = readFileSync(absInput);
+    const res = protectAndroidDexBuffer(rawDex, { intensity, seed });
+    writeFileSync(absOutput, res.buffer);
+    decoyFunctionsInjected = res.decoyClassesInjected;
+    chaffPayloadsEmbedded = res.chaffPayloadsEmbedded;
+    binarySectionsPatched = 3; // file_size + SHA1 signature + Adler32 checksum
+    counteredVectors.add("android-dex-il2cpp-inspection");
+  } else if (format === "il2cpp-metadata") {
+    const rawMeta = readFileSync(absInput);
+    const res = protectIl2cppMetadataBuffer(rawMeta, { intensity, seed });
+    writeFileSync(absOutput, res.buffer);
+    decoyFunctionsInjected = 28;
+    chaffPayloadsEmbedded = res.chaffPayloadsEmbedded;
+    binarySectionsPatched = 1;
+    counteredVectors.add("android-dex-il2cpp-inspection");
   } else if (format === "archive-zip" || format === "android-apk") {
     const rawZip = readFileSync(absInput);
     const res = protectZipOrApkBuffer(rawZip, {

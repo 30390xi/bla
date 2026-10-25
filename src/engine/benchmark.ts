@@ -5,6 +5,8 @@ import vm from "node:vm";
 import { BLA_IDENTITY } from "../identity.js";
 import type { BenchmarkReport, ShowcaseCaseResult } from "../core/types.js";
 import { packAsarBuffer } from "../shields/formats/asar.js";
+import { buildSampleSqliteDatabase } from "../shields/formats/sqlite.js";
+import { buildSafetensorsBuffer } from "../shields/formats/model.js";
 import { auditTarget } from "./auditor.js";
 import { protectTarget } from "./protector.js";
 
@@ -286,7 +288,54 @@ export async function runShowcaseBenchmark(): Promise<BenchmarkReport> {
       const functionalOk = afterAudit.reaSimulation.triggeredResourceLimits.some((l) =>
         l.includes("maximum_rustc_hashes"),
       );
-      cases.push(buildCaseResult("native-elf", "Native ELF64 Rust/Go Binary", "REA inspect_rust_binary / open_binary", res, functionalOk));
+      cases.push(buildCaseResult("native-elf", "Native ELF64 Rust/Go/Electron/Dart Binary", "REA inspect_rust_binary / inspect_electron_fuses / identify_flutter_build", res, functionalOk));
+    }
+
+    // 6. Local SQLite 3 Entitlement Database (.sqlite)
+    {
+      const dbPath = join(tempDir, "entitlements.sqlite");
+      const outDbPath = join(tempDir, "entitlements.shielded.sqlite");
+      writeFileSync(dbPath, buildSampleSqliteDatabase());
+      const res = protectTarget({ inputPath: dbPath, outputPath: outDbPath, intensity: "bankrupt" });
+      const afterAudit = auditTarget(outDbPath);
+      const functionalOk = afterAudit.reaSimulation.triggeredResourceLimits.some((l) =>
+        l.includes("SqliteColumnEvaluationFailure"),
+      );
+      cases.push(buildCaseResult("sqlite-db", "Local SQLite Entitlement Database (.sqlite)", "REA inspect_sqlite_database", res, functionalOk));
+    }
+
+    // 7. Edge AI Safetensors Model (.safetensors)
+    {
+      const modelPath = join(tempDir, "proprietary-weights.safetensors");
+      const outModelPath = join(tempDir, "proprietary-weights.shielded.safetensors");
+      writeFileSync(
+        modelPath,
+        buildSafetensorsBuffer({
+          encoder_proj: { dtype: "F32", shape: [2, 2], data_offsets: [0, 16] },
+        }),
+      );
+      const res = protectTarget({ inputPath: modelPath, outputPath: outModelPath, intensity: "bankrupt" });
+      const afterAudit = auditTarget(outModelPath);
+      const functionalOk = afterAudit.reaSimulation.triggeredResourceLimits.some((l) =>
+        l.includes("MODEL_JSON_NESTING"),
+      );
+      cases.push(buildCaseResult("safetensors-model", "Proprietary Edge AI Model (.safetensors)", "REA inspect_model_artifact", res, functionalOk));
+    }
+
+    // 8. Android Dalvik Bytecode (classes.dex)
+    {
+      const dexPath = join(tempDir, "classes.dex");
+      const outDexPath = join(tempDir, "classes.shielded.dex");
+      const baseDex = Buffer.alloc(112, 0);
+      baseDex.write("dex\n035\0", 0, "ascii");
+      baseDex.writeUInt32LE(112, 32);
+      baseDex.writeUInt32LE(112, 36);
+      baseDex.writeUInt32LE(0x12345678, 40);
+      writeFileSync(dexPath, baseDex);
+      const res = protectTarget({ inputPath: dexPath, outputPath: outDexPath, intensity: "bankrupt" });
+      const afterAudit = auditTarget(outDexPath);
+      const functionalOk = afterAudit.protectionStatus === "BLA_PROTECTED";
+      cases.push(buildCaseResult("android-dex", "Android Dalvik Bytecode (classes.dex)", "REA search_android_classes (JADX/JEB)", res, functionalOk));
     }
   } finally {
     rmSync(tempDir, { recursive: true, force: true });

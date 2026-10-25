@@ -10,6 +10,9 @@ export {
   type TarpitGenerationResult,
 } from "./shields/tarpit/tarpit-generator.js";
 export {
+  generateRuntimeDeceptionSnippet,
+} from "./shields/runtime/runtime-shield.js";
+export {
   transformJavaScriptWithBlaShield,
   type JsShieldTransformResult,
 } from "./shields/javascript/ast-shield.js";
@@ -19,6 +22,11 @@ export {
   packAsarBuffer,
   type VirtualAsarFile,
 } from "./shields/formats/asar.js";
+export {
+  inspectElectronFusesInBuffer,
+  hardenAndOverflowElectronFuses,
+  type ElectronFuseInspectionSummary,
+} from "./shields/formats/electron-fuses.js";
 export { inspectWasmBinary, protectWasmBinary } from "./shields/formats/wasm.js";
 export {
   protectPythonSource,
@@ -36,10 +44,35 @@ export {
   type EmittedNativeHeader,
 } from "./shields/formats/headers.js";
 export {
+  inspectSqliteBuffer,
+  protectSqliteBuffer,
+  buildSampleSqliteDatabase,
+  type SqliteInspectionSummary,
+} from "./shields/formats/sqlite.js";
+export {
+  buildSafetensorsBuffer,
+  inspectModelBuffer,
+  protectSafetensorsBuffer,
+  protectGgufBuffer,
+  type ModelInspectionSummary,
+} from "./shields/formats/model.js";
+export {
+  inspectAndroidDex,
+  protectAndroidDexBuffer,
+  protectIl2cppMetadataBuffer,
+} from "./shields/formats/mobile-game.js";
+export {
   readZipEntries,
   writeZipArchive,
   protectZipOrApkBuffer,
 } from "./shields/formats/archive.js";
+export {
+  blaRollupPlugin,
+  blaVitePlugin,
+  BlaWebpackPlugin,
+  blaEsbuildPlugin,
+  type BlaBundlerPluginOptions,
+} from "./bundler/index.js";
 export { auditTarget } from "./engine/auditor.js";
 export { protectTarget } from "./engine/protector.js";
 export { verifyTarget } from "./engine/verifier.js";
