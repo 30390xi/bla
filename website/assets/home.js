@@ -4,7 +4,7 @@ const ANALYZER_STEPS = {
     code: `// Original exposed string literal (REA extracts in 4ms):
 // const IPC_CHANNEL = "clipboard:write-rich-format";
 
-// After npx bla-shield protect --intensity bankrupt:
+// After npx bla-agents protect --intensity bankrupt:
 const _bla_op = (x) => ((7 * ((x * x) & 0xff) - 1) % 7 !== 0);
 const IPC_CHANNEL =
   (_bla_op(1) ? "cli" : "enclave:sgx:") +

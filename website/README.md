@@ -5,7 +5,7 @@ Official website and interactive Counter-REA defense labs for **[BLA: Blind LLM 
 ## Pages & Interactive Labs
 
 - `/` ([`index.html`](./index.html)):
-  - **Tactical HUD & Instant Setup Card** (One-click copy prompts for Claude Code, Cursor, Codex, and Antigravity + `npx bla-shield@latest setup`).
+  - **Tactical HUD & Instant Setup Card** (One-click copy prompts for Claude Code, Cursor, Codex, and Antigravity + `npx bla-agents@latest setup`).
   - **Interactive 3-Step REA Analyzer Tripwire Inspector** (`01 · JS/Electron Semantic & IPC Breaker`, `02 · Rust/Fuse/Dart Binary Trap`, `03 · SQLite Virtual Column & AI Model Bomb`).
   - **Interactive Lab 01 — Playable 60 FPS Dinosaur Shield Lab**: Direct counterpart to `rea.tools`'s Chrome Dinosaur demo. Toggle **BLA Shield ON / OFF** in real time to see the game run at 60 FPS (`0ms` overhead) while the attacking REA agent terminal drowns in 10.1M tokens of enclave chaff.
   - **Interactive Lab 02 — Token Bankruptcy Calculator**: Select any of the 8 target formats, BLA intensity (`stealth`, `balanced`, `maximum`, `bankrupt`), and attacker LLM (`Claude Opus 4`, `OpenAI o3`, `Claude Sonnet 4`).

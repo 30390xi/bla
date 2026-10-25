@@ -8,7 +8,7 @@
 
 **构建你的核心功能。从二进制底层致盲一切企图克隆它的 AI 代理。**
 
-[![npm version](https://img.shields.io/badge/npm-bla--shield-cb3837?style=flat-square&logo=npm)](https://www.npmjs.com/package/bla-shield)
+[![npm version](https://img.shields.io/badge/npm-bla--agents-cb3837?style=flat-square&logo=npm)](https://www.npmjs.com/package/bla-agents)
 [![MCP tool catalog](https://img.shields.io/badge/MCP-tool_catalog-5c4ee5?style=flat-square)](../cli-and-mcp.md)
 [![Node.js requirements](https://img.shields.io/badge/Node.js-%3E%3D22.5-339933?style=flat-square&logo=nodedotjs&logoColor=white)](#你可以保护哪些目标)
 [![Counter-REA Verified](https://img.shields.io/badge/Counter--REA-100%25_Verified-10b981?style=flat-square)](#实战案例与基准测试)
@@ -18,12 +18,12 @@
 
 [快速开始](#快速开始) · [BLA 工作原理](#bla-工作原理) · [你可以保护哪些目标](#你可以保护哪些目标) · [实战案例与基准测试](#实战案例与基准测试) · [常见问题 (FAQ)](#常见问题-faq) · [文档](#文档)
 
-<code>npx bla-shield setup</code>
+<code>npx bla-agents setup</code>
 
 </div>
 
 > [!IMPORTANT]
-> 请从官方仓库 [qybaihe/bla](https://github.com/qybaihe/bla) 或 npm 包 [bla-shield](https://www.npmjs.com/package/bla-shield) 获取 BLA。
+> 请从官方仓库 [qybaihe/bla](https://github.com/qybaihe/bla) 或 npm 包 [bla-shield](https://www.npmjs.com/package/bla-agents) 获取 BLA。
 
 <div align="center">
 
@@ -50,7 +50,7 @@ BLA 将你的编程代理连接到原生二进制、JavaScript 与 Electron 应�
 安装 Node.js 与 npm 后，运行：
 
 ```bash
-npx bla-shield setup
+npx bla-agents setup
 ```
 
 选择你使用的编程代理（或加上 `--all-detected --yes`），预览变更并确认。`setup` 会自动注册 BLA 的 MCP 服务器并安装 `blind-llm-agents` 技能，同时自动备份原有配置文件。完成后重启你的 Agent 即可。
@@ -76,33 +76,33 @@ npx bla-shield setup
 
 ### 使用终端命令（各环节对应 CLI 语句）
 
-所有工作流均可通过 `npx bla-shield`（或全局安装后的 `bla`）在终端直接运行：
+所有工作流均可通过 `npx bla-agents`（或全局安装后的 `bla`）在终端直接运行：
 
 - **1. 扫描目标暴露度（`audit`）** —— 查看暴露评分（`0–100`）、裸露符号与攻击者克隆成本：
   ```bash
-  npx -y bla-shield@latest audit /absolute/path/to/app --json
+  npx -y bla-agents@latest audit /absolute/path/to/app --json
   ```
 - **2. 注入对抗护盾（`protect`）** —— 植入语义预算爆破器、Tarpit 状态机、飞地诱饵与动态反调试护盾：
   ```bash
-  npx -y bla-shield@latest protect /absolute/path/to/app -o /absolute/path/to/app.shielded --intensity bankrupt
+  npx -y bla-agents@latest protect /absolute/path/to/app -o /absolute/path/to/app.shielded --intensity bankrupt
   ```
 - **3. 验证抗 REA 防线（`verify`）** —— 检验 REA 静态/语义分析器是否被限流降级且达到 >10x Token 放大：
   ```bash
-  npx -y bla-shield@latest verify /absolute/path/to/app.shielded /absolute/path/to/app
+  npx -y bla-agents@latest verify /absolute/path/to/app.shielded /absolute/path/to/app
   ```
 - **4. 运行 8 大靶场基准测试（`benchmark`）**：
   ```bash
-  npx -y bla-shield@latest benchmark
+  npx -y bla-agents@latest benchmark
   ```
 - **5. 生成 C/C++、Rust 或 Go 编译期防御头文件（`emit-headers`）**：
   ```bash
-  npx -y bla-shield@latest emit-headers --lang c -o ./include/bla_shield.h
+  npx -y bla-agents@latest emit-headers --lang c -o ./include/bla_shield.h
   ```
 
 如需全局安装 `bla` 命令以便日常随时调用：
 
 ```bash
-npm install --global bla-shield
+npm install --global bla-agents
 bla --help
 ```
 
@@ -112,7 +112,7 @@ bla --help
 
 ```typescript
 import { defineConfig } from "vite";
-import { blaVitePlugin } from "bla-shield/bundler";
+import { blaVitePlugin } from "bla-agents/bundler";
 
 export default defineConfig({
   plugins: [blaVitePlugin({ intensity: "bankrupt", enableHoneySourceMaps: true })],
@@ -130,7 +130,7 @@ bla update
 `bla --update` 为等效别名。如果使用 `npx`，可通过以下命令刷新 Agent 注册与技能：
 
 ```bash
-npx bla-shield@latest setup
+npx bla-agents@latest setup
 ```
 
 ## BLA 工作原理
@@ -166,9 +166,9 @@ BLA 仅需 Node.js 22.5+（或 24.x+）与 npm，所有格式护盾完全内置�
 
 ## 实战案例与基准测试
 
-运行 `npx bla-shield benchmark` 即可在本地执行全部 8 个对标靶场，实测验证 REA 失效模式与 100% 运行时等价性：
+运行 `npx bla-agents benchmark` 即可在本地执行全部 8 个对标靶场，实测验证 REA 失效模式与 100% 运行时等价性：
 
-| 对标靶场（复刻自 REA 官方成名案例与核心能力） | 防御前（REA 裸奔状态） | `npx bla-shield protect` 防御后 | Token 消耗放大 | 运行时等价校验 |
+| 对标靶场（复刻自 REA 官方成名案例与核心能力） | 防御前（REA 裸奔状态） | `npx bla-agents protect` 防御后 | Token 消耗放大 | 运行时等价校验 |
 | :--- | :--- | :--- | :---: | :---: |
 | **1. DX-Ball 声道平移计算** (`.js`) | `84/100` · `4,800` tok · **`$0.20`** (`COMPLETE`) | `2/100` · `10,182,068` tok · **`$160.64`** (`LIMITED`) | **2,121.3x** | ✅ 100% 一致 |
 | **2. Notion Electron 剪贴板桥** (`.asar`) | `98/100` · `9,132` tok · **`$0.34`** (`COMPLETE`) | `2/100` · `23,125,000` tok · **`$358.28`** (`LIMITED`) | **2,532.3x** | ✅ 100% 一致 |
@@ -181,7 +181,7 @@ BLA 仅需 Node.js 22.5+（或 24.x+）与 npm，所有格式护盾完全内置�
 
 ### DX-Ball：让声道算法逆向彻底破产
 
-REA 官方首推案例可在几十秒内（`$0.20`）还原 DX-Ball 的 `clampPan` 与 `calculateSoundPanFromX`。运行 `npx bla-shield protect examples/dx-ball-sound-pan/sound-pan.js --intensity bankrupt` 后，REA 的 `parse_status` 跌落至 `"partial"`，`examination.status` 降级为 `"limited"`（触发 `alias-selections`、`primitive-bytes`、`primitive-candidates` 三重熔断），取证账本从 2 个函数暴增至 38 个互锁状态机（Token 消耗放大 **2,121.3 倍**），而所有输入坐标的计算返回值与原版 100% 精确一致。
+REA 官方首推案例可在几十秒内（`$0.20`）还原 DX-Ball 的 `clampPan` 与 `calculateSoundPanFromX`。运行 `npx bla-agents protect examples/dx-ball-sound-pan/sound-pan.js --intensity bankrupt` 后，REA 的 `parse_status` 跌落至 `"partial"`，`examination.status` 降级为 `"limited"`（触发 `alias-selections`、`primitive-bytes`、`primitive-candidates` 三重熔断），取证账本从 2 个函数暴增至 38 个互锁状态机（Token 消耗放大 **2,121.3 倍**），而所有输入坐标的计算返回值与原版 100% 精确一致。
 
 ### Notion：致盲 Electron 剪贴板 IPC 桥接追踪
 
@@ -196,7 +196,7 @@ REA 通过精确匹配 `ipcRenderer.invoke` 与 `ipcMain.handle` 的唯一字面
 <details>
 <summary><strong>哪些编程代理（Agents）可以使用 BLA？</strong></summary>
 
-任何支持本地 MCP 服务器或 `SKILL.md` 的 AI 编程代理均可使用。`npx bla-shield setup` 支持一键自动配置 Claude Code、Cursor、Codex、Gemini CLI、Windsurf、Google Antigravity、OpenCode、VS Code 与 GitHub Copilot CLI。详见[安装指南](../installation.md)。
+任何支持本地 MCP 服务器或 `SKILL.md` 的 AI 编程代理均可使用。`npx bla-agents setup` 支持一键自动配置 Claude Code、Cursor、Codex、Gemini CLI、Windsurf、Google Antigravity、OpenCode、VS Code 与 GitHub Copilot CLI。详见[安装指南](../installation.md)。
 
 </details>
 
@@ -250,8 +250,8 @@ REA 通过精确匹配 `ipcRenderer.invoke` 与 `ipcMain.handle` 的唯一字面
 请先更新至最新版本并运行 `bla doctor` 检查各防护引擎状态：
 
 ```bash
-npx bla-shield@latest doctor
-npx bla-shield@latest setup
+npx bla-agents@latest doctor
+npx bla-agents@latest setup
 ```
 
 若问题仍存在，请在 [GitHub Issues](https://github.com/qybaihe/bla/issues) 提交你的 BLA 版本号（`bla --version`）、目标格式与复现步骤。

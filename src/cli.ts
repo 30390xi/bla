@@ -29,6 +29,7 @@ function printHelp(): void {
   console.log(`${formatBanner()}
 
 Usage:
+  npx bla-agents <command> [options]
   npx bla-shield <command> [options]
   bla <command> [options]
 
@@ -201,13 +202,14 @@ export async function runCli(argv: readonly string[] = process.argv.slice(2)): P
         const updateInfo = {
           currentVersion: BLA_IDENTITY.version,
           package: BLA_IDENTITY.packageName,
-          refreshSetupCommand: "npx bla-shield@latest setup",
-          globalUpdateCommand: "npm install --global bla-shield@latest",
+          packageAlias: BLA_IDENTITY.packageAlias,
+          refreshSetupCommand: "npx bla-agents@latest setup",
+          globalUpdateCommand: "npm install --global bla-agents@latest",
         };
         if (parsed.json) {
           console.log(JSON.stringify(updateInfo, null, 2));
         } else {
-          console.log(`${formatBanner()}\n\nBLA v${BLA_IDENTITY.version} update workflow:\n  • Global CLI update:   npm install --global bla-shield@latest\n  • Agent MCP refresh:   npx bla-shield@latest setup\n`);
+          console.log(`${formatBanner()}\n\nBLA v${BLA_IDENTITY.version} update workflow:\n  • Global CLI update:   npm install --global bla-agents@latest\n  • Agent MCP refresh:   npx bla-agents@latest setup\n`);
         }
         return 0;
       }
@@ -306,6 +308,7 @@ const isDirectExecution =
   (process.argv[1].endsWith("cli.js") ||
     process.argv[1].endsWith("cli.ts") ||
     process.argv[1].endsWith("bla") ||
+    process.argv[1].endsWith("bla-agents") ||
     process.argv[1].endsWith("bla-shield"));
 
 if (isDirectExecution) {

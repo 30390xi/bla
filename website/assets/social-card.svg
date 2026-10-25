@@ -25,7 +25,7 @@
   <text x="96" y="272" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="500">Ship a feature you built. Blind the AI agents trying to clone it.</text>
   <text x="96" y="340" fill="url(#emerald)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="26" font-weight="700">Poison  →  Exhaust  →  Hallucinate</text>
   <rect x="96" y="388" width="490" height="64" rx="12" fill="#050811" stroke="#10b981" stroke-width="1.5"/>
-  <text x="122" y="428" fill="#34d399" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="700">$ npx bla-shield@latest setup</text>
+  <text x="122" y="428" fill="#34d399" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="700">$ npx bla-agents@latest setup</text>
   <rect x="650" y="388" width="430" height="130" rx="14" fill="#050811" stroke="#f43f5e" stroke-width="1.5"/>
   <text x="676" y="424" fill="#fb7185" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">REA ENGINE STATUS AFTER BLA:</text>
   <text x="676" y="456" fill="#e2e8f0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16">parse_status: "partial" | status: "limited"</text>

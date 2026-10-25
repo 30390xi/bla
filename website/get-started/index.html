@@ -42,7 +42,7 @@
         <h2 data-zh="1. 一键注册到你的 AI 编程代理">1. Register BLA with your coding agent</h2>
         <p data-zh="需要 Node.js 22.5+（或 24.x+）。在终端运行：">Requires Node.js 22.5+ (or 24.x+). Run in your terminal:</p>
         <div class="code-inline">
-          <code id="gs-setup">npx bla-shield@latest setup --all-detected --yes</code>
+          <code id="gs-setup">npx bla-agents@latest setup --all-detected --yes</code>
           <button class="copy-button" type="button" data-copy="gs-setup">Copy</button>
         </div>
         <p style="color:var(--text-muted);" data-zh="支持自动检测并注册：Claude Code、Cursor、Codex、Gemini CLI、Windsurf、Google Antigravity、OpenCode、VS Code 与 GitHub Copilot CLI。配置完成后请重启你的 Agent。">
@@ -86,23 +86,23 @@
             <button class="copy-button" type="button" data-copy="cli-all">Copy</button>
           </div>
           <pre><code id="cli-all"># 1. Pre-flight REA exposure scan
-npx bla-shield audit ./dist
+npx bla-agents audit ./dist
 
 # 2. Inject Counter-REA shield (stealth | balanced | maximum | bankrupt)
-npx bla-shield protect ./dist -o ./dist-shielded --intensity bankrupt
+npx bla-agents protect ./dist -o ./dist-shielded --intensity bankrupt
 
 # 3. Verify defense gates & token burn multiplier
-npx bla-shield verify ./dist-shielded ./dist
+npx bla-agents verify ./dist-shielded ./dist
 
 # 4. Run 8-target Counter-REA benchmark suite
-npx bla-shield benchmark
+npx bla-agents benchmark
 
 # 5. Emit compile-time C/C++, Rust, or Go defense headers
-npx bla-shield emit-headers --lang c -o ./include/bla_shield.h
+npx bla-agents emit-headers --lang c -o ./include/bla_shield.h
 
 # 6. Check readiness or update global installation
-npx bla-shield doctor
-npx bla-shield update</code></pre>
+npx bla-agents doctor
+npx bla-agents update</code></pre>
         </div>
       </section>
 
@@ -114,7 +114,7 @@ npx bla-shield update</code></pre>
             <button class="copy-button" type="button" data-copy="bundler-code">Copy</button>
           </div>
           <pre><code id="bundler-code">import { defineConfig } from "vite";
-import { blaVitePlugin } from "bla-shield/bundler";
+import { blaVitePlugin } from "bla-agents/bundler";
 
 export default defineConfig({
   plugins: [

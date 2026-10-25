@@ -141,7 +141,7 @@
               </div>
               <p class="terminal-prompt">
                 <span class="prompt-symbol" aria-hidden="true">›</span>
-                <span id="home-install-prompt">Install BLA and connect it to this coding agent using npx bla-shield@latest setup --all-detected --yes. Audit my ./dist build against REA, then protect all exposed modules at bankrupt intensity.</span>
+                <span id="home-install-prompt">Install BLA and connect it to this coding agent using npx bla-agents@latest setup --all-detected --yes. Audit my ./dist build against REA, then protect all exposed modules at bankrupt intensity.</span>
               </p>
             </div>
 
@@ -149,7 +149,7 @@
               Or run this directly in your terminal:
             </p>
             <div class="code-inline">
-              <code id="setup-command">npx bla-shield@latest setup</code>
+              <code id="setup-command">npx bla-agents@latest setup</code>
               <button class="copy-button" type="button" data-copy="setup-command">Copy</button>
             </div>
 
@@ -157,7 +157,7 @@
               Core terminal workflow (Audit → Protect → Verify):
             </p>
             <div class="code-inline">
-              <code id="protect-command">npx bla-shield protect ./dist -o ./dist-shielded --intensity bankrupt</code>
+              <code id="protect-command">npx bla-agents protect ./dist -o ./dist-shielded --intensity bankrupt</code>
               <button class="copy-button" type="button" data-copy="protect-command">Copy</button>
             </div>
             <p style="margin:8px 0 0;font-size:12.5px;color:var(--text-dim);" data-zh="零外部反编译器依赖 · 支持 Vite / Webpack / Rollup / esbuild 构建插件自动注入">
@@ -229,7 +229,7 @@
                 <pre><code id="analyzer-code-view">// Original exposed string literal (REA extracts in 4ms):
 // const IPC_CHANNEL = "clipboard:write-rich-format";
 
-// After npx bla-shield protect --intensity bankrupt:
+// After npx bla-agents protect --intensity bankrupt:
 const _bla_op = (x) => ((7 * ((x * x) & 0xff) - 1) % 7 !== 0);
 const IPC_CHANNEL =
   (_bla_op(1) ? "cli" : "enclave:sgx:") +
@@ -410,7 +410,7 @@ const IPC_CHANNEL =
 
               <div class="sim-card sim-after">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                  <strong style="color:var(--emerald-bright);font-family:var(--font-mono);" data-zh="npx bla-shield protect 防御后">AFTER BLA SHIELD (Poison + Tarpit)</strong>
+                  <strong style="color:var(--emerald-bright);font-family:var(--font-mono);" data-zh="npx bla-agents protect 防御后">AFTER BLA SHIELD (Poison + Tarpit)</strong>
                   <span class="badge-pass">REA BLINDED</span>
                 </div>
                 <div class="sim-metric-row">
@@ -447,8 +447,8 @@ const IPC_CHANNEL =
             <div>
               <p class="eyebrow" data-zh="像素级对标实测">Empirical Counter-Showcases</p>
               <h2 style="margin:0 0 8px;" data-zh="直接拿 REA 官方成名案例开刀。">Tested directly against REA's flagship showcases.</h2>
-              <p class="lede" style="margin:0;" data-zh="运行 npx bla-shield benchmark 即可在你本地机器复现以下全部 8 个靶场。">
-                Run <code>npx bla-shield benchmark</code> locally to reproduce all 8 head-to-head battles.
+              <p class="lede" style="margin:0;" data-zh="运行 npx bla-agents benchmark 即可在你本地机器复现以下全部 8 个靶场。">
+                Run <code>npx bla-agents benchmark</code> locally to reproduce all 8 head-to-head battles.
               </p>
             </div>
             <a class="button-secondary" href="./showcase/" data-zh="查看完整打脸报告 →">Explore all Showcases →</a>
@@ -592,8 +592,8 @@ const IPC_CHANNEL =
 
           <details class="faq-item" open>
             <summary data-zh="哪些 AI 编程代理（Agents）可以使用 BLA？">Which coding agents can use BLA?</summary>
-            <div class="faq-body" data-zh="任何支持本地 MCP 服务器或 SKILL.md 的代理均可使用。运行 npx bla-shield setup 即可自动检测并配置 Claude Code、Cursor、Codex、Gemini CLI、Windsurf、Google Antigravity、OpenCode、VS Code 与 GitHub Copilot CLI。">
-              Any coding agent that supports local MCP servers or <code>SKILL.md</code> instructions. Running <code>npx bla-shield setup</code> auto-detects and configures Claude Code, Cursor, Codex, Gemini CLI, Windsurf, Google Antigravity, OpenCode, VS Code, and GitHub Copilot CLI.
+            <div class="faq-body" data-zh="任何支持本地 MCP 服务器或 SKILL.md 的代理均可使用。运行 npx bla-agents setup 即可自动检测并配置 Claude Code、Cursor、Codex、Gemini CLI、Windsurf、Google Antigravity、OpenCode、VS Code 与 GitHub Copilot CLI。">
+              Any coding agent that supports local MCP servers or <code>SKILL.md</code> instructions. Running <code>npx bla-agents setup</code> auto-detects and configures Claude Code, Cursor, Codex, Gemini CLI, Windsurf, Google Antigravity, OpenCode, VS Code, and GitHub Copilot CLI.
             </div>
           </details>
 

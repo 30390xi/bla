@@ -8,7 +8,7 @@
 
 **Ship a feature you built. Blind the agents trying to clone it, down to the binary level.**
 
-[![npm version](https://img.shields.io/badge/npm-bla--shield-cb3837?style=flat-square&logo=npm)](https://www.npmjs.com/package/bla-shield)
+[![npm version](https://img.shields.io/badge/npm-bla--agents-cb3837?style=flat-square&logo=npm)](https://www.npmjs.com/package/bla-agents)
 [![MCP tool catalog](https://img.shields.io/badge/MCP-tool_catalog-5c4ee5?style=flat-square)](docs/cli-and-mcp.md)
 [![Node.js requirements](https://img.shields.io/badge/Node.js-%3E%3D22.5-339933?style=flat-square&logo=nodedotjs&logoColor=white)](#what-you-can-protect)
 [![Counter-REA Verified](https://img.shields.io/badge/Counter--REA-100%25_Verified-10b981?style=flat-square)](#showcases)
@@ -18,12 +18,12 @@
 
 [Quick start](#quick-start) · [How BLA works](#how-bla-works) · [What you can protect](#what-you-can-protect) · [Showcases](#showcases) · [FAQ](#faq) · [Documentation](#documentation)
 
-<code>npx bla-shield setup</code>
+<code>npx bla-agents setup</code>
 
 </div>
 
 > [!IMPORTANT]
-> Get BLA from [qybaihe/bla](https://github.com/qybaihe/bla) or the [bla-shield npm package](https://www.npmjs.com/package/bla-shield).
+> Get BLA from [qybaihe/bla](https://github.com/qybaihe/bla) or the [bla-shield npm package](https://www.npmjs.com/package/bla-agents).
 > Follow the installation and release links from these official sources.
 
 <div align="center">
@@ -51,7 +51,7 @@ Setup registers BLA with your agent and installs matching workflow instructions.
 With Node.js and npm installed, run:
 
 ```bash
-npx bla-shield setup
+npx bla-agents setup
 ```
 
 Choose your agents (or pass `--all-detected --yes`), review the proposed changes, and approve them. Setup registers BLA's MCP server and installs the `blind-llm-agents` skill, with backups of existing configuration. Restart your agent afterward.
@@ -77,33 +77,33 @@ Every defense stage can be triggered directly in natural language:
 
 ### Use the terminal
 
-Every workflow is available directly from your terminal with `npx bla-shield` (or `bla` when installed globally):
+Every workflow is available directly from your terminal with `npx bla-agents` (or `bla` when installed globally):
 
 - **1. Audit a target (`audit`)** — inspect exposure score (`0–100`), exposed symbols, and estimated attacker clone cost:
   ```bash
-  npx -y bla-shield@latest audit /absolute/path/to/app --json
+  npx -y bla-agents@latest audit /absolute/path/to/app --json
   ```
 - **2. Protect a target (`protect`)** — inject semantic budget breakers, tarpit state machines, enclave chaff, and runtime shields:
   ```bash
-  npx -y bla-shield@latest protect /absolute/path/to/app -o /absolute/path/to/app.shielded --intensity bankrupt
+  npx -y bla-agents@latest protect /absolute/path/to/app -o /absolute/path/to/app.shielded --intensity bankrupt
   ```
 - **3. Verify Counter-REA resistance (`verify`)** — check that REA's static/semantic passes hit resource limits and >10x token amplification:
   ```bash
-  npx -y bla-shield@latest verify /absolute/path/to/app.shielded /absolute/path/to/app
+  npx -y bla-agents@latest verify /absolute/path/to/app.shielded /absolute/path/to/app
   ```
 - **4. Run the 8-target Counter-REA benchmark (`benchmark`)**:
   ```bash
-  npx -y bla-shield@latest benchmark
+  npx -y bla-agents@latest benchmark
   ```
 - **5. Emit compile-time native headers (`emit-headers`)** for C/C++, Rust, or Go builds:
   ```bash
-  npx -y bla-shield@latest emit-headers --lang c -o ./include/bla_shield.h
+  npx -y bla-agents@latest emit-headers --lang c -o ./include/bla_shield.h
   ```
 
 To install the `bla` command for regular use:
 
 ```bash
-npm install --global bla-shield
+npm install --global bla-agents
 bla --help
 ```
 
@@ -113,7 +113,7 @@ Import `bla-shield/bundler` in Vite, Rollup, Webpack, or esbuild to automaticall
 
 ```typescript
 import { defineConfig } from "vite";
-import { blaVitePlugin } from "bla-shield/bundler";
+import { blaVitePlugin } from "bla-agents/bundler";
 
 export default defineConfig({
   plugins: [blaVitePlugin({ intensity: "bankrupt", enableHoneySourceMaps: true })],
@@ -131,10 +131,10 @@ bla update
 `bla --update` is an alias for this workflow. If you use `npx`, refresh your agent registrations and skill with:
 
 ```bash
-npx bla-shield@latest setup
+npx bla-agents@latest setup
 ```
 
-Review the setup changes and restart your agent. For one-off CLI commands, use `npx bla-shield@latest` (or `bunx bla-shield@latest`) followed by the command.
+Review the setup changes and restart your agent. For one-off CLI commands, use `npx bla-agents@latest` (or `bunx bla-agents@latest`) followed by the command.
 
 ## How BLA works
 
@@ -169,9 +169,9 @@ BLA requires Node.js 22.5+ (or 24.x+) and npm. All shields run self-contained wi
 
 ## Showcases
 
-Run `npx bla-shield benchmark` to execute all 8 counter-showcases locally and verify both REA failure modes and 100% runtime equivalence:
+Run `npx bla-agents benchmark` to execute all 8 counter-showcases locally and verify both REA failure modes and 100% runtime equivalence:
 
-| Showcase Target (Modeled on REA Official Showcases) | Before BLA (REA Alone) | After `npx bla-shield protect` | Token Burn | Runtime Check |
+| Showcase Target (Modeled on REA Official Showcases) | Before BLA (REA Alone) | After `npx bla-agents protect` | Token Burn | Runtime Check |
 | :--- | :--- | :--- | :---: | :---: |
 | **1. DX-Ball Sound-Pan Calculation** (`.js`) | `84/100` · `4,800` tok · **`$0.20`** (`COMPLETE`) | `2/100` · `10,182,068` tok · **`$160.64`** (`LIMITED`) | **2,121.3x** | ✅ 100% Exact |
 | **2. Notion Electron Clipboard Bridge** (`.asar`) | `98/100` · `9,132` tok · **`$0.34`** (`COMPLETE`) | `2/100` · `23,125,000` tok · **`$358.28`** (`LIMITED`) | **2,532.3x** | ✅ 100% Exact |
@@ -184,7 +184,7 @@ Run `npx bla-shield benchmark` to execute all 8 counter-showcases locally and ve
 
 ### DX-Ball: bankrupt a sound-pan reconstruction
 
-REA's flagship showcase reconstructs DX-Ball's `clampPan` and `calculateSoundPanFromX` helpers in seconds (`$0.20`). After running `npx bla-shield protect examples/dx-ball-sound-pan/sound-pan.js --intensity bankrupt`, REA's `parse_status` drops to `"partial"`, `examination.status` degrades to `"limited"` (`["alias-selections", "primitive-bytes", "primitive-candidates"]`), and the obligation ledger expands from 2 functions to 38 interconnected state machines (`2,121.3x` token amplification) while returning identical pan values for every input coordinate.
+REA's flagship showcase reconstructs DX-Ball's `clampPan` and `calculateSoundPanFromX` helpers in seconds (`$0.20`). After running `npx bla-agents protect examples/dx-ball-sound-pan/sound-pan.js --intensity bankrupt`, REA's `parse_status` drops to `"partial"`, `examination.status` degrades to `"limited"` (`["alias-selections", "primitive-bytes", "primitive-candidates"]`), and the obligation ledger expands from 2 functions to 38 interconnected state machines (`2,121.3x` token amplification) while returning identical pan values for every input coordinate.
 
 ### Notion: blind the Electron clipboard IPC bridge
 
@@ -199,7 +199,7 @@ When an attacker runs REA's `inspect_rust_binary`, `inspect_electron_fuses`, `in
 <details>
 <summary><strong>Which agents can use BLA?</strong></summary>
 
-Any coding agent that supports local MCP servers or `SKILL.md` workflows. `npx bla-shield setup` auto-configures Claude Code, Cursor, Codex, Gemini CLI, Windsurf, Google Antigravity, OpenCode, VS Code, and GitHub Copilot CLI. See [supported agents](docs/installation.md).
+Any coding agent that supports local MCP servers or `SKILL.md` workflows. `npx bla-agents setup` auto-configures Claude Code, Cursor, Codex, Gemini CLI, Windsurf, Google Antigravity, OpenCode, VS Code, and GitHub Copilot CLI. See [supported agents](docs/installation.md).
 
 </details>
 
@@ -253,8 +253,8 @@ Never. BLA audits, protects, and verifies all files 100% locally on your machine
 Update first and run `bla doctor` to check engine readiness:
 
 ```bash
-npx bla-shield@latest doctor
-npx bla-shield@latest setup
+npx bla-agents@latest doctor
+npx bla-agents@latest setup
 ```
 
 If the issue persists, [open an issue](https://github.com/qybaihe/bla/issues) with your BLA version (`bla --version`), target format, and steps to reproduce.

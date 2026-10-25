@@ -8,7 +8,7 @@
 
 **Rilis fitur yang Anda bangun. Butakan agen AI yang mencoba mengkloningnya hingga ke level biner.**
 
-[![npm version](https://img.shields.io/badge/npm-bla--shield-cb3837?style=flat-square&logo=npm)](https://www.npmjs.com/package/bla-shield)
+[![npm version](https://img.shields.io/badge/npm-bla--agents-cb3837?style=flat-square&logo=npm)](https://www.npmjs.com/package/bla-agents)
 [![MCP tool catalog](https://img.shields.io/badge/MCP-tool_catalog-5c4ee5?style=flat-square)](../cli-and-mcp.md)
 [![Node.js requirements](https://img.shields.io/badge/Node.js-%3E%3D22.5-339933?style=flat-square&logo=nodedotjs&logoColor=white)](#what-you-can-protect)
 [![Counter-REA Verified](https://img.shields.io/badge/Counter--REA-100%25_Verified-10b981?style=flat-square)](#showcases)
@@ -16,18 +16,18 @@
 
 [Mulai cepat](#quick-start) · [Cara kerja BLA](#how-bla-works) · [Apa yang dapat Anda lindungi](#what-you-can-protect) · [Showcase & Benchmark](#showcases) · [FAQ](#faq) · [Dokumentasi](#documentation)
 
-<code>npx bla-shield setup</code>
+<code>npx bla-agents setup</code>
 
 </div>
 
 > [!IMPORTANT]
-> Get BLA from [qybaihe/bla](https://github.com/qybaihe/bla) or the [bla-shield npm package](https://www.npmjs.com/package/bla-shield).
+> Get BLA from [qybaihe/bla](https://github.com/qybaihe/bla) or the [bla-shield npm package](https://www.npmjs.com/package/bla-agents).
 
 <div align="center">
 
 <br />
 
-<img src="../assets/bla-vs-rea-showcase.svg" alt="Before BLA vs After npx bla-shield protect" width="1200" />
+<img src="../assets/bla-vs-rea-showcase.svg" alt="Before BLA vs After npx bla-agents protect" width="1200" />
 
 <br />
 
@@ -46,7 +46,7 @@ BLA menghubungkan agen Anda ke alat pelindung biner asli, aplikasi JavaScript & 
 ### Siapkan agen Anda
 
 ```bash
-npx bla-shield setup
+npx bla-agents setup
 ```
 
 ### Minta agen Anda
@@ -68,22 +68,22 @@ npx bla-shield setup
 
 ```bash
 # 1. Audit exposure
-npx -y bla-shield@latest audit /absolute/path/to/app --json
+npx -y bla-agents@latest audit /absolute/path/to/app --json
 
 # 2. Protect artifact
-npx -y bla-shield@latest protect /absolute/path/to/app -o /absolute/path/to/app.shielded --intensity bankrupt
+npx -y bla-agents@latest protect /absolute/path/to/app -o /absolute/path/to/app.shielded --intensity bankrupt
 
 # 3. Verify Counter-REA resistance
-npx -y bla-shield@latest verify /absolute/path/to/app.shielded /absolute/path/to/app
+npx -y bla-agents@latest verify /absolute/path/to/app.shielded /absolute/path/to/app
 
 # 4. Run 8-target Counter-REA benchmark
-npx -y bla-shield@latest benchmark
+npx -y bla-agents@latest benchmark
 
 # 5. Emit compile-time C/C++, Rust, or Go defense headers
-npx -y bla-shield@latest emit-headers --lang c -o ./include/bla_shield.h
+npx -y bla-agents@latest emit-headers --lang c -o ./include/bla_shield.h
 
 # Install globally
-npm install --global bla-shield
+npm install --global bla-agents
 bla --help
 ```
 
@@ -91,7 +91,7 @@ bla --help
 
 ```typescript
 import { defineConfig } from "vite";
-import { blaVitePlugin } from "bla-shield/bundler";
+import { blaVitePlugin } from "bla-agents/bundler";
 
 export default defineConfig({
   plugins: [blaVitePlugin({ intensity: "bankrupt", enableHoneySourceMaps: true })],
@@ -102,7 +102,7 @@ export default defineConfig({
 
 ```bash
 bla update
-npx bla-shield@latest setup
+npx bla-agents@latest setup
 ```
 
 <a id="how-bla-works"></a>
@@ -134,7 +134,7 @@ npx bla-shield@latest setup
 
 ## Showcase & Benchmark
 
-| Showcase Target | Before BLA (REA Alone) | After `npx bla-shield protect` | Token Burn | Runtime Check |
+| Showcase Target | Before BLA (REA Alone) | After `npx bla-agents protect` | Token Burn | Runtime Check |
 | :--- | :--- | :--- | :---: | :---: |
 | **1. DX-Ball Sound-Pan Calculation** (`.js`) | `84/100` · `4,800` tok · **`$0.20`** (`COMPLETE`) | `2/100` · `10,182,068` tok · **`$160.64`** (`LIMITED`) | **2,121.3x** | ✅ 100% Exact |
 | **2. Notion Electron Clipboard Bridge** (`.asar`) | `98/100` · `9,132` tok · **`$0.34`** (`COMPLETE`) | `2/100` · `23,125,000` tok · **`$358.28`** (`LIMITED`) | **2,532.3x** | ✅ 100% Exact |
@@ -152,7 +152,7 @@ npx bla-shield@latest setup
 <details>
 <summary><strong>Which agents can use BLA?</strong></summary>
 
-Any agent that supports local MCP servers or `SKILL.md` workflows (Claude Code, Cursor, Codex, Gemini CLI, Windsurf, Google Antigravity, OpenCode, VS Code, and GitHub Copilot CLI). Run `npx bla-shield setup`.
+Any agent that supports local MCP servers or `SKILL.md` workflows (Claude Code, Cursor, Codex, Gemini CLI, Windsurf, Google Antigravity, OpenCode, VS Code, and GitHub Copilot CLI). Run `npx bla-agents setup`.
 
 </details>
 

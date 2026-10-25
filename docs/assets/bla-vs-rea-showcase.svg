@@ -35,7 +35,7 @@
 
   <!-- Top Header -->
   <text x="600" y="38" text-anchor="middle" class="sans" font-size="20" font-weight="800" fill="#f8fafc">
-    ⚔️ SIDE-BY-SIDE LIVE SHOWCASE: <tspan fill="#f87171">morluto/rea</tspan> BEFORE vs. AFTER <tspan fill="#2dd4bf">npx bla-shield protect</tspan>
+    ⚔️ SIDE-BY-SIDE LIVE SHOWCASE: <tspan fill="#f87171">morluto/rea</tspan> BEFORE vs. AFTER <tspan fill="#2dd4bf">npx bla-agents protect</tspan>
   </text>
 
   <!-- ==================== LEFT SCREEN: BEFORE BLA ==================== -->
@@ -88,7 +88,7 @@
     <circle cx="38" cy="19" r="6" fill="#f59e0b" />
     <circle cx="56" cy="19" r="6" fill="#10b981" />
     <text x="282" y="24" text-anchor="middle" class="mono" font-size="13" font-weight="700" fill="#5eead4">
-      🛡️ AFTER `npx bla-shield protect` — REA Blinded &amp; Bankrupted
+      🛡️ AFTER `npx bla-agents protect` — REA Blinded &amp; Bankrupted
     </text>
 
     <!-- Terminal Lines -->

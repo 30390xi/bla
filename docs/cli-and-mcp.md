@@ -85,7 +85,7 @@ bla uninstall [--client ...] [--json]
 
 ## 2. MCP Server Tools (`bla mcp`)
 
-BLA runs a standards-compliant JSON-RPC 2.0 MCP server over `stdio` (`npx bla-shield mcp`).
+BLA runs a standards-compliant JSON-RPC 2.0 MCP server over `stdio` (`npx bla-agents mcp`).
 
 ### `bla_audit`
 

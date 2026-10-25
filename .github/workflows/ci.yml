@@ -5,31 +5,48 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
+  verify:
+    name: Build, Test & Counter-REA Benchmark (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        node-version: [20.x, 22.x]
+        os: [ubuntu-latest, macos-latest]
+        node: [24]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js ${{ matrix.node }}
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          node-version: ${{ matrix.node }}
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck & build
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Build dist & CLI
         run: npm run build
 
-      - name: Run automated test suite
+      - name: Run unit & multi-format shield tests
         run: npm test
 
-      - name: Run Counter-REA benchmark suite
-        run: node dist/cli.js benchmark
+      - name: Run 8-target Counter-REA showcase benchmark
+        run: npm run benchmark
+
+      - name: Verify CLI doctor & update commands
+        run: |
+          node dist/cli.js --version
+          node dist/cli.js doctor --json
+          node dist/cli.js update --json

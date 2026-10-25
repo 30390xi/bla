@@ -10,19 +10,19 @@ Run BLA directly without installing anything globally:
 
 ```bash
 # 1. Register BLA MCP Server + Skill into Claude Code, Cursor, Codex, Windsurf, Gemini CLI, etc.
-npx bla-shield setup
+npx bla-agents setup
 
 # 2. Check your environment and configured AI clients
-npx bla-shield doctor
+npx bla-agents doctor
 
 # 3. Audit an artifact for REA exposure before release
-npx bla-shield audit ./dist/app.js
+npx bla-agents audit ./dist/app.js
 
 # 4. Protect the artifact with BLA's three-stage shield
-npx bla-shield protect ./dist/app.js --mode bankrupt
+npx bla-agents protect ./dist/app.js --mode bankrupt
 
 # 5. Verify functional preservation and REA analyzer degradation
-npx bla-shield verify ./dist/app.js ./dist/app.bla.js
+npx bla-agents verify ./dist/app.js ./dist/app.bla.js
 ```
 
 ---
@@ -64,7 +64,7 @@ bla-shield doctor
 
 ## 3. Registering BLA in Coding Agents (`bla setup`)
 
-Just like `npx reverse-engineer-anything setup`, `npx bla-shield setup` auto-discovers installed AI coding agents on your machine and registers:
+Just like `npx reverse-engineer-anything setup`, `npx bla-agents setup` auto-discovers installed AI coding agents on your machine and registers:
 
 1. **The `bla` MCP stdio server** (`bla_audit`, `bla_protect`, `bla_verify`, `bla_benchmark`, `bla_emit_headers`, `bla_doctor`)
 2. **The `blind-llm-agents` skill** (`SKILL.md` + Counter-REA Matrix)
@@ -83,7 +83,7 @@ Just like `npx reverse-engineer-anything setup`, `npx bla-shield setup` auto-dis
 ### Target Specific Clients
 
 ```bash
-npx bla-shield setup --client claude-code,cursor
+npx bla-agents setup --client claude-code,cursor
 ```
 
 ### Uninstall
@@ -91,7 +91,7 @@ npx bla-shield setup --client claude-code,cursor
 To cleanly remove BLA from all agent configuration files and delete installed skill folders:
 
 ```bash
-npx bla-shield uninstall
+npx bla-agents uninstall
 ```
 
 ---
@@ -101,7 +101,7 @@ npx bla-shield uninstall
 If you are shipping a native binary compiled with `clang`, `gcc`, `rustc`, or `go build`, you can embed BLA's compile-time counters directly into `.rodata` before linking:
 
 ```bash
-npx bla-shield emit-headers ./include/shield --seed my-release-v1
+npx bla-agents emit-headers ./include/shield --seed my-release-v1
 ```
 
 - **C / C++**: `#include "bla_shield.h"` and call `BLA_ANCHOR_SHIELD();` inside `main()`.
