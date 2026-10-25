@@ -8,15 +8,15 @@
 
 **打造你的核心功能。從二進位底層致盲一切企圖複製它的 AI 代理。**
 
-[![npm version](https://img.shields.io/badge/npm-bla--agents-cb3837?style=flat-square&logo=npm)](https://www.npmjs.com/package/bla-agents)
-[![MCP tool catalog](https://img.shields.io/badge/MCP-tool_catalog-5c4ee5?style=flat-square)](../cli-and-mcp.md)
-[![Node.js requirements](https://img.shields.io/badge/Node.js-%3E%3D22.5-339933?style=flat-square&logo=nodedotjs&logoColor=white)](#what-you-can-protect)
-[![Counter-REA Verified](https://img.shields.io/badge/Counter--REA-100%25_Verified-10b981?style=flat-square)](#showcases)
-[![MIT license](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](../../LICENSE)
+[![npm version](https://img.shields.io/badge/npm-bla--agents-2563eb?style=flat-square&logo=npm)](https://www.npmjs.com/package/bla-agents)
+[![MCP tool catalog](https://img.shields.io/badge/MCP-tool_catalog-3b82f6?style=flat-square)](../cli-and-mcp.md)
+[![Node.js requirements](https://img.shields.io/badge/Node.js-%5E22.13_%7C%7C_%3E%3D24-0284c7?style=flat-square&logo=nodedotjs&logoColor=white)](#what-you-can-protect)
+[![Counter-REA Verified](https://img.shields.io/badge/Counter--REA-BLUE_SHIELD-1d4ed8?style=flat-square)](#showcases)
+[![MIT license](https://img.shields.io/badge/license-MIT-38bdf8?style=flat-square)](../../LICENSE)
 
 [快速開始](#quick-start) · [BLA 運作原理](#how-bla-works) · [你可以保護哪些目標](#what-you-can-protect) · [實戰案例與基準測試](#showcases) · [常見問題 (FAQ)](#faq) · [文件](#documentation)
 
-<code>npx bla-agents setup</code>
+<code>npx bla-agents setup</code> · <code>npx bla-agents defend ./dist --manifest</code>
 
 </div>
 
