@@ -7,6 +7,7 @@ import type {
 } from "../core/types.js";
 import type { DoctorDiagnosticReport } from "../setup/doctor.js";
 import type { SetupRunResult } from "../setup/setup.js";
+import type { OneClickDefenseReport } from "../engine/defender.js";
 
 const ANSI = {
   reset: "\x1b[0m",
@@ -220,6 +221,51 @@ export function formatSetupReport(res: SetupRunResult): string {
     lines.push(`      Config: ${a.configPath}`);
     lines.push(`      Skill:  ${a.skillPath}`);
     lines.push(`      MCP:    ${a.mcpCommand} ${a.mcpArgs.join(" ")}`);
+  }
+
+  return lines.join("\n");
+}
+
+export function formatOneClickDefenseReport(rep: OneClickDefenseReport): string {
+  const lines: string[] = [
+    formatBanner(),
+    "",
+    `${ANSI.bold}${ANSI.blue}⚡ BLA One-Click Counter-REA Defense Hardening Complete!${ANSI.reset}`,
+    "",
+    `  ${ANSI.bold}Input Target:${ANSI.reset}      ${rep.inputPath}`,
+    `  ${ANSI.bold}Hardened Output:${ANSI.reset}   ${ANSI.cyan}${rep.outputPath}${ANSI.reset}`,
+    `  ${ANSI.bold}Intensity Preset:${ANSI.reset}  ${ANSI.magenta}${rep.intensity.toUpperCase()}${ANSI.reset} (Defense Score: ${ANSI.green}${ANSI.bold}${rep.verification.defenseScore}/100${ANSI.reset})`,
+    "",
+    `${ANSI.bold}${ANSI.blue}── 5-Stage Automated Counter-REA Pipeline ──────────────────────────────────────${ANSI.reset}`,
+  ];
+
+  for (const st of rep.stages) {
+    const badge =
+      st.status === "passed"
+        ? `${ANSI.green}✓ PASS${ANSI.reset}`
+        : `${ANSI.yellow}! WARN${ANSI.reset}`;
+    lines.push(`  [${badge}] ${ANSI.bold}${st.stage}${ANSI.reset}: ${st.headline}`);
+  }
+
+  lines.push(
+    "",
+    `${ANSI.bold}${ANSI.yellow}── Resource Exhaustion (耗尽对方算力与预算) ────────────────────────────────────${ANSI.reset}`,
+    `  • REA Budgets Tripped:        ${ANSI.green}${rep.exhaustionSummary.reaBudgetsTripped.join(", ") || "binary-container-limits"}${ANSI.reset}`,
+    `  • Obligation Ledger Expansion:${rep.exhaustionSummary.obligationLedgerNodesBefore} nodes  -->  ${ANSI.bold}${rep.exhaustionSummary.obligationLedgerNodesAfter} nodes (${rep.verification.obligationGraphExpansionFactor}x)${ANSI.reset}`,
+    `  • Token Bankruptcy Factor:    ${ANSI.yellow}${ANSI.bold}${rep.exhaustionSummary.tokenAmplificationFactor}x${ANSI.reset} (Attacker API Bill: ${ANSI.yellow}${ANSI.bold}~$${rep.exhaustionSummary.attackerEstimatedBillUsd.toFixed(2)}${ANSI.reset})`,
+    "",
+    `${ANSI.bold}${ANSI.cyan}── Model Misjudgment Induction (诱导大模型误判) ────────────────────────────────${ANSI.reset}`,
+    `  • Shadow Logic & Honeypots:   ${ANSI.bold}${rep.deceptionSummary.decoyFunctionsInjected}${ANSI.reset} high-salience bait & shadow procedures`,
+    `  • Tarjan SCC Labyrinth XRefs: ${ANSI.bold}${rep.deceptionSummary.fakeCrossReferencesCreated}${ANSI.reset} mutually-recursive call-graph edges`,
+    `  • Evidence Contract Lures:    ${ANSI.bold}${rep.deceptionSummary.chaffAndEvidenceLuresEmbedded}${ANSI.reset} competing-explanation & enclave manifests`,
+    `  • Decoy IPC & gRPC Routes:    ${ANSI.bold}${rep.deceptionSummary.ipcAmbiguityAndObligationSites}${ANSI.reset} obligation/IPC sites + ${ANSI.bold}${rep.deceptionSummary.decoyRoutesAndGrpcMethods}${ANSI.reset} mirage routes`,
+  );
+
+  if (rep.manifestPath) {
+    lines.push(
+      "",
+      `  ${ANSI.bold}Signed Manifest:${ANSI.reset}   ${ANSI.green}${rep.manifestPath}${ANSI.reset}`,
+    );
   }
 
   return lines.join("\n");
