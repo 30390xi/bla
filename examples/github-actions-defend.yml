@@ -1,0 +1,14 @@
+# Example GitHub Actions snippet for hardening release artifacts with BLA
+name: Harden Build with BLA Blue Shield
+on:
+  workflow_dispatch:
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npx -y bla-agents@latest defend ./dist -o ./dist-shielded --manifest
