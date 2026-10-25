@@ -19,7 +19,7 @@ export interface RegexWorkerTarpitResult {
  * Targets REA's `search_strings` and `search_procedures` regex worker
  * (`src/domain/analysisResourceLimits.ts:38`).
  * Generates high-fanout near-miss token strings (`auth_verify_token_...`, `license_key_slot_...`)
- * so that broad regex searches (`/(auth|license|secret|token|key).*/i`) match hundreds
+ * so that broad regex searches (`/(auth|license|secret|token|key).+/i`) match hundreds
  * of decoy candidates before reaching any real symbol.
  */
 export function generateRegexWorkerTarpit(
