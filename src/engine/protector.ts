@@ -30,6 +30,10 @@ import { protectAndroidDexBuffer, protectIl2cppMetadataBuffer } from "../shields
 import { protectApplePlistBuffer } from "../shields/formats/apple-plist.js";
 import { protectDotnetManagedBuffer } from "../shields/formats/dotnet-managed.js";
 import { protectJvmClassBuffer } from "../shields/formats/jvm-bytecode.js";
+import { protectErlangBeamBuffer } from "../shields/formats/erlang-beam.js";
+import { protectEvmBytecodeBuffer } from "../shields/formats/evm-bytecode.js";
+import { protectPcapCaptureBuffer } from "../shields/formats/pcap-capture.js";
+import { protectGpuPtxText } from "../shields/formats/gpu-ptx.js";
 import { auditTarget } from "./auditor.js";
 
 function deriveDefaultOutputPath(inputPath: string, inPlace = false): string {
@@ -360,6 +364,38 @@ export function protectTarget(options: ProtectionOptions): ProtectionResult {
     chaffPayloadsEmbedded = res.chaffPayloadsEmbedded;
     binarySectionsPatched = res.customAttributesAdded;
     counteredVectors.add("jvm-bytecode-decompilation");
+  } else if (format === "erlang-beam") {
+    const rawBeam = readFileSync(absInput);
+    const res = protectErlangBeamBuffer(rawBeam, { intensity, seed });
+    writeFileSync(absOutput, res.buffer);
+    decoyFunctionsInjected = res.atomsInjected;
+    chaffPayloadsEmbedded = res.chunksInjected;
+    binarySectionsPatched = res.exceedsDefaultChunkBudget ? 2 : 1;
+    counteredVectors.add("erlang-beam-inspection");
+  } else if (format === "evm-bytecode") {
+    const rawEvm = readFileSync(absInput);
+    const res = protectEvmBytecodeBuffer(rawEvm, { intensity, seed });
+    writeFileSync(absOutput, res.buffer);
+    decoyFunctionsInjected = res.canaryTokensEmbedded;
+    chaffPayloadsEmbedded = res.diagnosticsEmbedded;
+    binarySectionsPatched = 1;
+    counteredVectors.add("evm-bytecode-inspection");
+  } else if (format === "pcap-capture") {
+    const rawPcap = readFileSync(absInput);
+    const res = protectPcapCaptureBuffer(rawPcap, { intensity, seed });
+    writeFileSync(absOutput, res.buffer);
+    decoyFunctionsInjected = res.packetsInjected;
+    chaffPayloadsEmbedded = res.canaryTokensEmbedded;
+    binarySectionsPatched = 1;
+    counteredVectors.add("pcap-capture-inspection");
+  } else if (format === "gpu-ptx") {
+    const rawPtx = readFileSync(absInput, "utf8");
+    const res = protectGpuPtxText(rawPtx, { intensity, seed });
+    writeFileSync(absOutput, res.text, "utf8");
+    decoyFunctionsInjected = res.entriesInjected;
+    chaffPayloadsEmbedded = res.canaryTokensEmbedded;
+    binarySectionsPatched = 1;
+    counteredVectors.add("gpu-ptx-inspection");
   } else if (format === "directory") {
     mkdirSync(absOutput, { recursive: true });
     const walkAndProtect = (srcDir: string, dstDir: string): void => {

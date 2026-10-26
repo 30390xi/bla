@@ -173,7 +173,33 @@ export function detectArtifactFormat(targetPath: string): ArtifactFormat {
     return "python-pyc";
   }
 
-  // 13. Extension-based formats
+  // 13. Erlang BEAM IFF: `FOR1....BEAM`
+  if (
+    header.length >= 12 &&
+    header.subarray(0, 4).toString("latin1") === "FOR1" &&
+    header.subarray(8, 12).toString("latin1") === "BEAM"
+  ) {
+    return "erlang-beam";
+  }
+
+  // 14. Classic libpcap / pcapng magic
+  if (header.length >= 4) {
+    const magicLE = header.readUInt32LE(0);
+    if (
+      magicLE === 0xa1b2c3d4 ||
+      magicLE === 0xa1b23c4d ||
+      magicLE === 0xd4c3b2a1
+    ) {
+      return "pcap-capture";
+    }
+    // pcapng section header block
+    if (magicLE === 0x0a0d0d0a) {
+      return "pcap-capture";
+    }
+  }
+
+  // 15. Extension-based formats
+
   if ([".js", ".mjs", ".cjs", ".jsx"].includes(ext)) return "javascript";
   if ([".ts", ".mts", ".cts", ".tsx"].includes(ext)) return "typescript";
   if (ext === ".map") return "sourcemap";
@@ -185,6 +211,10 @@ export function detectArtifactFormat(targetPath: string): ArtifactFormat {
   if (ext === ".dex") return "android-dex";
   if ([".plist", ".entitlements", ".mobileprovision"].includes(ext)) return "apple-plist";
   if (ext === ".class") return "jvm-class";
+  if (ext === ".beam") return "erlang-beam";
+  if ([".evm", ".bin-evm", ".solidity-bin"].includes(ext)) return "evm-bytecode";
+  if ([".pcap", ".pcapng", ".cap"].includes(ext)) return "pcap-capture";
+  if (ext === ".ptx") return "gpu-ptx";
 
   return "unknown";
 }

@@ -20,6 +20,10 @@ export type ArtifactFormat =
   | "il2cpp-metadata"
   | "archive-zip"
   | "android-apk"
+  | "erlang-beam"
+  | "evm-bytecode"
+  | "pcap-capture"
+  | "gpu-ptx"
   | "directory"
   | "unknown";
 
@@ -46,7 +50,11 @@ export type ReaAttackVectorId =
   | "sqlite-database-inspection"
   | "model-artifact-inspection"
   | "android-dex-il2cpp-inspection"
-  | "archive-inventory";
+  | "archive-inventory"
+  | "erlang-beam-inspection"
+  | "evm-bytecode-inspection"
+  | "pcap-capture-inspection"
+  | "gpu-ptx-inspection";
 
 export interface ExposedSymbolOrModule {
   readonly id: string;

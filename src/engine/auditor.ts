@@ -838,6 +838,120 @@ export function auditTarget(targetPath: string): AuditReport {
         obligationLedgerNodes: isProtected ? 40 : 8,
         architecturalChaffPayloads: isProtected ? 5 : 0,
       };
+    } else if (format === "erlang-beam") {
+      vulnerableVectors.add("erlang-beam-inspection");
+      const text = rawBytes.toString("latin1");
+      const isProtected = text.includes("[BLA-BEAM-SHIELD]");
+      exposedItems.push({
+        id: `beam_${basename(absPath)}`,
+        name: basename(absPath),
+        kind: "metadata-section",
+        location: basename(absPath),
+        riskLevel: isProtected ? "low" : "high",
+        reaToolUsed: "inspect_erlang_beam (FOR1/BEAM chunk + atom tables)",
+        estimatedTokensToReconstruct: isProtected ? 42_000 : 1_100,
+        estimatedCostUsd: isProtected ? 3.4 : 0.05,
+        reason: isProtected
+          ? "Protected by BLA BEAM chunk/atom exhaustion + canary decoys"
+          : "BEAM IFF chunks and atom table directly enumerable by REA",
+      });
+      sim = {
+        ...sim,
+        examinationStatus: isProtected ? "limited" : "complete",
+        triggeredResourceLimits: isProtected
+          ? [
+              "erlang-beam-chunks (max_chunks default 64)",
+              "erlang-beam-atoms (max_atoms default 4096)",
+            ]
+          : [],
+        totalFunctions: 6,
+        decoyFunctionsDetectedAsReal: isProtected ? 24 : 0,
+        obligationLedgerNodes: isProtected ? 72 : 6,
+        architecturalChaffPayloads: isProtected ? 8 : 0,
+      };
+    } else if (format === "evm-bytecode") {
+      vulnerableVectors.add("evm-bytecode-inspection");
+      const text = rawBytes.toString("utf8");
+      const isProtected = text.includes("[BLA-EVM-SHIELD]");
+      exposedItems.push({
+        id: `evm_${basename(absPath)}`,
+        name: basename(absPath),
+        kind: "metadata-section",
+        location: basename(absPath),
+        riskLevel: isProtected ? "low" : "high",
+        reaToolUsed: "inspect_evm_interface (EVMole + Solidity metadata CBOR)",
+        estimatedTokensToReconstruct: isProtected ? 38_000 : 800,
+        estimatedCostUsd: isProtected ? 2.9 : 0.04,
+        reason: isProtected
+          ? "Protected by BLA Solidity metadata CBOR canary + input-budget padding"
+          : "EVM bytecode and terminal Solidity metadata directly inspectable",
+      });
+      sim = {
+        ...sim,
+        examinationStatus: isProtected ? "limited" : "complete",
+        triggeredResourceLimits: isProtected
+          ? ["evm-input-bytes (EVM_INTERFACE_LIMITS.inputBytes)", "evm-solidity-metadata-cbor"]
+          : [],
+        totalFunctions: 4,
+        decoyFunctionsDetectedAsReal: isProtected ? 16 : 0,
+        obligationLedgerNodes: isProtected ? 36 : 4,
+        architecturalChaffPayloads: isProtected ? 6 : 0,
+      };
+    } else if (format === "pcap-capture") {
+      vulnerableVectors.add("pcap-capture-inspection");
+      const isProtected = rawBytes.includes(Buffer.from("[BLA-PCAP-SHIELD]", "utf8"));
+      exposedItems.push({
+        id: `pcap_${basename(absPath)}`,
+        name: basename(absPath),
+        kind: "metadata-section",
+        location: basename(absPath),
+        riskLevel: isProtected ? "low" : "medium",
+        reaToolUsed: "inspect_pcap_capture (tshark JSON)",
+        estimatedTokensToReconstruct: isProtected ? 55_000 : 1_400,
+        estimatedCostUsd: isProtected ? 4.1 : 0.06,
+        reason: isProtected
+          ? "Protected by BLA PCAP decoy-packet flood targeting TSHARK_JSON_MAX_BYTES"
+          : "PCAP frames fully dissectable by REA tshark provider",
+      });
+      sim = {
+        ...sim,
+        examinationStatus: isProtected ? "limited" : "complete",
+        triggeredResourceLimits: isProtected
+          ? ["pcap-tshark-json (TSHARK_JSON_MAX_BYTES 8 MiB)"]
+          : [],
+        totalFunctions: 2,
+        decoyFunctionsDetectedAsReal: isProtected ? 16 : 0,
+        obligationLedgerNodes: isProtected ? 32 : 2,
+        architecturalChaffPayloads: isProtected ? 4 : 0,
+      };
+    } else if (format === "gpu-ptx") {
+      vulnerableVectors.add("gpu-ptx-inspection");
+      const text = rawBytes.toString("utf8");
+      const isProtected = text.includes("[BLA-PTX-SHIELD]");
+      exposedItems.push({
+        id: `ptx_${basename(absPath)}`,
+        name: basename(absPath),
+        kind: "metadata-section",
+        location: basename(absPath),
+        riskLevel: isProtected ? "low" : "medium",
+        reaToolUsed: "inspect_gpu_code_objects (PTX kernel parser)",
+        estimatedTokensToReconstruct: isProtected ? 48_000 : 1_200,
+        estimatedCostUsd: isProtected ? 3.6 : 0.05,
+        reason: isProtected
+          ? "Protected by BLA PTX decoy .entry flood + diagnostic comments"
+          : "PTX .entry/.param declarations directly harvested by REA",
+      });
+      sim = {
+        ...sim,
+        examinationStatus: isProtected ? "limited" : "complete",
+        triggeredResourceLimits: isProtected
+          ? ["gpu-report-bytes (GPU_REPORT_BYTES 16 MiB)", "gpu-ptx-entry-facts"]
+          : [],
+        totalFunctions: isProtected ? 20 : 1,
+        decoyFunctionsDetectedAsReal: isProtected ? 20 : 0,
+        obligationLedgerNodes: isProtected ? 48 : 2,
+        architecturalChaffPayloads: isProtected ? 5 : 0,
+      };
     }
   }
 

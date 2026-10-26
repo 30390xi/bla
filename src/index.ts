@@ -162,3 +162,26 @@ export {
   type ReleaseExposureReport,
   type ReleaseExposureFinding,
 } from "./core/release-exposure.js";
+
+export {
+  inspectErlangBeam,
+  protectErlangBeamBuffer,
+} from "./shields/formats/erlang-beam.js";
+export {
+  inspectEvmBytecode,
+  protectEvmBytecodeBuffer,
+  buildSolidityMetadataTrailer,
+} from "./shields/formats/evm-bytecode.js";
+export {
+  inspectPcapCapture,
+  protectPcapCaptureBuffer,
+} from "./shields/formats/pcap-capture.js";
+export {
+  inspectGpuPtx,
+  protectGpuPtxText,
+  FIRMWARE_HARDENING_SKIP_REASON,
+} from "./shields/formats/gpu-ptx.js";
+export {
+  buildGoBuildInfoExhaustionPayload,
+  buildFlutterPoolExhaustionPayload,
+} from "./shields/formats/go-flutter-exhaustion.js";

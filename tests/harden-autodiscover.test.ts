@@ -57,6 +57,32 @@ describe("bla_harden auto-discovery + one-sentence UX", () => {
     );
     writeFileSync(join(dist, "module.wasm"), minimalWasm());
     writeFileSync(join(dist, "classes.dex"), minimalDex());
+    // Erlang BEAM (FOR1/BEAM)
+    const beamForm = Buffer.concat([
+      Buffer.from("BEAM", "latin1"),
+      Buffer.from("AtU8", "latin1"),
+      Buffer.from([0, 0, 0, 5, 0, 0, 0, 1, 1, 0x61, 0, 0]),
+    ]);
+    const beam = Buffer.concat([
+      Buffer.from("FOR1", "latin1"),
+      (() => { const b = Buffer.alloc(4); b.writeUInt32BE(beamForm.length); return b; })(),
+      beamForm,
+    ]);
+    writeFileSync(join(dist, "mod.beam"), beam);
+    writeFileSync(join(dist, "Vault.evm"), Buffer.from("00", "hex"));
+    // Classic pcap global header
+    const pcap = Buffer.alloc(24, 0);
+    pcap.writeUInt32LE(0xa1b2c3d4, 0);
+    pcap.writeUInt16LE(2, 4);
+    pcap.writeUInt16LE(4, 6);
+    pcap.writeUInt32LE(65535, 16);
+    pcap.writeUInt32LE(1, 20);
+    writeFileSync(join(dist, "traffic.pcap"), pcap);
+    writeFileSync(
+      join(dist, "kernels.ptx"),
+      `.version 7.5\n.target sm_70\n.address_size 64\n.visible .entry k(.param .u64 a){ ret; }\n`,
+    );
+
     writeFileSync(
       join(dist, "payload.py"),
       "def verify_license(key: str) -> bool:\n    return key.startswith('ENT-')\n",
@@ -70,7 +96,16 @@ describe("bla_harden auto-discovery + one-sentence UX", () => {
     const discovered = discoverHardenableArtifacts(root);
     const formats = discovered.map((d) => d.format).sort();
     expect(formats).toEqual(
-      expect.arrayContaining(["javascript", "wasm", "android-dex", "python-source"]),
+      expect.arrayContaining([
+        "javascript",
+        "wasm",
+        "android-dex",
+        "python-source",
+        "erlang-beam",
+        "evm-bytecode",
+        "pcap-capture",
+        "gpu-ptx",
+      ]),
     );
     expect(discovered.every((d) => !d.path.includes("node_modules"))).toBe(true);
 
