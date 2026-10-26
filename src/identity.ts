@@ -87,4 +87,36 @@ export const REA_INTERNAL_LIMITS = Object.freeze({
   RIZIN_MAX_COMMAND_FRAMES: 4_096,
   /** Environment differential comparison per-step diff cap (`STEP_DIFFERENCE_LIMIT` = 20 in `src/application/environment/environmentCompareDiff.ts`). */
   ENVIRONMENT_COMPARE_STEP_DIFF_LIMIT: 20,
+  /** Go build-info aggregate string budget (`MAX_BUILD_INFO_BYTES` = 1 MiB in `src/go/GoBinaryImage.ts`). */
+  GO_MAX_BUILD_INFO_BYTES: 1_048_576,
+  /** Go build-info cumulative header-search budget (`MAX_HEADER_SEARCH_BYTES` = 256 MiB in `src/go/GoBinaryImage.ts`). */
+  GO_MAX_HEADER_SEARCH_BYTES: 268_435_456,
+  /** Flutter/Dart AOT string-pool URI projection cap (`MAX_POOL_URIS` = 500 in `src/flutter/FlutterBuildProvider.ts`). */
+  DART_MAX_POOL_URIS: 500,
+  /** Flutter/Dart AOT class-like token projection cap (`MAX_POOL_TOKENS` = 2_000 in `src/flutter/FlutterBuildProvider.ts`). */
+  DART_MAX_POOL_TOKENS: 2_000,
+  /** Erlang BEAM hard ceiling on IFF chunks (`MAX_INSPECT_ERLANG_BEAM_CHUNKS` = 256). */
+  BEAM_MAX_CHUNKS: 256,
+  /** Erlang BEAM hard ceiling on atom-table entries (`MAX_INSPECT_ERLANG_BEAM_ATOMS` = 65_536). */
+  BEAM_MAX_ATOMS: 65_536,
+  /** Erlang BEAM default max_chunks admission (schema default 64). */
+  BEAM_DEFAULT_MAX_CHUNKS: 64,
+  /** Erlang BEAM default max_atoms admission (schema default 4096). */
+  BEAM_DEFAULT_MAX_ATOMS: 4_096,
+  /** EVM interface worker input-byte ceiling (`EVM_INTERFACE_LIMITS.inputBytes` = 4 MiB). */
+  EVM_INPUT_BYTES: 4_194_304,
+  /** EVM interface worker reply-byte ceiling (`EVM_INTERFACE_LIMITS.outputBytes` = 16 MiB). */
+  EVM_OUTPUT_BYTES: 16_777_216,
+  /** EVM interface diagnostic capture ceiling (`EVM_INTERFACE_LIMITS.diagnosticBytes` = 1 MiB). */
+  EVM_DIAGNOSTIC_BYTES: 1_048_576,
+  /** tshark JSON decode ceiling (`TSHARK_JSON_MAX_BYTES` = 8 MiB in `src/pcap/PcapOutput.ts`). */
+  PCAP_TSHARK_JSON_MAX_BYTES: 8_388_608,
+  /** GPU retained report budget (`GPU_REPORT_BYTES` = 16 MiB in `src/gpu/GpuSource.ts`). */
+  GPU_REPORT_BYTES: 16_777_216,
+  /** GPU object decode budget (`GPU_OBJECT_BYTES` = 128 MiB in `src/gpu/GpuSource.ts`). */
+  GPU_OBJECT_BYTES: 134_217_728,
+  /** Firmware staging byte ceiling (`MAX_FIRMWARE_STAGING_BYTES` = 512 MiB). */
+  FIRMWARE_MAX_STAGING_BYTES: 536_870_912,
+  /** Firmware extraction depth ceiling (`MAX_FIRMWARE_EXTRACTION_DEPTH` = 10). */
+  FIRMWARE_MAX_EXTRACTION_DEPTH: 10,
 });

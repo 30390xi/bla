@@ -167,6 +167,86 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
     counterStrategy:
       "Mutate > 24 decoy state fields per step so real state diffs are pushed past REA's 20-difference per-step retention window.",
   },
+  {
+    id: "go-buildinfo-bytes",
+    reaSourceFile: "src/go/GoBinaryImage.ts",
+    constantName: "MAX_BUILD_INFO_BYTES",
+    hardLimit: 1_048_576,
+    unit: "bytes",
+    failureClassOrStatus: 'BinaryResourceFailure("build-info", 1 MiB)',
+    counterStrategy:
+      "Embed a framed Go buildinfo (magic + inline module) whose version+module strings exceed 1 MiB, plus .gopclntab/moduledata bait.",
+  },
+  {
+    id: "flutter-pool-uris",
+    reaSourceFile: "src/flutter/FlutterBuildProvider.ts",
+    constantName: "MAX_POOL_URIS",
+    hardLimit: 500,
+    unit: "states",
+    failureClassOrStatus: "string_pool.collectionCapped (package_uris/dart_uris)",
+    counterStrategy:
+      "Inject > 500 distinct package: and dart: printable runs into Dart isolate snapshot / native trailer.",
+  },
+  {
+    id: "flutter-pool-tokens",
+    reaSourceFile: "src/flutter/FlutterBuildProvider.ts",
+    constantName: "MAX_POOL_TOKENS",
+    hardLimit: 2_000,
+    unit: "states",
+    failureClassOrStatus: "string_pool.collectionCapped (class_like_tokens)",
+    counterStrategy:
+      "Inject > 2000 distinct identifier-shaped class-like tokens into Dart isolate snapshot / native trailer.",
+  },
+  {
+    id: "erlang-beam-chunks",
+    reaSourceFile: "src/domain/erlang/beam.ts",
+    constantName: "MAX_INSPECT_ERLANG_BEAM_CHUNKS",
+    hardLimit: 256,
+    unit: "states",
+    failureClassOrStatus: 'BeamCapacityFailure("chunks")',
+    counterStrategy:
+      "Emit a valid FOR1/BEAM with > default max_chunks (64) decoy IFF chunks (and up to hard ceiling 256).",
+  },
+  {
+    id: "erlang-beam-atoms",
+    reaSourceFile: "src/domain/erlang/beam.ts",
+    constantName: "MAX_INSPECT_ERLANG_BEAM_ATOMS",
+    hardLimit: 65_536,
+    unit: "states",
+    failureClassOrStatus: 'BeamCapacityFailure("atoms")',
+    counterStrategy:
+      "Pad AtU8 atom table past the schema default max_atoms (4096) with canary/diagnostic atom names.",
+  },
+  {
+    id: "evm-input-bytes",
+    reaSourceFile: "src/evm/EvmoleRelease.ts",
+    constantName: "EVM_INTERFACE_LIMITS.inputBytes",
+    hardLimit: 4_194_304,
+    unit: "bytes",
+    failureClassOrStatus: "EVM carrier input allowance exhausted",
+    counterStrategy:
+      "Append adversarial Solidity metadata CBOR + optional padding that approaches the 4 MiB inputBytes ceiling.",
+  },
+  {
+    id: "pcap-tshark-json",
+    reaSourceFile: "src/pcap/PcapOutput.ts",
+    constantName: "TSHARK_JSON_MAX_BYTES",
+    hardLimit: 8_388_608,
+    unit: "bytes",
+    failureClassOrStatus: "tshark JSON output exceeds 8 MiB",
+    counterStrategy:
+      "Inject high-volume decoy packets whose decoded JSON projection exceeds TSHARK_JSON_MAX_BYTES.",
+  },
+  {
+    id: "gpu-report-bytes",
+    reaSourceFile: "src/gpu/GpuSource.ts",
+    constantName: "GPU_REPORT_BYTES",
+    hardLimit: 16_777_216,
+    unit: "bytes",
+    failureClassOrStatus: "GPU facts exceed the 16 MiB retained report budget",
+    counterStrategy:
+      "Pad PTX modules with decoy .entry/.param declarations and canary comments toward GPU_REPORT_BYTES.",
+  },
 ] as const;
 
 /**

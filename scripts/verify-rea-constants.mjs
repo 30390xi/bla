@@ -157,6 +157,17 @@ const NUMERIC_EXPECTATIONS = [
   { name: "MAX_RUSTC_HASHES", expected: 64 },
   { name: "MAX_SNAPSHOT_HASH_CANDIDATES", expected: 64 },
   { name: "PYTHON_PYC_CONST_PREVIEW_LIMIT", expected: 80 },
+  { name: "MAX_BUILD_INFO_BYTES", expected: 1_048_576, fileHint: "GoBinaryImage" },
+  { name: "MAX_HEADER_SEARCH_BYTES", expected: 256 * 1024 * 1024, fileHint: "GoBinaryImage" },
+  { name: "MAX_POOL_URIS", expected: 500, fileHint: "FlutterBuildProvider" },
+  { name: "MAX_POOL_TOKENS", expected: 2_000, fileHint: "FlutterBuildProvider" },
+  { name: "MAX_INSPECT_ERLANG_BEAM_CHUNKS", expected: 256 },
+  { name: "MAX_INSPECT_ERLANG_BEAM_ATOMS", expected: 65_536 },
+  { name: "TSHARK_JSON_MAX_BYTES", expected: 8 * 1024 * 1024 },
+  { name: "GPU_REPORT_BYTES", expected: 16 * 1024 * 1024 },
+  { name: "GPU_OBJECT_BYTES", expected: 128 * 1024 * 1024 },
+  { name: "MAX_FIRMWARE_STAGING_BYTES", expected: 512 * 1024 * 1024 },
+  { name: "MAX_FIRMWARE_EXTRACTION_DEPTH", expected: 10 },
 ];
 
 const OBJECT_PROP_EXPECTATIONS = [
@@ -171,6 +182,24 @@ const OBJECT_PROP_EXPECTATIONS = [
     propName: "retainedEventBytes",
     expected: 8 * 1024 * 1024,
     label: "WEB_RUNTIME_LIMITS.retainedEventBytes",
+  },
+  {
+    objectName: "EVM_INTERFACE_LIMITS",
+    propName: "inputBytes",
+    expected: 4 * 1024 * 1024,
+    label: "EVM_INTERFACE_LIMITS.inputBytes",
+  },
+  {
+    objectName: "EVM_INTERFACE_LIMITS",
+    propName: "outputBytes",
+    expected: 16 * 1024 * 1024,
+    label: "EVM_INTERFACE_LIMITS.outputBytes",
+  },
+  {
+    objectName: "EVM_INTERFACE_LIMITS",
+    propName: "diagnosticBytes",
+    expected: 1 * 1024 * 1024,
+    label: "EVM_INTERFACE_LIMITS.diagnosticBytes",
   },
 ];
 
