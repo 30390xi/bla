@@ -227,6 +227,7 @@ async function main() {
       "evm_bytecode",
       "pcap_capture",
       "gguf",
+      "safetensors",
       "electron_asar",
       "wasm_module",
       "electron_fuses",

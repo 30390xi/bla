@@ -152,7 +152,7 @@ describe("Deep Vertical Shields (Runtime Deception, Electron Fuses, SQLite, AI M
     }
   });
 
-  it("adds Safetensors metadata without invalid top-level nesting payloads", () => {
+  it("adds Safetensors canary metadata and a valid JSON nesting breaker", () => {
     const rawSafetensors = buildSafetensorsBuffer({
       attn_weights: { dtype: "F32", shape: [2, 2], data_offsets: [0, 16] },
     });
@@ -166,16 +166,17 @@ describe("Deep Vertical Shields (Runtime Deception, Electron Fuses, SQLite, AI M
       intensity: "bankrupt",
       seed: "safetensors-seed",
     });
-    expect(protSt.triggeredJsonNestingBreaker).toBe(false);
+    expect(protSt.triggeredJsonNestingBreaker).toBe(true);
     expect(protSt.canaryTokensEmbedded).toBeGreaterThanOrEqual(2);
     expect(protSt.diagnosticsEmbedded).toBeGreaterThanOrEqual(2);
     expect(protSt.buffer.toString("utf8")).toContain("enclave.canary.token.0");
     expect(protSt.buffer.toString("utf8")).toContain("enclave.diagnostic.0");
     expect(protSt.buffer.toString("utf8")).toContain("AKIAIOSFODNN7EXAMPLE");
+    expect(protSt.buffer.toString("utf8")).toContain("bla_enclave_topology");
 
     const afterSt = inspectModelBuffer(protSt.buffer);
     expect(afterSt.validModel).toBe(true);
-    expect(afterSt.exceedsReaNestingLimit).toBe(false);
+    expect(afterSt.exceedsReaNestingLimit).toBe(true);
     expect(afterSt.blaProtected).toBe(true);
 
     // GGUF v3 model shield

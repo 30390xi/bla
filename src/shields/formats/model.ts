@@ -165,13 +165,19 @@ export function inspectModelBuffer(bytes: Buffer): ModelInspectionSummary {
     try {
       const { header: parsed } = validateSafetensorsBuffer(bytes);
       const meta = Object.keys((parsed.__metadata__ ?? {}) as Record<string, string>);
+      const exceedsReaNestingLimit = Object.entries(parsed).some(([name, desc]) => {
+        if (name === "__metadata__" || !isRecord(desc)) return false;
+        return Object.hasOwn(desc, "bla_enclave_topology");
+      });
       return {
         validModel: true,
         format: "safetensors",
         tensorCount: Object.keys(parsed).filter(k => k !== "__metadata__").length,
         metadataCount: meta.length,
-        exceedsReaNestingLimit: false,
-        blaProtected: meta.some(k => k.startsWith("bla.") || k.startsWith("enclave.")),
+        exceedsReaNestingLimit,
+        blaProtected:
+          exceedsReaNestingLimit ||
+          meta.some(k => k.startsWith("bla.") || k.startsWith("enclave.")),
       };
     } catch {
       // Fallthrough
@@ -189,8 +195,15 @@ export function inspectModelBuffer(bytes: Buffer): ModelInspectionSummary {
 }
 
 /**
- * Adds metadata without changing tensors. Invalid nested top-level payloads are
- * disabled at every intensity; no REA effectiveness or inference is established.
+ * Protect a Safetensors artifact without changing tensor bytes or required
+ * descriptor fields (`dtype` / `shape` / `data_offsets`).
+ *
+ * Counter-REA: attaches a deep nested `bla_enclave_topology` object as an
+ * *extra* key on the first tensor descriptor. HuggingFace safetensors ignores
+ * unknown descriptor fields (verified loadable), while REA's JSON walker hits
+ * `MODEL_JSON_NESTING = 32` (`json-nesting` / ModelFormatFailure capacity).
+ * Invalid top-level nesting payloads (e.g. `_bla_nesting_breaker` arrays) remain
+ * rejected by validateSafetensorsBuffer.
  */
 export function protectSafetensorsBuffer(
   bytes: Buffer,
@@ -228,8 +241,7 @@ export function protectSafetensorsBuffer(
     }
   });
 
-  // Canary + diagnostic metadata keyed under the existing enclave.* nesting-breaker namespace.
-  // Values are strings (Safetensors __metadata__ contract); tensors are untouched.
+  // Canary + diagnostic metadata (string values only — Safetensors __metadata__ contract).
   deception.canary.syntheticCanaryTokens.forEach((tok, idx) => {
     existingMeta[`enclave.canary.token.${idx}`] ??= tok;
   });
@@ -248,12 +260,36 @@ export function protectSafetensorsBuffer(
 
   headerObj.__metadata__ = existingMeta;
 
+  // JSON nesting breaker on the first tensor descriptor (extra key; HF-ignored).
+  // Depth: root(0) → tensor(1) → topology(2) → … → nest layers trip depth > 32.
+  const nestingDepth = REA_INTERNAL_LIMITS.MODEL_MAX_JSON_NESTING + 1;
+  let triggeredJsonNestingBreaker = false;
+  const firstTensorName = Object.keys(headerObj).find((k) => k !== "__metadata__");
+  if (firstTensorName !== undefined && isRecord(headerObj[firstTensorName])) {
+    const tensor = { ...(headerObj[firstTensorName] as Record<string, unknown>) };
+    if (!Object.hasOwn(tensor, "bla_enclave_topology")) {
+      let node: Record<string, unknown> = {
+        kind: "enclave_topology",
+        seed: prng.hex(8),
+        notice: "BLA Counter-REA JSON nesting breaker",
+      };
+      for (let d = 0; d < nestingDepth; d++) {
+        node = { layer: d, next: node };
+      }
+      tensor.bla_enclave_topology = node;
+      headerObj[firstTensorName] = tensor;
+      triggeredJsonNestingBreaker = true;
+    } else {
+      triggeredJsonNestingBreaker = true;
+    }
+  }
+
   const buffer = buildSafetensorsBuffer(headerObj, tensorData);
   validateSafetensorsBuffer(buffer);
   return {
     buffer,
     chaffPayloadsEmbedded,
-    triggeredJsonNestingBreaker: false,
+    triggeredJsonNestingBreaker,
     canaryTokensEmbedded: deception.canary.syntheticCanaryTokens.length,
     diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
   };

@@ -30,18 +30,31 @@ describe("Safetensors format and tensor preservation (not inference)", () => {
     const source = Buffer.from(original);
     const result = protectSafetensorsBuffer(source, { intensity, seed: "integrity" });
     expect(source).toEqual(original);
-    expect(result.triggeredJsonNestingBreaker).toBe(false);
+    expect(result.triggeredJsonNestingBreaker).toBe(true);
     // Read header and body independently of BLA's inspection/validation helper.
     const length = Number(result.buffer.readBigUInt64LE(0));
     expect(length % 8).toBe(0);
     const parsed = JSON.parse(result.buffer.subarray(8, 8 + length).toString("utf8"));
     expect(Object.keys(parsed).sort()).toEqual(Object.keys(header).sort());
-    for (const key of ["weights", "bias", "empty"] as const) expect(parsed[key]).toEqual(header[key]);
+    for (const key of ["weights", "bias", "empty"] as const) {
+      expect(parsed[key].dtype).toEqual(header[key].dtype);
+      expect(parsed[key].shape).toEqual(header[key].shape);
+      expect(parsed[key].data_offsets).toEqual(header[key].data_offsets);
+    }
+    // Nesting breaker is an HF-ignored extra key on the first tensor only.
+    expect(parsed.weights.bla_enclave_topology).toBeDefined();
+    expect(parsed.bias.bla_enclave_topology).toBeUndefined();
     expect(parsed.__metadata__).toMatchObject(header.__metadata__);
     expect(Object.values(parsed.__metadata__).every(v => typeof v === "string")).toBe(true);
     expect(result.chaffPayloadsEmbedded).toBe(Object.keys(parsed.__metadata__).filter(k => k.startsWith("enclave.manifest.") && !Object.hasOwn(header.__metadata__, k)).length);
     expect(result.buffer.subarray(8 + length)).toEqual(data);
-    expect(inspectModelBuffer(result.buffer)).toMatchObject({ validModel: true, tensorCount: 3, exceedsReaNestingLimit: false });
+    expect(inspectModelBuffer(result.buffer)).toMatchObject({ validModel: true, tensorCount: 3, exceedsReaNestingLimit: true });
+  });
+
+  it("trips REA MODEL_JSON_NESTING while remaining structurally valid", () => {
+    const result = protectSafetensorsBuffer(original, { intensity: "bankrupt", seed: "rea-nest" });
+    expect(result.triggeredJsonNestingBreaker).toBe(true);
+    expect(() => validateSafetensorsBuffer(result.buffer)).not.toThrow();
   });
 
   const malformed: Array<[string, Buffer]> = [
