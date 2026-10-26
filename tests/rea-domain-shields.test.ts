@@ -307,7 +307,9 @@ describe("REA domain shields — Go / Flutter / BEAM / EVM / PCAP / PTX", () => 
     // Pool strings sit inside the isolate region (after preserved snapshot header)
     const isoSlice = res.buffer.subarray(isoSec.offset, isoSec.offset + isoSec.size);
     expect(isoSlice[0]).toBe(0xf5);
-    expect(isoSlice.toString("utf8")).toContain("package:enclave_mapped_");
+    expect(isoSlice.toString("utf8")).toContain("package:m0/b.dart");
+    expect(isoSlice.toString("utf8")).toContain("dart:d0");
+    expect(isoSlice.toString("utf8")).toContain("Node_0_X");
     expect(isoSlice.toString("utf8")).toContain("[BLA-FLUTTER-MAPPED]");
   });
 

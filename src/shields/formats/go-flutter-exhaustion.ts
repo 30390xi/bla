@@ -191,24 +191,34 @@ export function buildMappedFlutterIsolatePoolPlant(
     parts.push(marker);
     used += marker.length;
   }
+  // REA caps package_uris and dart_uris independently at MAX_POOL_URIS (500).
+  // Plant each kind past the cap (not a combined budget).
+  const uriTarget = REA_INTERNAL_LIMITS.DART_MAX_POOL_URIS + 32;
   let i = 0;
-  while (used < capacity && uris < REA_INTERNAL_LIMITS.DART_MAX_POOL_URIS + 32) {
-    const pkg = `package:enclave_mapped_${i}/lib/bridge_${prng.hex(3)}.dart\0`;
-    const dart = `dart:enclave_iso_${i}\0`;
+  while (used < capacity && i < uriTarget) {
+    // Keep strings short so a mapped section can exceed REA pool caps.
+    const pkg = `package:m${i}/b.dart\0`;
     const pkgBuf = Buffer.from(pkg, "utf8");
+    if (used + pkgBuf.length > capacity) break;
+    parts.push(pkgBuf);
+    used += pkgBuf.length;
+    uris++;
+    i++;
+  }
+  i = 0;
+  while (used < capacity && i < uriTarget) {
+    const dart = `dart:d${i}\0`;
     const dartBuf = Buffer.from(dart, "utf8");
-    if (used + pkgBuf.length + dartBuf.length > capacity) break;
-    parts.push(pkgBuf, dartBuf);
-    used += pkgBuf.length + dartBuf.length;
-    uris += 2;
+    if (used + dartBuf.length > capacity) break;
+    parts.push(dartBuf);
+    used += dartBuf.length;
+    uris++;
     i++;
   }
   let t = 0;
-  while (
-    used < capacity &&
-    tokens < REA_INTERNAL_LIMITS.DART_MAX_POOL_TOKENS + 32
-  ) {
-    const tok = `MappedEnclaveNode_${t}_${prng.hex(2)}\0`;
+  const tokenTarget = REA_INTERNAL_LIMITS.DART_MAX_POOL_TOKENS + 32;
+  while (used < capacity && tokens < tokenTarget) {
+    const tok = `Node_${t}_X\0`;
     const tokBuf = Buffer.from(tok, "utf8");
     if (used + tokBuf.length > capacity) break;
     parts.push(tokBuf);
@@ -292,7 +302,17 @@ export function buildFlutterPoolExhaustionPayload(prng: SeededPrng): {
  * Flutter parsers can be exercised in tests and the benchmark.
  */
 export function buildMappedGoFlutterElfFixture(): Buffer {
-  const FILE_SIZE = 8192;
+  // Isolate must be large enough for REA's real string-pool projection to
+  // observe > MAX_POOL_URIS (500) and > MAX_POOL_TOKENS (2000) entries.
+  const ISO_SIZE = 160 * 1024;
+  const GO_SIZE = 512;
+  const goOff = 1024;
+  const isoOff = 2048;
+  const dynsymOff = isoOff + ISO_SIZE;
+  const dynsymSize = 48; // 2 entries × 24
+  const dynstrOff = dynsymOff + dynsymSize;
+  const dynstr = Buffer.from("\0_kDartIsolateSnapshotData\0", "utf8");
+  const FILE_SIZE = dynstrOff + dynstr.length + 64;
   const bytes = Buffer.alloc(FILE_SIZE, 0);
   // ELF64 LE header
   bytes.set([0x7f, 0x45, 0x4c, 0x46, 2, 1, 1], 0);
@@ -306,18 +326,18 @@ export function buildMappedGoFlutterElfFixture(): Buffer {
   bytes.writeUInt16LE(56, 54);
   bytes.writeUInt16LE(1, 56); // e_phnum
   bytes.writeUInt16LE(64, 58);
-  bytes.writeUInt16LE(6, 60); // e_shnum: null + shstrtab + go.buildinfo + isolate + dynsym + dynstr
+  bytes.writeUInt16LE(6, 60); // e_shnum
   bytes.writeUInt16LE(1, 62); // e_shstrndx
 
-  // PT_LOAD R|W covering whole file (writable non-exec → Go fallback eligible)
+  // PT_LOAD R|W covering whole file
   bytes.writeUInt32LE(1, 64); // PT_LOAD
   bytes.writeUInt32LE(6, 68); // PF_R|PF_W
-  bytes.writeBigUInt64LE(0n, 72); // p_offset
-  bytes.writeBigUInt64LE(0x400000n, 80); // p_vaddr
-  bytes.writeBigUInt64LE(0x400000n, 88); // p_paddr
-  bytes.writeBigUInt64LE(BigInt(FILE_SIZE), 96); // p_filesz
-  bytes.writeBigUInt64LE(BigInt(FILE_SIZE), 104); // p_memsz
-  bytes.writeBigUInt64LE(0x1000n, 112); // p_align
+  bytes.writeBigUInt64LE(0n, 72);
+  bytes.writeBigUInt64LE(0x400000n, 80);
+  bytes.writeBigUInt64LE(0x400000n, 88);
+  bytes.writeBigUInt64LE(BigInt(FILE_SIZE), 96);
+  bytes.writeBigUInt64LE(BigInt(FILE_SIZE), 104);
+  bytes.writeBigUInt64LE(0x1000n, 112);
 
   const names = Buffer.from(
     "\0.shstrtab\0.go.buildinfo\0.isolate\0.dynsym\0.dynstr\0",
@@ -326,28 +346,18 @@ export function buildMappedGoFlutterElfFixture(): Buffer {
   const shstrOff = 512;
   names.copy(bytes, shstrOff);
 
-  const goOff = 1024;
-  const goSize = 512;
-  const goAddr = 0x400000n + BigInt(goOff); // 0x400400 — 16-aligned
-  const isoOff = 2048;
-  const isoSize = 2048;
+  const goAddr = 0x400000n + BigInt(goOff); // 16-aligned
   const isoAddr = 0x400000n + BigInt(isoOff);
-  const dynsymOff = 4096;
-  const dynsymSize = 48; // 2 entries × 24
-  const dynstrOff = 4200;
-  const dynstr = Buffer.from("\0_kDartIsolateSnapshotData\0", "utf8");
   dynstr.copy(bytes, dynstrOff);
 
-  // dynsym: null entry + isolate symbol (STT_OBJECT, STB_GLOBAL, size=isoSize)
-  // Elf64_Sym: st_name(4) st_info(1) st_other(1) st_shndx(2) st_value(8) st_size(8)
   const sym1 = dynsymOff + 24;
-  bytes.writeUInt32LE(1, sym1); // st_name → _kDartIsolateSnapshotData
+  bytes.writeUInt32LE(1, sym1);
   bytes[sym1 + 4] = (1 << 4) | 1; // STB_GLOBAL | STT_OBJECT
-  bytes.writeUInt16LE(3, sym1 + 6); // st_shndx = .isolate (index 3)
+  bytes.writeUInt16LE(3, sym1 + 6); // .isolate
   bytes.writeBigUInt64LE(isoAddr, sym1 + 8);
-  bytes.writeBigUInt64LE(BigInt(isoSize), sym1 + 16);
+  bytes.writeBigUInt64LE(BigInt(ISO_SIZE), sym1 + 16);
 
-  // Seed isolate with a real snapshot header so protect can append pool after it
+  // Seed isolate with a real snapshot header so protect appends pool after it
   bytes[isoOff] = 0xf5;
   bytes[isoOff + 1] = 0xf5;
   bytes[isoOff + 2] = 0xdc;
@@ -356,24 +366,21 @@ export function buildMappedGoFlutterElfFixture(): Buffer {
   bytes.writeBigUInt64LE(3n, isoOff + 12);
   bytes.write("0123456789abcdef0123456789abcdef", isoOff + 20, "ascii");
 
-  // Section headers at 128 (64 bytes each)
-  // 0: NULL
-  // 1: .shstrtab
   const sh1 = 128 + 64;
-  bytes.writeUInt32LE(1, sh1); // name → .shstrtab
-  bytes.writeUInt32LE(3, sh1 + 4); // SHT_STRTAB
+  bytes.writeUInt32LE(1, sh1);
+  bytes.writeUInt32LE(3, sh1 + 4);
   bytes.writeBigUInt64LE(BigInt(shstrOff), sh1 + 24);
   bytes.writeBigUInt64LE(BigInt(names.length), sh1 + 32);
-  // 2: .go.buildinfo
+
   const sh2 = 128 + 128;
   const goNameOff = names.indexOf(Buffer.from(".go.buildinfo\0"));
   bytes.writeUInt32LE(goNameOff, sh2);
-  bytes.writeUInt32LE(1, sh2 + 4); // SHT_PROGBITS
-  bytes.writeBigUInt64LE(3n, sh2 + 8); // SHF_WRITE|SHF_ALLOC
+  bytes.writeUInt32LE(1, sh2 + 4);
+  bytes.writeBigUInt64LE(3n, sh2 + 8);
   bytes.writeBigUInt64LE(goAddr, sh2 + 16);
   bytes.writeBigUInt64LE(BigInt(goOff), sh2 + 24);
-  bytes.writeBigUInt64LE(BigInt(goSize), sh2 + 32);
-  // 3: .isolate
+  bytes.writeBigUInt64LE(BigInt(GO_SIZE), sh2 + 32);
+
   const sh3 = 128 + 192;
   const isoNameOff = names.indexOf(Buffer.from(".isolate\0"));
   bytes.writeUInt32LE(isoNameOff, sh3);
@@ -381,23 +388,23 @@ export function buildMappedGoFlutterElfFixture(): Buffer {
   bytes.writeBigUInt64LE(3n, sh3 + 8);
   bytes.writeBigUInt64LE(isoAddr, sh3 + 16);
   bytes.writeBigUInt64LE(BigInt(isoOff), sh3 + 24);
-  bytes.writeBigUInt64LE(BigInt(isoSize), sh3 + 32);
-  // 4: .dynsym
+  bytes.writeBigUInt64LE(BigInt(ISO_SIZE), sh3 + 32);
+
   const sh4 = 128 + 256;
   const dynsymNameOff = names.indexOf(Buffer.from(".dynsym\0"));
   bytes.writeUInt32LE(dynsymNameOff, sh4);
-  bytes.writeUInt32LE(11, sh4 + 4); // SHT_DYNSYM
-  bytes.writeBigUInt64LE(2n, sh4 + 8); // SHF_ALLOC
+  bytes.writeUInt32LE(11, sh4 + 4);
+  bytes.writeBigUInt64LE(2n, sh4 + 8);
   bytes.writeBigUInt64LE(0x400000n + BigInt(dynsymOff), sh4 + 16);
   bytes.writeBigUInt64LE(BigInt(dynsymOff), sh4 + 24);
   bytes.writeBigUInt64LE(BigInt(dynsymSize), sh4 + 32);
-  bytes.writeUInt32LE(5, sh4 + 40); // sh_link → .dynstr
-  bytes.writeBigUInt64LE(24n, sh4 + 48); // sh_entsize
-  // 5: .dynstr
+  bytes.writeUInt32LE(5, sh4 + 40);
+  bytes.writeBigUInt64LE(24n, sh4 + 48);
+
   const sh5 = 128 + 320;
   const dynstrNameOff = names.indexOf(Buffer.from(".dynstr\0"));
   bytes.writeUInt32LE(dynstrNameOff, sh5);
-  bytes.writeUInt32LE(3, sh5 + 4); // SHT_STRTAB
+  bytes.writeUInt32LE(3, sh5 + 4);
   bytes.writeBigUInt64LE(2n, sh5 + 8);
   bytes.writeBigUInt64LE(0x400000n + BigInt(dynstrOff), sh5 + 16);
   bytes.writeBigUInt64LE(BigInt(dynstrOff), sh5 + 24);
