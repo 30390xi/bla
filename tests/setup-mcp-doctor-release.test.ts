@@ -33,6 +33,7 @@ import {
   resolveSupportedAgentClients,
 } from "../src/setup/clients.js";
 import { runDoctor } from "../src/setup/doctor.js";
+import { isNodeSqliteAvailable } from "../src/core/sqlite-runtime.js";
 import {
   getInstallManifestPath,
   readInstallManifest,
@@ -759,6 +760,8 @@ describe("Issue #11: Doctor Real Readiness Checks & Command/Config/Skill/Handsha
     const docHealthy = runDoctor({
       homeDir: homeHealthy,
       verifyHandshake: true,
+      // Isolate MCP/skill/handshake health from the Node sqlite runtime floor.
+      sqliteAvailableOverride: true,
     });
     expect(docHealthy.healthy).toBe(true);
     expect(docHealthy.exitCode).toBe(0);
@@ -855,7 +858,7 @@ describe("Issue #12: Release Version, Tag, Commit & Tarball Consistency + Dual T
     expect(retryPlan.shouldPublishAlias).toBe(true);
   });
 
-  it("packs both bla-agents and bla-shield tarballs and verifies exports, 3 bin entrypoints, and read-only doctor in clean temp dirs", () => {
+  it.skipIf(!isNodeSqliteAvailable())("packs both bla-agents and bla-shield tarballs and verifies exports, 3 bin entrypoints, and read-only doctor in clean temp dirs", () => {
     const outDir = makeTempDir("bla-release-pack-");
     const packed = packDualReleaseTarballs(process.cwd(), outDir);
 

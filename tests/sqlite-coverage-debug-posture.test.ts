@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import vm from "node:vm";
-import { getDatabaseSyncClass } from "../src/core/sqlite-runtime.js";
+import { getDatabaseSyncClass, isNodeSqliteAvailable } from "../src/core/sqlite-runtime.js";
 import {
   buildSampleSqliteDatabase,
   DEFAULT_SQLITE_SENSITIVITY_POLICY,
@@ -38,7 +38,7 @@ describe("Issues #18, #19, #20, #21 — SQLite Consistency/Policy, Debug Posture
   // ==========================================================================
   // Issue #18: SQLite DB/WAL Consistency Admission
   // ==========================================================================
-  describe("Issue #18: SQLite DB/WAL consistency validation before protection", () => {
+  describe.skipIf(!isNodeSqliteAvailable())("Issue #18: SQLite DB/WAL consistency validation before protection", () => {
     it("rejects uncheckpointed WAL database (both by path and by main-file buffer) instead of dropping committed rows", () => {
       const dir = mkdtempSync(join(tmpdir(), "bla-sqlite-wal-repro-"));
       tempDirs.push(dir);
@@ -139,7 +139,7 @@ describe("Issues #18, #19, #20, #21 — SQLite Consistency/Policy, Debug Posture
   // Issue #21: SQLite Sensitive Data Policy & Confidentiality Separation
   // ==========================================================================
   describe("Issue #21: SQLite sensitive data exposure policy and decoration vs confidentiality", () => {
-    it("reports exposed sensitive columns even when honey tables are present, without leaking secret values in output", () => {
+    it.skipIf(!isNodeSqliteAvailable())("reports exposed sensitive columns even when honey tables are present, without leaking secret values in output", () => {
       const rawSqlite = buildSampleSqliteDatabase();
       const protectedSqlite = protectSqliteBuffer(rawSqlite, { intensity: "maximum" });
 
@@ -177,7 +177,7 @@ describe("Issues #18, #19, #20, #21 — SQLite Consistency/Policy, Debug Posture
       expect(serialized).not.toContain("tok_live_9988776655");
     });
 
-    it("clears policy violations after data minimization while keeping confidentialityState as confidentiality-not-established", () => {
+    it.skipIf(!isNodeSqliteAvailable())("clears policy violations after data minimization while keeping confidentialityState as confidentiality-not-established", () => {
       const rawSqlite = buildSampleSqliteDatabase();
       const minimized = minimizeSqliteDatabaseBuffer(rawSqlite, [
         { table: "license_cache", column: "offline_token" },

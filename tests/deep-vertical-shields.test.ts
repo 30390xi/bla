@@ -1,15 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createRequire } from "node:module";
-import type { DatabaseSync as DatabaseSyncType } from "node:sqlite";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import * as vm from "node:vm";
-
-const require = createRequire(import.meta.url);
-const { DatabaseSync } = require("node:sqlite") as {
-  DatabaseSync: typeof DatabaseSyncType;
-};
+import { getDatabaseSyncClass, isNodeSqliteAvailable } from "../src/core/sqlite-runtime.js";
 import { SeededPrng } from "../src/core/prng.js";
 import { generateChaffPayloads } from "../src/shields/chaff/chaff-generator.js";
 import { generateRuntimeDeceptionSnippet } from "../src/shields/runtime/runtime-shield.js";
@@ -100,7 +94,8 @@ describe("Deep Vertical Shields (Runtime Deception, Electron Fuses, SQLite, AI M
     expect(after.onlyLoadFromAsarEnforced).toBe(true);
   });
 
-  it("protects SQLite 3 databases with Honey Tables and Generated Column Traps while keeping original tables readable", () => {
+  it.skipIf(!isNodeSqliteAvailable())("protects SQLite 3 databases with Honey Tables and Generated Column Traps while keeping original tables readable", () => {
+    const DatabaseSync = getDatabaseSyncClass();
     const rawSqlite = buildSampleSqliteDatabase();
     const beforeInfo = inspectSqliteBuffer(rawSqlite);
     expect(beforeInfo.validSqlite).toBe(true);

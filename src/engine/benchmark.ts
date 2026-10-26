@@ -4,6 +4,7 @@ import { join } from "node:path";
 import vm from "node:vm";
 import { BLA_IDENTITY } from "../identity.js";
 import type { BenchmarkReport, ShowcaseCaseResult } from "../core/types.js";
+import { isNodeSqliteAvailable } from "../core/sqlite-runtime.js";
 import { packAsarBuffer } from "../shields/formats/asar.js";
 import { buildSampleSqliteDatabase } from "../shields/formats/sqlite.js";
 import { buildSafetensorsBuffer } from "../shields/formats/model.js";
@@ -292,7 +293,9 @@ export async function runShowcaseBenchmark(): Promise<BenchmarkReport> {
     }
 
     // 6. Local SQLite 3 Entitlement Database (.sqlite)
-    {
+    // Degrade gracefully on Node < 22.13 / --no-experimental-sqlite: skip this target
+    // rather than hard-failing the entire Counter-REA showcase.
+    if (isNodeSqliteAvailable()) {
       const dbPath = join(tempDir, "entitlements.sqlite");
       const outDbPath = join(tempDir, "entitlements.shielded.sqlite");
       writeFileSync(dbPath, buildSampleSqliteDatabase());
