@@ -2,6 +2,8 @@ import { deflateRawSync, inflateRawSync } from "node:zlib";
 import { SeededPrng } from "../../core/prng.js";
 import type { ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
+import { buildCanaryAndDiagnosticPayloads } from "../deception/format-payloads.js";
+import { protectAndroidDexBuffer, protectIl2cppMetadataBuffer } from "./mobile-game.js";
 
 export interface ZipEntryInfo {
   readonly name: string;
@@ -193,25 +195,47 @@ export function writeZipArchive(
 }
 
 /** Admission shared with the file engine, before any output paths are created. */
-export function validateZipProtectionInput(bytes: Buffer): readonly ZipEntryInfo[] {
+export function validateZipProtectionInput(
+  bytes: Buffer,
+  options: { readonly allowUnsignedApk?: boolean } = {},
+): readonly ZipEntryInfo[] {
   const existingEntries = readZipEntries(bytes);
   // Reserve the largest existing transformation (eight entries plus its manifest).
   // 0xffff is a ZIP64 sentinel, not a usable classic-ZIP entry count.
   if (existingEntries.length > 0xfffe - 9) {
     throw new UnsupportedArchiveError("insufficient classic ZIP entry-count capacity for output");
   }
-  if (existingEntries.some((e) => e.name === "AndroidManifest.xml" || /^META-INF\/.*\.(SF|RSA|DSA|EC)$/i.test(e.name))) {
+  const isSigned = existingEntries.some((e) =>
+    /^META-INF\/.*\.(SF|RSA|DSA|EC)$/i.test(e.name),
+  );
+  const hasManifest = existingEntries.some((e) => e.name === "AndroidManifest.xml");
+  if (isSigned) {
     throw new UnsupportedArchiveError("APK or signed archive requires a signing-aware pipeline");
   }
-  if (existingEntries.some((e) => ["assets", "assets/enclave", "enclave"].includes(e.name) || e.name.startsWith("assets/enclave/") || e.name.startsWith("enclave/"))) {
+  if (hasManifest && !options.allowUnsignedApk) {
+    throw new UnsupportedArchiveError("APK or signed archive requires a signing-aware pipeline");
+  }
+  const reservedPrefixes = options.allowUnsignedApk
+    ? ["assets/bla-shield", "assets/bla-shield/"]
+    : ["assets", "assets/enclave", "enclave", "assets/enclave/", "enclave/"];
+  if (
+    existingEntries.some(
+      (e) =>
+        reservedPrefixes.includes(e.name) ||
+        e.name.startsWith("assets/bla-shield/") ||
+        (!options.allowUnsignedApk &&
+          (e.name.startsWith("assets/enclave/") || e.name.startsWith("enclave/"))),
+    )
+  ) {
     throw new UnsupportedArchiveError("existing entries overlap the reserved output namespace");
   }
   return existingEntries;
 }
 
 /**
- * Rewrites the admitted ZIP subset. APK rewriting is explicitly unsupported.
- * Embedded executable assets are copied, not recursively transformed.
+ * Rewrites the admitted ZIP subset. Unsigned APKs get member-level DEX/IL2CPP
+ * protection (classes.dex, *.dex, global-metadata.dat) plus canary decoys under
+ * `assets/bla-shield/`. Signed APKs still throw UnsupportedApkProtectionError.
  */
 export function protectZipOrApkBuffer(
   bytes: Buffer,
@@ -224,32 +248,75 @@ export function protectZipOrApkBuffer(
   readonly buffer: Buffer;
   readonly decoyEntriesInjected: number;
   readonly chaffPayloadsEmbedded: number;
+  readonly canaryTokensEmbedded: number;
+  readonly diagnosticsEmbedded: number;
+  readonly membersHardened: number;
 } {
-  if (options.isApk) throw new UnsupportedApkProtectionError();
-  const existingEntries = validateZipProtectionInput(bytes);
+  const preview = readZipEntries(bytes);
+  const isSigned = preview.some((e) => /^META-INF\/.*\.(SF|RSA|DSA|EC)$/i.test(e.name));
+  const hasManifest = preview.some((e) => e.name === "AndroidManifest.xml");
+  const treatAsApk = Boolean(options.isApk) || hasManifest;
+
+  if (treatAsApk && isSigned) {
+    throw new UnsupportedApkProtectionError();
+  }
+
+  const existingEntries = validateZipProtectionInput(bytes, {
+    allowUnsignedApk: treatAsApk,
+  });
   const intensity = options.intensity ?? "balanced";
   const prng = new SeededPrng(options.seed ?? "bla-archive-shield-v1");
   const chaffPayloads = generateChaffPayloads(prng, intensity);
-  const outputFiles: { name: string; data: Buffer; storeOnly?: boolean }[] = existingEntries.map((e) => ({
-    name: e.name,
-    data: e.data,
-  }));
+  const deception = buildCanaryAndDiagnosticPayloads(prng, intensity);
 
-  // Inject decoy enclave asset manifests & shadow class descriptors
+  let membersHardened = 0;
+  const outputFiles: { name: string; data: Buffer; storeOnly?: boolean }[] = existingEntries.map((e) => {
+    const lower = e.name.toLowerCase();
+    if (lower.endsWith(".dex") || lower === "classes.dex" || /(?:^|\/)classes\d*\.dex$/.test(lower)) {
+      const protectedDex = protectAndroidDexBuffer(e.data, { intensity, seed: options.seed });
+      membersHardened += 1;
+      return { name: e.name, data: protectedDex.buffer };
+    }
+    if (lower.endsWith("global-metadata.dat") || lower === "global-metadata.dat") {
+      const protectedMeta = protectIl2cppMetadataBuffer(e.data, { intensity, seed: options.seed });
+      membersHardened += 1;
+      return { name: e.name, data: protectedMeta.buffer };
+    }
+    return { name: e.name, data: e.data };
+  });
+
+  const decoyRoot = treatAsApk ? "assets/bla-shield" : "assets/enclave";
+  const shadowRoot = treatAsApk ? "assets/bla-shield" : "enclave";
+
   const manifestContent = JSON.stringify(
     {
       schema: "bla-archive-enclave-shield/v1",
       protected: true,
       enclave_delegation: "hardware_tee_ring0",
+      apkMemberHardening: treatAsApk,
+      membersHardened,
       manifests: chaffPayloads.map((p) => p.rawText),
+      canaryTokens: deception.canary.syntheticCanaryTokens,
+      diagnostics: deception.diagnostics.diagnosticsInjected.map((d) => ({
+        subsystem: d.subsystem,
+        errorClass: d.errorClass,
+        systemCode: d.systemCode,
+        diagnosticMessage: d.diagnosticMessage,
+      })),
     },
     null,
     2,
   );
 
   outputFiles.push({
-    name: "assets/enclave/bla-attestation-manifest.json",
+    name: `${decoyRoot}/bla-attestation-manifest.json`,
     data: Buffer.from(manifestContent, "utf8"),
+  });
+
+  // Explicit canary / diagnostic bait files for archive inventory scanners.
+  outputFiles.push({
+    name: `${decoyRoot}/bla-canary-tokens.txt`,
+    data: Buffer.from(deception.textRecords.join("\n") + "\n", "utf8"),
   });
 
   const decoyCount = intensity === "stealth" ? 2 : intensity === "balanced" ? 4 : 8;
@@ -257,16 +324,19 @@ export function protectZipOrApkBuffer(
     const hex = prng.hex(6);
     const payload = chaffPayloads[i % chaffPayloads.length]!;
     outputFiles.push({
-      name: options.isApk
-        ? `assets/enclave/tee_bridge_stub_${hex}.properties`
-        : `enclave/shadow_module_${hex}.json`,
+      name: treatAsApk
+        ? `${shadowRoot}/tee_bridge_stub_${hex}.properties`
+        : `${shadowRoot}/shadow_module_${hex}.json`,
       data: Buffer.from(`# ${payload.rawText}\nenclave.cid=${16 + i}\nenclave.sealed=true\n`, "utf8"),
     });
   }
 
   return {
     buffer: writeZipArchive(outputFiles),
-    decoyEntriesInjected: decoyCount + 1,
+    decoyEntriesInjected: decoyCount + 2,
     chaffPayloadsEmbedded: chaffPayloads.length,
+    canaryTokensEmbedded: deception.canary.syntheticCanaryTokens.length,
+    diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
+    membersHardened,
   };
 }

@@ -66,12 +66,40 @@ describe("archive admission preserves bytes or fails closed", () => {
     expect(() => protectZipOrApkBuffer(input)).toThrow(UnsupportedArchiveError);
     expect(input).toEqual(before);
   });
-  it("refuses unsigned APKs and APK contents renamed as ZIP", () => {
-    expect(() => protectZipOrApkBuffer(fixture(), { isApk: true })).toThrow(UnsupportedApkProtectionError);
-    const renamed = writeZipArchive([{ name: "AndroidManifest.xml", data: Buffer.from("fixture") }]);
-    expect(() => protectZipOrApkBuffer(renamed)).toThrow(/signing-aware/);
+  it("hardens unsigned APK member DEX while refusing signed APKs", () => {
+    // Minimal DEX header (112 bytes) embedded as classes.dex inside an unsigned APK-shaped ZIP.
+    const dex = Buffer.alloc(112, 0);
+    dex.write("dex\n035\0", 0, "ascii");
+    dex.writeUInt32LE(112, 32);
+    dex.writeUInt32LE(112, 36);
+    dex.writeUInt32LE(0x12345678, 40);
+    const unsignedApk = writeZipArchive([
+      { name: "AndroidManifest.xml", data: Buffer.from("<manifest/>") },
+      { name: "classes.dex", data: dex },
+    ]);
+    const res = protectZipOrApkBuffer(unsignedApk, { isApk: true, intensity: "stealth", seed: "apk-member" });
+    expect(res.membersHardened).toBe(1);
+    expect(res.canaryTokensEmbedded).toBeGreaterThan(0);
+    expect(res.diagnosticsEmbedded).toBeGreaterThan(0);
+    const entries = readZipEntries(res.buffer);
+    const outDex = entries.find((e) => e.name === "classes.dex")!.data;
+    expect(outDex.toString("latin1")).toContain("BLA-DEX-SHIELD");
+    expect(outDex.toString("latin1")).toContain("PROTECTED_CANARY_CREDENTIAL=");
+    expect(entries.some((e) => e.name.startsWith("assets/bla-shield/"))).toBe(true);
+
+    // Signed APK still fails closed.
+    const signed = writeZipArchive([
+      { name: "AndroidManifest.xml", data: Buffer.from("<manifest/>") },
+      { name: "META-INF/CERT.RSA", data: Buffer.from("not a real signature") },
+      { name: "classes.dex", data: dex },
+    ]);
+    expect(() => protectZipOrApkBuffer(signed, { isApk: true })).toThrow(UnsupportedApkProtectionError);
   });
-  it("refuses signed archives and duplicate names", () => {
+  it("auto-detects AndroidManifest ZIPs as unsigned APK-shaped archives and refuses signed ones", () => {
+    const renamed = writeZipArchive([{ name: "AndroidManifest.xml", data: Buffer.from("fixture") }]);
+    const res = protectZipOrApkBuffer(renamed, { intensity: "stealth", seed: "manifest-zip" });
+    expect(res.canaryTokensEmbedded).toBeGreaterThan(0);
+    expect(readZipEntries(res.buffer).some((e) => e.name.startsWith("assets/bla-shield/"))).toBe(true);
     expect(() => protectZipOrApkBuffer(writeZipArchive([{ name: "META-INF/TEST.RSA", data: Buffer.from("not a real signature") }]))).toThrow(/signing-aware/);
     expect(() => readZipEntries(writeZipArchive([{ name: "a", data: Buffer.from("1") }, { name: "a", data: Buffer.from("2") }]))).toThrow(/duplicate/);
   });
@@ -104,10 +132,10 @@ describe("archive admission preserves bytes or fails closed", () => {
     expect(() => protectTarget({ inputPath: file, outputPath: join(dir, "new", "output.zip") })).toThrow(/reserved output namespace/);
     expect(existsSync(join(dir, "new"))).toBe(false);
   });
-  it.each(["bad.zip", "unsigned.apk", "renamed.zip"])("retains input/output and creates no directory for %s", (name) => {
+  it("retains input/output and creates no directory for malformed ZIP", () => {
     const dir = mkdtempSync(join(tmpdir(), "bla-archive-")); dirs.push(dir);
-    const input = join(dir, name); const output = join(dir, "existing.zip");
-    const bytes = name === "bad.zip" ? bad[0]![1]() : name === "renamed.zip" ? writeZipArchive([{ name: "AndroidManifest.xml", data: Buffer.from("fixture") }]) : fixture();
+    const input = join(dir, "bad.zip"); const output = join(dir, "existing.zip");
+    const bytes = bad[0]![1]();
     writeFileSync(input, bytes); writeFileSync(output, "existing output");
     expect(() => protectTarget({ inputPath: input, outputPath: output })).toThrow();
     expect(readFileSync(output, "utf8")).toBe("existing output");
@@ -115,5 +143,25 @@ describe("archive admission preserves bytes or fails closed", () => {
     expect(readFileSync(input)).toEqual(bytes);
     expect(() => protectTarget({ inputPath: input, outputPath: join(dir, "new", "out.zip") })).toThrow();
     expect(existsSync(join(dir, "new"))).toBe(false);
+  });
+  it("protects unsigned.apk in-place without touching unrelated outputs", () => {
+    const dir = mkdtempSync(join(tmpdir(), "bla-archive-apk-")); dirs.push(dir);
+    const input = join(dir, "unsigned.apk");
+    const unrelated = join(dir, "existing.zip");
+    const dex = Buffer.alloc(112, 0);
+    dex.write("dex\n035\0", 0, "ascii");
+    dex.writeUInt32LE(112, 32);
+    dex.writeUInt32LE(112, 36);
+    dex.writeUInt32LE(0x12345678, 40);
+    const bytes = writeZipArchive([
+      { name: "AndroidManifest.xml", data: Buffer.from("<manifest/>") },
+      { name: "classes.dex", data: dex },
+    ]);
+    writeFileSync(input, bytes);
+    writeFileSync(unrelated, "existing output");
+    const res = protectTarget({ inputPath: input, outputPath: join(dir, "out.apk") });
+    expect(res.outputPath).toContain("out.apk");
+    expect(readFileSync(unrelated, "utf8")).toBe("existing output");
+    expect(readFileSync(input)).toEqual(bytes);
   });
 });

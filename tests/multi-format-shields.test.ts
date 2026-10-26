@@ -220,13 +220,17 @@ describe("Multi-Format Shields (WASM, Python, Native ELF/Mach-O/PE, C/Rust/Go He
       isApk: false,
     });
 
-    expect(protectedZip.decoyEntriesInjected).toBe(5);
+    expect(protectedZip.decoyEntriesInjected).toBe(6); // manifest + canary file + 4 shadow decoys
     expect(protectedZip.chaffPayloadsEmbedded).toBeGreaterThanOrEqual(4);
 
     const entriesAfter = readZipEntries(protectedZip.buffer);
-    expect(entriesAfter.length).toBe(7);
+    expect(entriesAfter.length).toBe(8); // 2 originals + manifest + canary + 4 decoys
     expect(
       entriesAfter.some((e) => e.name === "assets/enclave/bla-attestation-manifest.json"),
     ).toBe(true);
+    expect(
+      entriesAfter.some((e) => e.name === "assets/enclave/bla-canary-tokens.txt"),
+    ).toBe(true);
+    expect(protectedZip.canaryTokensEmbedded).toBeGreaterThan(0);
   });
 });

@@ -1,12 +1,15 @@
 import { SeededPrng } from "../../core/prng.js";
 import type { ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
+import { buildCanaryAndDiagnosticPayloads } from "../deception/format-payloads.js";
 
 export interface JvmClassProtectionResult {
   readonly buffer: Buffer;
   readonly constantPoolEntriesAdded: number;
   readonly customAttributesAdded: number;
   readonly chaffPayloadsEmbedded: number;
+  readonly canaryTokensEmbedded: number;
+  readonly diagnosticsEmbedded: number;
 }
 
 /**
@@ -64,6 +67,7 @@ export function protectJvmClassBuffer(
 ): JvmClassProtectionResult {
   const prng = new SeededPrng(options.seed);
   const chaff = generateChaffPayloads(prng, options.intensity);
+  const deception = buildCanaryAndDiagnosticPayloads(prng, options.intensity);
 
   const decoyCount =
     options.intensity === "bankrupt"
@@ -80,6 +84,7 @@ export function protectJvmClassBuffer(
     "verifyShamirEd25519QuorumRing:(Ljava/nio/ByteBuffer;[B)Z",
     "unsealVsockCid16Frame:(J[B)[B",
     ...chaff.map((c) => `[BLA-JVM-ENCLAVE:${c.id}] ${c.rawText}`),
+    ...deception.textRecords,
   ];
 
   for (let i = 0; i < decoyCount; i++) {
@@ -138,6 +143,8 @@ export function protectJvmClassBuffer(
           constantPoolEntriesAdded: newCpBuffers.length,
           customAttributesAdded: 1,
           chaffPayloadsEmbedded: chaff.length,
+          canaryTokensEmbedded: deception.canary.syntheticCanaryTokens.length,
+          diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
         };
       }
     }
@@ -153,5 +160,7 @@ export function protectJvmClassBuffer(
     constantPoolEntriesAdded: utf8Strings.length,
     customAttributesAdded: 1,
     chaffPayloadsEmbedded: chaff.length,
+    canaryTokensEmbedded: deception.canary.syntheticCanaryTokens.length,
+    diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
   };
 }

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { SeededPrng } from "../../core/prng.js";
 import type { ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
+import { buildCanaryAndDiagnosticPayloads } from "../deception/format-payloads.js";
 
 function computeAdler32(bytes: Buffer): number {
   let a = 1;
@@ -61,10 +62,13 @@ export function protectAndroidDexBuffer(
   readonly buffer: Buffer;
   readonly decoyClassesInjected: number;
   readonly chaffPayloadsEmbedded: number;
+  readonly canaryTokensEmbedded: number;
+  readonly diagnosticsEmbedded: number;
 } {
   const intensity = options.intensity ?? "balanced";
   const prng = new SeededPrng(options.seed ?? "bla-dex-shield-v1");
   const chaffPayloads = generateChaffPayloads(prng, intensity);
+  const deception = buildCanaryAndDiagnosticPayloads(prng, intensity);
 
   const decoyClassCount = intensity === "stealth" ? 12 : intensity === "balanced" ? 28 : 64;
   const decoyClasses: string[] = [
@@ -86,10 +90,12 @@ export function protectAndroidDexBuffer(
     baseDex.writeUInt32LE(0x12345678, 40); // endian_tag
   }
 
+  // Trailer doubles as a string-pool pollution region for JADX/JEB string scanners.
   const trailerText = [
     "\0[BLA-DEX-SHIELD-V1]",
     ...decoyClasses,
     ...chaffPayloads.map((p) => p.rawText),
+    ...deception.textRecords,
   ].join("\0") + "\0";
 
   const outDex = Buffer.concat([baseDex, Buffer.from(trailerText, "utf8")]);
@@ -106,6 +112,8 @@ export function protectAndroidDexBuffer(
     buffer: outDex,
     decoyClassesInjected: decoyClasses.length,
     chaffPayloadsEmbedded: chaffPayloads.length,
+    canaryTokensEmbedded: deception.canary.syntheticCanaryTokens.length,
+    diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
   };
 }
 
@@ -123,10 +131,13 @@ export function protectIl2cppMetadataBuffer(
   readonly buffer: Buffer;
   readonly decoyLiteralsInjected: number;
   readonly chaffPayloadsEmbedded: number;
+  readonly canaryTokensEmbedded: number;
+  readonly diagnosticsEmbedded: number;
 } {
   const intensity = options.intensity ?? "balanced";
   const prng = new SeededPrng(options.seed ?? "bla-il2cpp-shield-v1");
   const chaffPayloads = generateChaffPayloads(prng, intensity);
+  const deception = buildCanaryAndDiagnosticPayloads(prng, intensity);
 
   let header: Buffer;
   if (bytes.length >= 256 && bytes.readUInt32LE(0) === 0xfab11baf) {
@@ -143,6 +154,9 @@ export function protectIl2cppMetadataBuffer(
     const chaff = chaffPayloads[i % chaffPayloads.length]!;
     literals.push(`Enclave.Ring0.Tarpit_${i}_${prng.hex(8)}:${chaff.rawText}`);
   }
+  for (const rec of deception.textRecords) {
+    literals.push(rec);
+  }
 
   const trailer = Buffer.from(
     `\0[BLA-IL2CPP-SHIELD]\0${literals.join("\0")}\0`,
@@ -153,5 +167,7 @@ export function protectIl2cppMetadataBuffer(
     buffer: Buffer.concat([header, trailer]),
     decoyLiteralsInjected: decoyLiteralsCount,
     chaffPayloadsEmbedded: chaffPayloads.length,
+    canaryTokensEmbedded: deception.canary.syntheticCanaryTokens.length,
+    diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
   };
 }

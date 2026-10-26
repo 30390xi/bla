@@ -1,5 +1,6 @@
 import { SeededPrng } from "../../core/prng.js";
 import type { ProtectionIntensity } from "../../core/types.js";
+import { buildCanaryAndDiagnosticPayloads } from "../deception/format-payloads.js";
 
 /**
  * Exact constant from `morluto/rea/src/dotnet/ManagedDecodeBudget.ts:9`.
@@ -69,15 +70,31 @@ export function protectDotnetManagedBuffer(
 ): {
   readonly buffer: Buffer;
   readonly plan: DotnetManagedExhaustionPlan;
+  readonly canaryTokensEmbedded: number;
+  readonly diagnosticsEmbedded: number;
 } {
+  const intensity = options.intensity ?? "balanced";
   const prng = new SeededPrng(options.seed ?? "bla-dotnet-v1");
-  const plan = planDotnetManagedBudgetExhaustion(prng, options.intensity ?? "balanced");
+  const plan = planDotnetManagedBudgetExhaustion(prng, intensity);
+  const deception = buildCanaryAndDiagnosticPayloads(prng, intensity);
+  // Stay under REA_MAX_MANAGED_METADATA_REPRESENTATION_BYTES (64 MiB) while
+  // still flooding ManagedDecodeBudget string/row charges with canary bait.
   const metadataSection = Buffer.from(
-    `\0BLA_DOTNET_CLR_SHIELD_V1\0${plan.decoyPInvokeImports.join("\0")}\0charge:${plan.totalReaRepresentationChargeBytes}\0`,
+    [
+      "",
+      "BLA_DOTNET_CLR_SHIELD_V1",
+      ...plan.decoyPInvokeImports,
+      `charge:${plan.totalReaRepresentationChargeBytes}`,
+      `maxRepresentationBytes:${REA_MAX_MANAGED_METADATA_REPRESENTATION_BYTES}`,
+      ...deception.textRecords,
+      "",
+    ].join("\0"),
     "utf8",
   );
   return {
     buffer: Buffer.concat([rawBuffer, metadataSection]),
     plan,
+    canaryTokensEmbedded: deception.canary.syntheticCanaryTokens.length,
+    diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
   };
 }

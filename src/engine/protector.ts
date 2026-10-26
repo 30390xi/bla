@@ -53,13 +53,16 @@ export function protectTarget(options: ProtectionOptions): ProtectionResult {
     throw new Error(`Unsupported or missing target path: ${absInput}`);
   }
 
-  // Reject before auditing, generating payloads, or creating any output paths.
-  if (format === "android-apk") throw new UnsupportedApkProtectionError();
+  // Signed APKs still fail closed inside protectZipOrApkBuffer; unsigned APKs
+  // get member-level DEX/IL2CPP hardening. Do not early-throw here.
   const absOutput = resolve(
     options.outputPath ?? deriveDefaultOutputPath(absInput, options.inPlace),
   );
   assertSafeOutputPath(absInput, absOutput, format === "directory", options.inPlace);
   if (format === "archive-zip") validateZipProtectionInput(readFileSync(absInput));
+  if (format === "android-apk") {
+    validateZipProtectionInput(readFileSync(absInput), { allowUnsignedApk: true });
+  }
   if (format === "electron-asar") validateAsarProtectionInput(readFileSync(absInput));
   if (format === "sqlite") validateSqliteFileInput(absInput);
   if (format === "python-source") findPythonPrologueInsertionOffset(readFileSync(absInput, "utf8"));
@@ -318,18 +321,21 @@ export function protectTarget(options: ProtectionOptions): ProtectionResult {
     chaffPayloadsEmbedded = res.chaffPayloadsEmbedded;
     binarySectionsPatched = 1;
     counteredVectors.add("android-dex-il2cpp-inspection");
-  } else if (format === "archive-zip") {
+  } else if (format === "archive-zip" || format === "android-apk") {
     const rawZip = readFileSync(absInput);
     const res = protectZipOrApkBuffer(rawZip, {
       intensity,
       seed,
-      isApk: false,
+      isApk: format === "android-apk",
     });
     writeFileSync(absOutput, res.buffer);
-    decoyFunctionsInjected = 12;
+    decoyFunctionsInjected = 12 + res.membersHardened;
     chaffPayloadsEmbedded = res.chaffPayloadsEmbedded;
     binarySectionsPatched = res.decoyEntriesInjected;
     counteredVectors.add("archive-inventory");
+    if (res.membersHardened > 0) {
+      counteredVectors.add("android-dex-il2cpp-inspection");
+    }
   } else if (format === "apple-plist") {
     const rawPlist = readFileSync(absInput);
     const res = protectApplePlistBuffer(rawPlist, { intensity, seed });
