@@ -85,22 +85,111 @@ function parseBeamChunks(bytes: Buffer): {
   return { valid: true, formSize, chunks };
 }
 
-function decodeAtU8Names(payload: Buffer): string[] {
-  if (payload.length < 4) return [];
+/** OTP 28+ compact unsigned `u` tag encoder (mirrors REA BeamParser). */
+function encodeCompactU(value: number): Buffer {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`compact u value must be a non-negative integer: ${value}`);
+  }
+  if (value < 16) return Buffer.from([(value << 4) & 0xff]);
+  if (value < 0x800) {
+    return Buffer.from([0x08 | (((value >> 8) & 0x07) << 5), value & 0xff]);
+  }
+  if (value <= 0xffff) {
+    return Buffer.from([0x18, (value >> 8) & 0xff, value & 0xff]);
+  }
+  if (value <= 0xffffff) {
+    return Buffer.from([
+      0x38,
+      (value >> 16) & 0xff,
+      (value >> 8) & 0xff,
+      value & 0xff,
+    ]);
+  }
+  throw new Error(`compact u value too large for atom length: ${value}`);
+}
+
+function decodeCompactU(
+  payload: Buffer,
+  at: number,
+): { value: number; next: number } | null {
+  if (at >= payload.length) return null;
+  const first = payload[at]!;
+  if ((first & 0x07) !== 0) return null;
+  if ((first & 0x08) === 0) {
+    return { value: first >> 4, next: at + 1 };
+  }
+  if ((first & 0x10) === 0) {
+    if (at + 1 >= payload.length) return null;
+    return {
+      value: ((first >> 5) << 8) | payload[at + 1]!,
+      next: at + 2,
+    };
+  }
+  const byteCountCode = first >> 5;
+  if (byteCountCode === 7) return null;
+  const byteCount = byteCountCode + 2;
+  const start = at + 1;
+  if (start + byteCount > payload.length) return null;
+  let value = 0;
+  for (let i = 0; i < byteCount; i++) {
+    value = (value << 8) | payload[start + i]!;
+  }
+  return { value, next: start + byteCount };
+}
+
+function decodeAtU8Table(payload: Buffer): {
+  readonly names: string[];
+  readonly compact: boolean;
+} {
+  if (payload.length < 4) return { names: [], compact: false };
   const declared = payload.readInt32BE(0);
-  if (declared < 0) return []; // compact OTP layout — leave untouched
-  const count = declared;
+  const compact = declared < 0;
+  const count = Math.abs(declared);
+  if (count === 0) return { names: [], compact };
   const names: string[] = [];
   let at = 4;
   for (let i = 0; i < count; i++) {
     if (at >= payload.length) break;
-    const len = payload[at]!;
-    at += 1;
-    if (at + len > payload.length) break;
-    names.push(payload.subarray(at, at + len).toString("utf8"));
-    at += len;
+    let length: number;
+    let next: number;
+    if (compact) {
+      const decoded = decodeCompactU(payload, at);
+      if (decoded === null) break;
+      length = decoded.value;
+      next = decoded.next;
+    } else {
+      length = payload[at]!;
+      next = at + 1;
+    }
+    at = next;
+    if (at + length > payload.length) break;
+    names.push(payload.subarray(at, at + length).toString("utf8"));
+    at += length;
   }
-  return names;
+  return { names, compact };
+}
+
+/** Encode AtU8 body (not wrapped in IFF chunk) in compact or classic form. */
+function encodeAtU8Body(
+  names: readonly string[],
+  compact: boolean,
+): Buffer {
+  if (compact) {
+    const parts: Buffer[] = [Buffer.alloc(4)];
+    parts[0]!.writeInt32BE(-names.length);
+    for (const name of names) {
+      const enc = Buffer.from(name, "utf8");
+      parts.push(encodeCompactU(enc.length), enc);
+    }
+    return Buffer.concat(parts);
+  }
+  const parts: Buffer[] = [u32be(names.length)];
+  for (const name of names) {
+    const enc = Buffer.from(name, "utf8");
+    if (enc.length > 255) continue;
+    parts.push(Buffer.from([enc.length]), enc);
+  }
+  return Buffer.concat(parts);
 }
 
 export function inspectErlangBeam(bytes: Buffer): ErlangBeamInspection {
@@ -137,9 +226,9 @@ function rebuildBeam(chunks: readonly BeamChunkView[]): Buffer {
 /**
  * Protects an Erlang BEAM IFF container:
  * - Preserves original chunk order and non-AtU8 payloads (Code/ExpT/ImpT stay intact).
- * - Appends canary atoms onto a non-compact AtU8 table (original indices preserved).
+ * - Appends canary atoms onto AtU8 tables (classic or OTP28+ compact), preserving
+ *   original atom indices and compact/classic encoding style.
  * - Appends decoy IFF chunks past REA's default `max_chunks` (64) budget.
- * Compact (OTP28+) AtU8 tables are left byte-identical; decoy chunks still apply.
  */
 export function protectErlangBeamBuffer(
   input: Buffer,
@@ -205,8 +294,12 @@ export function protectErlangBeamBuffer(
   for (let i = 0; i < baseChunks.length; i++) {
     const chunk = baseChunks[i]!;
     if (chunk.name !== "AtU8") continue;
-    const existing = decodeAtU8Names(chunk.payload);
-    if (existing.length === 0) break; // compact or undecodable — skip mutation
+    const table = decodeAtU8Table(chunk.payload);
+    if (table.names.length === 0 && chunk.payload.length >= 4) {
+      // Empty or undecodable — skip atom mutation; decoy chunks still apply.
+      break;
+    }
+    const existing = table.names;
     const extras: string[] = [
       "bla_beam_canary",
       `[BLA-BEAM-SHIELD]`,
@@ -222,14 +315,10 @@ export function protectErlangBeamBuffer(
     atomsInjected = extras.length;
     exceedsDefaultAtomBudget =
       merged.length > REA_INTERNAL_LIMITS.BEAM_DEFAULT_MAX_ATOMS;
-    // Replace this chunk's payload with expanded AtU8 body (not wrapped again).
-    const parts: Buffer[] = [u32be(merged.length)];
-    for (const name of merged) {
-      const enc = Buffer.from(name, "utf8");
-      if (enc.length > 255) continue;
-      parts.push(Buffer.from([enc.length]), enc);
-    }
-    baseChunks[i] = { name: "AtU8", payload: Buffer.concat(parts) };
+    baseChunks[i] = {
+      name: "AtU8",
+      payload: encodeAtU8Body(merged, table.compact),
+    };
     break;
   }
 
