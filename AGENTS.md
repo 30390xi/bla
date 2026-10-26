@@ -18,7 +18,7 @@ This repository contains **BLA (`bla-agents` — Blind LLM Agents)**, an open-so
   - `deception/`: Surgical Model-Misjudgment Induction Engine (`shadow-business-logic.ts`, `evidence-contract-poison.ts`, `architecture-mirage.ts`, `semantic-honeypot.ts`, `decompiler-illusion.ts`, `prompt-completion-poison.ts`, `diff-noise-injector.ts`, `crash-trace-decoy.ts`).
   - `chaff/chaff-generator.ts`: Generates benign hardware-enclave delegation manifests and decoy offset contracts.
   - `tarpit/opaque-predicates.ts` & `tarpit-generator.ts`: Number-theoretic opaque predicates ($O(1)$ runtime invariants) and REA Semantic Budget Breakers.
-  - `runtime/runtime-shield.ts`: "Truman Show" Anti-CDP / Anti-Inspector / Anti-Frida dynamic runtime deception shield.
+  - `runtime/runtime-shield.ts` & `runtime/memory-diff-shield.ts`: "Truman Show" Anti-CDP / Anti-Inspector / Anti-Frida dynamic runtime deception shield, plus Synchronized Shadow Heap Churn and Split-Share Rolling XOR memory masking against $M_0 \to M_1$ runtime memory diffing.
   - `javascript/ast-shield.ts`: Babel AST shield combining opaque ternaries, Electron IPC de-literalization, exhaustion suite, and deception suite.
   - `formats/`: Format-specific shields for `sourcemap.ts`, `asar.ts`, `electron-fuses.ts`, `wasm.ts`, `python.ts`, `native.ts`, `sqlite.ts`, `model.ts`, `mobile-game.ts`, `apple-plist.ts`, `dotnet-managed.ts`, `headers.ts`, and `archive.ts`.
 - `src/bundler/index.ts`: Vite, Rollup, Webpack, and esbuild bundler plugins (`bla-agents/bundler`).
