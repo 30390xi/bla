@@ -89,3 +89,12 @@ export function protectGpuPtxText(
  */
 export const FIRMWARE_HARDENING_SKIP_REASON =
   "Firmware images are skipped: safe generic mutation would break boot signatures, CRCs, or vendor headers. No BLA firmware shield is offered.";
+
+/**
+ * SPIR-V modules, CUDA fatbinaries, and AMD GPU code objects are skipped:
+ * their containers carry structural hashes / embedded ELF slices where a
+ * generic trailer would break loader validation. PTX text remains the only
+ * safely append-only GPU surface BLA hardens.
+ */
+export const GPU_OBJECT_HARDENING_SKIP_REASON =
+  "SPIR-V / CUDA fatbinary / AMD GPU objects are skipped: brittle structural hashes and embedded ELF slices make generic mutation unsafe. Only PTX text is hardened.";
