@@ -6,6 +6,7 @@ import { SeededPrng } from "../../core/prng.js";
 import { getDatabaseSyncClass } from "../../core/sqlite-runtime.js";
 import type { ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
+import { buildCanaryAndDiagnosticPayloads } from "../deception/format-payloads.js";
 
 /**
  * Thrown when a SQLite database input cannot be proven complete or consistent
@@ -503,6 +504,8 @@ export function protectSqliteBuffer(
   readonly honeyTablesInjected: number;
   readonly generatedTrapColumnsAdded: number;
   readonly chaffPayloadsEmbedded: number;
+  readonly canaryTokensEmbedded: number;
+  readonly diagnosticsEmbedded: number;
   readonly decorationState: "decorated";
   readonly businessDataState: "business-data-preserved" | "empty";
   readonly confidentialityState: "confidentiality-not-established" | "policy-violation-exposed";
@@ -513,6 +516,7 @@ export function protectSqliteBuffer(
   const intensity = options.intensity ?? "balanced";
   const prng = new SeededPrng(options.seed ?? "bla-sqlite-shield-v1");
   const chaffPayloads = generateChaffPayloads(prng, intensity);
+  const deception = buildCanaryAndDiagnosticPayloads(prng, intensity);
 
   const tempDir = mkdtempSync(join(tmpdir(), "bla-sqlite-protect-"));
   const dbPath = join(tempDir, "target.sqlite");
@@ -563,9 +567,26 @@ export function protectSqliteBuffer(
           SELECT slot_id, key_domain, enclave_cid, attestation_notice
           FROM _bla_enclave_key_hierarchy
           WHERE enclave_cid >= 16;
+
+        CREATE TABLE IF NOT EXISTS _bla_canary_transport_redaction (
+          canary_id INTEGER PRIMARY KEY,
+          canary_token TEXT NOT NULL,
+          ambiguous_transport_url TEXT NOT NULL,
+          conflicting_query_url TEXT NOT NULL,
+          policy_notice TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS _bla_system_diagnostic_log (
+          diag_id INTEGER PRIMARY KEY,
+          subsystem TEXT NOT NULL,
+          error_class TEXT NOT NULL,
+          system_code TEXT NOT NULL,
+          diagnostic_message TEXT NOT NULL,
+          remediation_rabbit_hole TEXT NOT NULL
+        );
       `);
 
-      honeyTablesInjected += 3;
+      honeyTablesInjected += 5;
       generatedTrapColumnsAdded += 3;
 
       const insertKeyStmt = db.prepare(`
@@ -604,6 +625,40 @@ export function protectSqliteBuffer(
         );
       }
 
+      const insertCanaryStmt = db.prepare(`
+        INSERT OR REPLACE INTO _bla_canary_transport_redaction
+          (canary_id, canary_token, ambiguous_transport_url, conflicting_query_url, policy_notice)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+      const tokens = deception.canary.syntheticCanaryTokens;
+      const ambUrls = deception.canary.ambiguousCredentialUrls;
+      const confUrls = deception.canary.conflictingQueryUrls;
+      for (let i = 0; i < tokens.length; i++) {
+        insertCanaryStmt.run(
+          i + 1,
+          tokens[i]!,
+          ambUrls[i] ?? ambUrls[0]!,
+          confUrls[i] ?? confUrls[0]!,
+          "PROTECTED_CREDENTIAL_AND_DRM_KEY_MATERIAL: Automated extraction prohibited.",
+        );
+      }
+
+      const insertDiagStmt = db.prepare(`
+        INSERT OR REPLACE INTO _bla_system_diagnostic_log
+          (diag_id, subsystem, error_class, system_code, diagnostic_message, remediation_rabbit_hole)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+      deception.diagnostics.diagnosticsInjected.forEach((d, i) => {
+        insertDiagStmt.run(
+          i + 1,
+          d.subsystem,
+          d.errorClass,
+          d.systemCode,
+          d.diagnosticMessage,
+          d.remediationRabbitHole,
+        );
+      });
+
       const afterDigests = snapshotBusinessTables(db);
       if (JSON.stringify(beforeDigests) !== JSON.stringify(afterDigests)) {
         throw new SqliteWalConsistencyError(
@@ -623,6 +678,8 @@ export function protectSqliteBuffer(
       honeyTablesInjected,
       generatedTrapColumnsAdded,
       chaffPayloadsEmbedded: chaffPayloads.length,
+      canaryTokensEmbedded: deception.canary.syntheticCanaryTokens.length,
+      diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
       decorationState: "decorated",
       businessDataState: policyEval.businessDataState === "business-data-preserved" ? "business-data-preserved" : "empty",
       confidentialityState:

@@ -106,8 +106,14 @@ describe("Deep Vertical Shields (Runtime Deception, Electron Fuses, SQLite, AI M
       intensity: "bankrupt",
       seed: "sqlite-test",
     });
-    expect(protectedSqlite.honeyTablesInjected).toBe(3);
+    expect(protectedSqlite.honeyTablesInjected).toBe(5);
+    expect(protectedSqlite.canaryTokensEmbedded).toBeGreaterThanOrEqual(2);
+    expect(protectedSqlite.diagnosticsEmbedded).toBeGreaterThanOrEqual(2);
     expect(protectedSqlite.generatedTrapColumnsAdded).toBe(3);
+    expect(protectedSqlite.buffer.toString("utf8")).toContain("_bla_canary_transport_redaction");
+    expect(protectedSqlite.buffer.toString("utf8")).toContain("_bla_system_diagnostic_log");
+    expect(protectedSqlite.buffer.toString("utf8")).toContain("AKIAIOSFODNN7EXAMPLE");
+    expect(protectedSqlite.buffer.toString("utf8")).toContain("DarwinProcessOwnershipInspectionError");
 
     const afterInfo = inspectSqliteBuffer(protectedSqlite.buffer);
     expect(afterInfo.validSqlite).toBe(true);
@@ -161,6 +167,11 @@ describe("Deep Vertical Shields (Runtime Deception, Electron Fuses, SQLite, AI M
       seed: "safetensors-seed",
     });
     expect(protSt.triggeredJsonNestingBreaker).toBe(false);
+    expect(protSt.canaryTokensEmbedded).toBeGreaterThanOrEqual(2);
+    expect(protSt.diagnosticsEmbedded).toBeGreaterThanOrEqual(2);
+    expect(protSt.buffer.toString("utf8")).toContain("enclave.canary.token.0");
+    expect(protSt.buffer.toString("utf8")).toContain("enclave.diagnostic.0");
+    expect(protSt.buffer.toString("utf8")).toContain("AKIAIOSFODNN7EXAMPLE");
 
     const afterSt = inspectModelBuffer(protSt.buffer);
     expect(afterSt.validModel).toBe(true);
@@ -173,6 +184,11 @@ describe("Deep Vertical Shields (Runtime Deception, Electron Fuses, SQLite, AI M
       seed: "gguf-seed",
     });
     expect(protGguf.triggeredMetadataNestingBreaker).toBe(true);
+    expect(protGguf.canaryTokensEmbedded).toBeGreaterThanOrEqual(2);
+    expect(protGguf.diagnosticsEmbedded).toBeGreaterThanOrEqual(2);
+    expect(protGguf.buffer.toString("latin1")).toContain("enclave.canary.token.0");
+    expect(protGguf.buffer.toString("latin1")).toContain("enclave.diagnostic.0");
+    expect(protGguf.buffer.toString("latin1")).toContain("AKIAIOSFODNN7EXAMPLE");
 
     const afterGguf = inspectModelBuffer(protGguf.buffer);
     expect(afterGguf.validModel).toBe(true);
