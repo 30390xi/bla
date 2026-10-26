@@ -47,3 +47,27 @@ export function resolveTsharkEnv() {
     },
   };
 }
+
+/** User-local WABT 1.0.42 tools (REA_WABT_BIN_DIRECTORY). Soft-skip when absent. */
+export function resolveWabtEnv() {
+  const fromEnv = process.env.REA_WABT_BIN_DIRECTORY;
+  const home = process.env.HOME ?? "";
+  const candidates = [
+    fromEnv,
+    join(home, "opt/wabt-1.0.42/bin"),
+    join(home, "wabt/bin"),
+  ].filter(Boolean);
+  for (const dir of candidates) {
+    const validate = join(dir, "wasm-validate");
+    const objdump = join(dir, "wasm-objdump");
+    const wasm2wat = join(dir, "wasm2wat");
+    if (existsSync(validate) && existsSync(objdump) && existsSync(wasm2wat)) {
+      return {
+        available: true,
+        directory: dir,
+        env: { ...process.env, REA_WABT_BIN_DIRECTORY: dir },
+      };
+    }
+  }
+  return { available: false, directory: null, env: process.env };
+}

@@ -218,7 +218,8 @@ async function main() {
     );
   }
   const diverges = pairs.filter((p) => {
-    // soft check: after should hit for go/flutter/beam/evm/pcap/gguf
+    // soft check: after should hit for go/flutter/beam/evm/pcap/gguf + asar/wasm/fuses
+    // sqlite must-trip only when DatabaseSync.limits made the probe runnable
     const must = new Set([
       "go_buildinfo",
       "flutter_pool",
@@ -230,6 +231,14 @@ async function main() {
       "wasm_module",
       "electron_fuses",
     ]);
+    if (p.format === "sqlite_db") {
+      if (
+        p.after.status === "capability_gated" ||
+        p.after.status === "skipped"
+      )
+        return false;
+      return !p.after.budgetHit;
+    }
     if (!must.has(p.format)) return false;
     if (p.format === "pcap_capture" && p.after.status === "skipped") return false;
     return !p.after.budgetHit;

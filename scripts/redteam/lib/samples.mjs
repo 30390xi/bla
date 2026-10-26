@@ -347,6 +347,7 @@ export async function buildSampleMatrix() {
           interfaceDescriptorsEmbedded: wasmHard.interfaceDescriptorsEmbedded,
           projectedInterfaceChargeBytes: wasmHard.projectedInterfaceChargeBytes,
           exceedsRepresentationBudget: wasmHard.exceedsRepresentationBudget,
+          exportDecoysInjected: wasmHard.exportDecoysInjected,
         },
       },
       sqlite_db: {

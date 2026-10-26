@@ -139,7 +139,9 @@ function compareToEstimates(pair) {
         : `DIVERGE: BLA exceeds=${expect}, empirical budgetHit=${hit}`,
     );
     notes.push(
-      "Full Wabt WAT decode is tool-backed; in-process WasmInterfaceBudget reserved with projected descriptors",
+      after.metrics?.wabtAvailable
+        ? "Wabt E2E (wasm-validate / wasm-objdump / wasm2wat) ran via WabtArtifactProvider; interface state + budget issues recorded"
+        : "Wabt tools absent — soft-skipped to in-process WasmInterfaceBudget with projected descriptors",
     );
   }
   if (format === "sqlite_db") {

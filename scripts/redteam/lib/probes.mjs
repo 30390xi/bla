@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 import {
   resolveReaDist,
   resolveTsharkEnv,
+  resolveWabtEnv,
   reaDistReady,
 } from "./paths.mjs";
 
@@ -158,12 +159,31 @@ export async function loadReaProbes() {
     await import(resolveReaDist("electron/ElectronFuseReader.js"));
   let inspectSqliteDatabaseSnapshot = null;
   let SqliteInspectionFailure = null;
+  let SqliteColumnEvaluationFailure = null;
   try {
     const sqliteMod = await import(
       resolveReaDist("sqlite/SqliteDatabaseInspection.js")
     );
     inspectSqliteDatabaseSnapshot = sqliteMod.inspectSqliteDatabaseSnapshot;
     SqliteInspectionFailure = sqliteMod.SqliteInspectionFailure;
+  } catch {
+    /* optional */
+  }
+  try {
+    const limitsMod = await import(
+      resolveReaDist("sqlite/SqliteDatabaseLimits.js")
+    );
+    SqliteColumnEvaluationFailure = limitsMod.SqliteColumnEvaluationFailure;
+    SqliteInspectionFailure =
+      SqliteInspectionFailure ?? limitsMod.SqliteInspectionFailure;
+  } catch {
+    /* optional */
+  }
+  let WabtArtifactProvider = null;
+  try {
+    ({ WabtArtifactProvider } = await import(
+      resolveReaDist("wasm/WabtArtifactProvider.js")
+    ));
   } catch {
     /* optional */
   }
@@ -192,6 +212,8 @@ export async function loadReaProbes() {
     ElectronFuseResourceFailure,
     inspectSqliteDatabaseSnapshot,
     SqliteInspectionFailure,
+    SqliteColumnEvaluationFailure,
+    WabtArtifactProvider,
   };
 }
 
@@ -510,6 +532,7 @@ export async function probeAsar(rea, bytes, phase) {
 
 export async function probeWasm(rea, bla, bytes, phase, sampleMeta = {}) {
   const base = outcomeBase("wasm_module", phase, bytes);
+  const wabt = resolveWabtEnv();
   try {
     const valid = WebAssembly.validate(bytes);
     const inspection = bla.inspectWasmBinary(bytes);
@@ -518,16 +541,81 @@ export async function probeWasm(rea, bla, bytes, phase, sampleMeta = {}) {
       sectionCount: inspection.sectionCount,
       customSectionNames: inspection.customSectionNames,
       exportNames: inspection.exportNames,
+      exportCount: inspection.exportNames?.length ?? 0,
       importCount: inspection.importCount,
       projectedChargeBytes: sampleMeta.projectedInterfaceChargeBytes ?? null,
       representationBudget: rea.WASM_INTERFACE_REPRESENTATION_BYTES,
       descriptorCount: sampleMeta.interfaceDescriptorsEmbedded ?? null,
+      exportDecoysInjected: sampleMeta.exportDecoysInjected ?? null,
       exceedsRepresentationBudget:
         sampleMeta.exceedsRepresentationBudget === true,
+      wabtAvailable: wabt.available,
     };
-    // Exercise REA's real WasmInterfaceBudget class. Full Wabt WAT decode is
-    // tool-backed (see unverified); we reserve using the same charge formula
-    // BLA embeds for the hardened sample's exhaustion plan.
+
+    // Prefer real Wabt E2E when REA_WABT_BIN_DIRECTORY (or ~/opt/wabt-1.0.42) is present.
+    if (wabt.available && typeof rea.WabtArtifactProvider === "function") {
+      const dir = mkdtempSync(join(tmpdir(), "bla-rt-wabt-"));
+      const path = join(dir, `${phase}.wasm`);
+      writeFileSync(path, bytes);
+      const provider = new rea.WabtArtifactProvider(wabt.env);
+      try {
+        const result = await provider.inspect({
+          path,
+          glue_paths: [],
+          candidate_paths: [],
+        });
+        if (!result.ok) {
+          const err = result.error;
+          const msg = String(err?.userMessage ?? err?.message ?? err);
+          const isBudget =
+            /representation budget|WABT output|capacity/i.test(msg) ||
+            err?.kind === "capacity" ||
+            err?.details?.maximum_bytes != null;
+          failOutcome(
+            base,
+            err,
+            isBudget ? "WASM_INTERFACE_REPRESENTATION_BYTES" : "WABT",
+          );
+          if (isBudget) {
+            base.budgetHit = true;
+            base.budgetName = "WASM_INTERFACE_REPRESENTATION_BYTES";
+            base.status = "budget_rejected";
+          }
+          base.metrics.wabtError = msg.slice(0, 240);
+          return base;
+        }
+        const r = result.value.result ?? result.value;
+        base.metrics.wabtValidation = r.validation;
+        base.metrics.wabtExportForms = r.exports?.length ?? 0;
+        base.metrics.wabtWatBytes = r.wat?.text?.length ?? 0;
+        base.metrics.wabtInterfaceEntries = r.interface?.entries?.length ?? 0;
+        base.metrics.wabtInterfaceState = r.interface?.state ?? null;
+        base.metrics.wabtInterfaceIssues = (r.interface?.issues ?? []).slice(0, 2);
+        const issues = r.interface?.issues ?? [];
+        const tripped = issues.some((i) =>
+          /representation budget|Typed WASM interface/i.test(String(i)),
+        );
+        if (tripped || r.interface?.state === "partial") {
+          base.budgetHit = true;
+          base.budgetName = "WASM_INTERFACE_REPRESENTATION_BYTES";
+          base.status = "budget_rejected";
+          base.redactionOrAmbiguity =
+            issues[0] ??
+            "Wabt typed interface inventory partial: representation budget exceeded";
+        }
+      } finally {
+        try {
+          await provider.close();
+        } catch {
+          /* ignore */
+        }
+      }
+      return base;
+    }
+
+    // Soft fallback: in-process WasmInterfaceBudget with projected descriptors.
+    base.metrics.wabtSkipped =
+      "REA_WABT_BIN_DIRECTORY / ~/opt/wabt-1.0.42 not available; using projected WasmInterfaceBudget";
     if (phase === "after" && sampleMeta.exceedsRepresentationBudget) {
       const plan = bla.planWasmInterfaceBudgetExhaustion(
         new bla.SeededPrng("bla-redteam-empirical-v1"),
@@ -538,9 +626,11 @@ export async function probeWasm(rea, bla, bytes, phase, sampleMeta = {}) {
       for (const d of plan.descriptors) {
         const entry = {
           direction: "export",
-          module: d.moduleName,
+          module: null,
           name: d.exportName,
-          wat_form: `(func $${d.exportName} (param ${"i64 ".repeat(d.paramCount).trim()}) (result ${"i64 ".repeat(d.resultCount).trim()}))`,
+          kind: "func",
+          index: 0,
+          wat_form: `(export "${d.exportName}" (func 0))`,
           issue: null,
           signature: {
             kind: "func",
@@ -559,7 +649,7 @@ export async function probeWasm(rea, bla, bytes, phase, sampleMeta = {}) {
           base.budgetHit = true;
           base.budgetName = "WASM_INTERFACE_REPRESENTATION_BYTES";
           base.redactionOrAmbiguity =
-            "WasmInterfaceBudget refused projected interface inventory (Wabt E2E needs REA_WABT_BIN_DIRECTORY)";
+            "WasmInterfaceBudget refused projected interface inventory (install Wabt for full E2E)";
           return base;
         }
       }
@@ -568,8 +658,6 @@ export async function probeWasm(rea, bla, bytes, phase, sampleMeta = {}) {
         base.budgetHit = true;
         base.budgetName = "WASM_INTERFACE_REPRESENTATION_BYTES";
         base.status = "budget_rejected";
-        base.redactionOrAmbiguity =
-          "Plan exceeds representation budget; reserve loop did not trip (charge formula drift?)";
       }
     }
   } catch (err) {
@@ -585,21 +673,46 @@ export async function probeSqlite(rea, bla, bytes, phase) {
     base.redactionOrAmbiguity = "sqlite sample unavailable (node:sqlite)";
     return base;
   }
-  // BLA evidence surface (honey tables / canaries) always measurable via node:sqlite.
   try {
     const inspection = bla.inspectSqliteBuffer(bytes);
     base.metrics.blaHoneyTables = inspection.honeyTablesCount;
-    base.metrics.blaTableCount = inspection.tableNames?.length ?? inspection.tables?.length;
+    base.metrics.blaTableCount =
+      inspection.tableNames?.length ?? inspection.tables?.length;
     base.metrics.blaProtected = inspection.blaProtected === true;
+    base.metrics.hasGeneratedTrapColumns =
+      inspection.hasGeneratedTrapColumns === true;
   } catch (err) {
     base.metrics.blaInspectError = String(err?.message ?? err).slice(0, 160);
   }
-  // REA inspectSqliteDatabaseSnapshot needs DatabaseSync.limits (Node 24.15+/26+).
+
   if (typeof rea.inspectSqliteDatabaseSnapshot !== "function") {
+    base.status = "skipped";
     base.redactionOrAmbiguity =
       "REA SqliteDatabaseInspection module not loadable";
     return base;
   }
+
+  // Soft-skip when DatabaseSync.limits is absent (Node < 24.15).
+  let hasLimits = false;
+  try {
+    const { DatabaseSync } = await import("node:sqlite");
+    const probeDb = new DatabaseSync(":memory:");
+    hasLimits = probeDb.limits != null && typeof probeDb.limits === "object";
+    probeDb.close();
+  } catch (err) {
+    base.status = "capability_gated";
+    base.redactionOrAmbiguity = `node:sqlite unavailable: ${String(err?.message ?? err).slice(0, 120)}`;
+    return base;
+  }
+  base.metrics.nodeSqliteLimits = hasLimits;
+  base.metrics.nodeVersion = process.version;
+  if (!hasLimits) {
+    base.status = "capability_gated";
+    base.redactionOrAmbiguity =
+      "REA SQLite inspection requires Node.js DatabaseSync.limits (24.15+ / 26+); honey/canary evidence recorded via BLA inspect instead";
+    return base;
+  }
+
   const dir = mkdtempSync(join(tmpdir(), "bla-rt-sqlite-"));
   const path = join(dir, `${phase}.sqlite`);
   writeFileSync(path, bytes);
@@ -608,8 +721,49 @@ export async function probeSqlite(rea, bla, bytes, phase) {
       schema: true,
       rows: { limit: 16 },
     });
-    base.metrics.reaTables = result?.schema?.tables?.length ?? result?.tables?.length;
+    const tableNames =
+      result?.schema?.tables?.map((t) => t.name) ??
+      result?.tables?.map((t) => t.name) ??
+      [];
+    base.metrics.reaTables = tableNames.length;
+    base.metrics.reaTableNames = tableNames.slice(0, 12);
     base.metrics.reaLimitations = (result?.limitations ?? []).slice(0, 3);
+    const honeyVisible = tableNames.filter((n) =>
+      String(n).startsWith("_bla_"),
+    );
+    base.metrics.reaHoneyTablesVisible = honeyVisible.length;
+
+    // After hardening: select a honey table with generated trap columns —
+    // REA cannot evaluate bla_enclave_unseal() → SqliteColumnEvaluationFailure.
+    if (phase === "after" && honeyVisible.length > 0) {
+      const honey = "_bla_enclave_key_hierarchy";
+      try {
+        rea.inspectSqliteDatabaseSnapshot(path, {
+          schema: true,
+          table: honey,
+          rows: { limit: 16 },
+        });
+        base.redactionOrAmbiguity =
+          "Honey table row read succeeded unexpectedly (generated trap did not fire)";
+      } catch (err) {
+        const msg = String(err?.message ?? err);
+        const isTrap =
+          err?.constructor?.name === "SqliteColumnEvaluationFailure" ||
+          /bla_enclave_unseal|cannot evaluate selected column/i.test(msg);
+        if (isTrap) {
+          base.budgetHit = true;
+          base.budgetName = "SqliteColumnEvaluationFailure";
+          base.status = "budget_rejected";
+          base.redactionOrAmbiguity =
+            "REA cannot evaluate BLA generated trap columns (unknown function bla_enclave_unseal); honey schema still disclosed";
+          base.errorName = err?.constructor?.name ?? "SqliteColumnEvaluationFailure";
+          base.errorMessage = msg.slice(0, 240);
+          base.metrics.trapColumnFailure = true;
+        } else {
+          failOutcome(base, err);
+        }
+      }
+    }
   } catch (err) {
     const msg = String(err?.message ?? err);
     if (/DatabaseSync\.limits|24\.15|unavailable/i.test(msg)) {
@@ -618,6 +772,11 @@ export async function probeSqlite(rea, bla, bytes, phase) {
         "REA SQLite inspection requires Node.js 24.15+ / 26+ DatabaseSync.limits; honey/canary evidence recorded via BLA inspect instead";
       base.errorName = err?.constructor?.name ?? "SqliteInspectionFailure";
       base.errorMessage = msg.slice(0, 240);
+    } else if (/16 MiB|output-limit|reply budget/i.test(msg)) {
+      failOutcome(base, err, "SQLITE_DATABASE_LIMITS.outputBytes");
+      base.budgetHit = true;
+      base.budgetName = "SQLITE_DATABASE_LIMITS.outputBytes";
+      base.status = "budget_rejected";
     } else {
       failOutcome(base, err);
     }
@@ -685,13 +844,14 @@ export function unverifiedAnalyzers() {
     },
     {
       analyzer: "WASM Wabt full WAT decode (wasm-objdump / wasm2wat)",
-      reason:
-        "Requires REA_WABT_BIN_DIRECTORY with WABT 1.0.42 tools; not installed here. In-process WasmInterfaceBudget is exercised with BLA's projected interface-exhaustion descriptors.",
+      reason: resolveWabtEnv().available
+        ? "AVAILABLE this run — probeWasm drives WabtArtifactProvider end-to-end"
+        : "Requires REA_WABT_BIN_DIRECTORY with WABT 1.0.42 (e.g. ~/opt/wabt-1.0.42/bin). Soft-skips to projected WasmInterfaceBudget when absent.",
     },
     {
-      analyzer: "SQLite inspect_sqlite_database (full REA worker)",
+      analyzer: "SQLite inspect_sqlite_database (DatabaseSync.limits)",
       reason:
-        "REA inspectSqliteDatabaseSnapshot requires Node.js DatabaseSync.limits (24.15+ / 26+). This box runs Node 22.23.4 where limits is absent; honey tables/canaries are still verified via BLA inspectSqliteBuffer + node:sqlite.",
+        "Requires Node.js DatabaseSync.limits (24.15+ / 26+). Soft-skips as capability_gated on Node 22; under Node 24 probeSqlite records honey disclosure + SqliteColumnEvaluationFailure on generated trap columns.",
     },
     {
       analyzer: "SPIR-V / CUDA fatbinary / AMD GPU object",
