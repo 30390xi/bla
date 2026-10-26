@@ -1,6 +1,7 @@
 import { SeededPrng } from "../../core/prng.js";
 import type { ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
+import { buildCanaryAndDiagnosticPayloads } from "../deception/format-payloads.js";
 
 export interface WasmSection {
   readonly id: number;
@@ -186,6 +187,8 @@ export function protectWasmBinary(
   readonly buffer: Buffer;
   readonly customSectionsAdded: number;
   readonly chaffPayloadsEmbedded: number;
+  readonly canaryTokensEmbedded: number;
+  readonly diagnosticsEmbedded: number;
 } {
   if (
     bytes.length < 8 ||
@@ -200,6 +203,7 @@ export function protectWasmBinary(
   const intensity = options.intensity ?? "balanced";
   const prng = new SeededPrng(options.seed ?? "bla-wasm-shield-v1");
   const chaffPayloads = generateChaffPayloads(prng, intensity);
+  const deception = buildCanaryAndDiagnosticPayloads(prng, intensity);
 
   // Retain non-custom sections (1..12), strip original debug/name custom sections (0)
   const keptChunks: Buffer[] = [bytes.subarray(0, 8)];
@@ -217,7 +221,8 @@ export function protectWasmBinary(
     offset = sectionEnd;
   }
 
-  // Append honey `"name"` section + architectural chaff custom sections
+  // Append honey `"name"` section + architectural chaff + canary/diagnostic custom sections.
+  // Custom sections do not affect WebAssembly.validate() or export execution.
   const addedSections: Buffer[] = [buildHoneyWasmNameSection(prng)];
 
   const manifestJson = JSON.stringify({
@@ -239,9 +244,49 @@ export function protectWasmBinary(
     );
   }
 
+  // Canary honeypot: custom section name + body trip REA string extractors /
+  // WABT custom-section dumps without touching the export surface.
+  const canaryJson = JSON.stringify({
+    classification: "SYNTHETIC_CANARY_CREDENTIAL_HONEYPOT",
+    canaryTokens: deception.canary.syntheticCanaryTokens,
+    ambiguousTransportEndpoints: deception.canary.ambiguousCredentialUrls,
+    conflictingQueryEndpoints: deception.canary.conflictingQueryUrls,
+  });
+  addedSections.push(
+    createWasmCustomSection("bla.canary.credentials", Buffer.from(canaryJson, "utf8")),
+  );
+
+  // System-diagnostic rabbit holes as a dedicated custom section.
+  const diagJson = JSON.stringify({
+    classification: "SYSTEM_DIAGNOSTIC_DECOY",
+    diagnostics: deception.diagnostics.diagnosticsInjected,
+  });
+  addedSections.push(
+    createWasmCustomSection("bla.system.diagnostics", Buffer.from(diagJson, "utf8")),
+  );
+
+  // Also bake distinctive export-adjacent names into a secondary "name"-like
+  // custom section so `wasm-objdump -x` / REA WabtWat surface them as symbols.
+  const exportNameHoney = deception.canary.syntheticCanaryTokens
+    .slice(0, 2)
+    .map((tok, i) => `canary_export_${i}_${tok.slice(0, 24)}`)
+    .concat(
+      deception.diagnostics.diagnosticsInjected
+        .slice(0, 2)
+        .map((d) => `diag_${d.errorClass}`),
+    );
+  addedSections.push(
+    createWasmCustomSection(
+      "bla.export.name.decoys",
+      Buffer.from(exportNameHoney.join("\0"), "utf8"),
+    ),
+  );
+
   return {
     buffer: Buffer.concat([...keptChunks, ...addedSections]),
     customSectionsAdded: addedSections.length,
     chaffPayloadsEmbedded: chaffPayloads.length,
+    canaryTokensEmbedded: deception.canary.syntheticCanaryTokens.length,
+    diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
   };
 }
