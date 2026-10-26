@@ -133,19 +133,18 @@ export function protectEvmBytecodeBuffer(
   const metadata = buildSolidityMetadataTrailer(metaEntries);
 
   let padding = Buffer.alloc(0);
-  if (intensity === "bankrupt" || intensity === "maximum") {
-    // Approach — do not fully consume — the 4 MiB inputBytes ceiling.
-    const target =
-      intensity === "bankrupt"
-        ? Math.min(
-            REA_INTERNAL_LIMITS.EVM_INPUT_BYTES - 64 * 1024,
-            base.length + metadata.length + 256 * 1024,
-          )
-        : base.length + metadata.length + 16 * 1024;
+  if (intensity === "bankrupt") {
+    // Full approach of REA's 4 MiB `inputBytes` budget (leave a small slack
+    // so the artifact still fits under the hard ceiling after metadata).
+    const target = REA_INTERNAL_LIMITS.EVM_INPUT_BYTES - 4096;
     const need = Math.max(0, target - base.length - metadata.length);
-    // 0x5b = JUMPDEST; inert when never jumped to.
+    // 0x5b = JUMPDEST; inert when never jumped to (runtime-equivalent).
+    padding = Buffer.alloc(need, 0x5b);
+  } else if (intensity === "maximum") {
+    const need = 64 * 1024;
     padding = Buffer.alloc(need, 0x5b);
   }
+  // balanced stays lean: metadata only, no JUMPDEST padding.
 
   const buffer = Buffer.concat([base, padding, metadata]);
   return {
@@ -155,6 +154,6 @@ export function protectEvmBytecodeBuffer(
     diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
     paddingBytes: padding.length,
     approachesInputBudget:
-      buffer.length > REA_INTERNAL_LIMITS.EVM_INPUT_BYTES / 2,
+      buffer.length >= REA_INTERNAL_LIMITS.EVM_INPUT_BYTES - 8192,
   };
 }
