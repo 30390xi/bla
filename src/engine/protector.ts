@@ -20,6 +20,7 @@ import { generateChaffPayloads } from "../shields/chaff/chaff-generator.js";
 import { transformJavaScriptWithBlaShield } from "../shields/javascript/ast-shield.js";
 import { generateHoneySourceMap } from "../shields/formats/sourcemap.js";
 import { packAsarBuffer, unpackAsarBuffer, validateAsarProtectionInput, type VirtualAsarFile } from "../shields/formats/asar.js";
+import { planAsarHeaderAmplification } from "../shields/exhaustion/asar-header-amplifier.js";
 import { protectWasmBinary } from "../shields/formats/wasm.js";
 import { findPythonPrologueInsertionOffset, protectPythonPycBuffer, protectPythonSource } from "../shields/formats/python.js";
 import { protectNativeBinary, validateElf64Layout } from "../shields/formats/native.js";
@@ -234,15 +235,23 @@ export function protectTarget(options: ProtectionOptions): ProtectionResult {
       content: Buffer.from(decoyBridgeJs.code, "utf8"),
     });
 
+    // Flood ASAR Pickle JSON header past REA DEFAULT_ASAR_MAX_HEADER_BYTES at
+    // bankrupt intensity (mapped decoy shard paths; real modules untouched).
+    const asarAmplification = planAsarHeaderAmplification(prng, intensity);
+    for (const decoy of asarAmplification.files) {
+      protectedFiles.push(decoy);
+    }
+
     const repacked = packAsarBuffer(protectedFiles);
     writeFileSync(absOutput, repacked);
-    binarySectionsPatched = 1;
+    binarySectionsPatched = 1 + asarAmplification.files.length;
     counteredVectors.add("electron-ipc-bridge");
     counteredVectors.add("js-static-semantics");
     counteredVectors.add("sourcemap-recovery");
     counteredVectors.add("call-graph-tracing");
     counteredVectors.add("obligation-ledger-cloning");
     counteredVectors.add("archive-inventory");
+    counteredVectors.add("asar-header-admission");
   } else if (format === "wasm") {
     const rawWasm = readFileSync(absInput);
     const res = protectWasmBinary(rawWasm, { intensity, seed });

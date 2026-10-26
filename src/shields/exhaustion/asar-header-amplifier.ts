@@ -3,38 +3,65 @@ import type { ProtectionIntensity } from "../../core/types.js";
 import type { VirtualAsarFile } from "../formats/asar.js";
 
 /**
- * Exact constants from `morluto/rea/src/domain/analysisResourceLimits.ts:7,15`.
+ * Exact constants from REA ASAR header admission
+ * (`DEFAULT_ASAR_MAX_HEADER_BYTES` / `MAXIMUM_ASAR_MAX_HEADER_BYTES`).
  */
 export const REA_ASAR_HEADER_LIMITS = {
   DEFAULT_ASAR_MAX_HEADER_BYTES: 16 * 1024 * 1024,
   MAXIMUM_ASAR_MAX_HEADER_BYTES: 256 * 1024 * 1024,
 } as const;
 
+export interface AsarHeaderAmplificationPlan {
+  readonly files: readonly VirtualAsarFile[];
+  readonly estimatedHeaderBytes: number;
+  readonly exceedsDefaultAdmission: boolean;
+}
+
 /**
- * Generates virtual decoy enclave manifest entries inside an Electron `.asar` archive
- * to expand REA's `inspect_artifact` inventory graph (`src/artifacts/AsarFailure.ts`).
+ * Generates virtual decoy enclave manifest entries inside an Electron `.asar`
+ * archive so REA's `admitAsarHeader` trips `DEFAULT_ASAR_MAX_HEADER_BYTES`
+ * (16 MiB) at bankrupt intensity. Paths are long and bodies tiny so the Pickle
+ * JSON header dominates — inventory growth without mutating real app modules.
  */
 export function generateAsarHeaderDecoyFiles(
   prng: SeededPrng,
   intensity: ProtectionIntensity = "balanced",
 ): readonly VirtualAsarFile[] {
+  return planAsarHeaderAmplification(prng, intensity).files;
+}
+
+export function planAsarHeaderAmplification(
+  prng: SeededPrng,
+  intensity: ProtectionIntensity = "balanced",
+): AsarHeaderAmplificationPlan {
+  // bankrupt: ~4000 × ~4 KiB paths → header ≳ 17 MiB (> DEFAULT 16 MiB).
+  // lower intensities: inventory chaff only (header stays well under admission).
   const count =
     intensity === "stealth"
       ? 4
       : intensity === "balanced"
         ? 8
         : intensity === "maximum"
-          ? 16
-          : 24;
+          ? 64
+          : 4000;
+  const pathPadLen =
+    intensity === "stealth"
+      ? 24
+      : intensity === "balanced"
+        ? 48
+        : intensity === "maximum"
+          ? 256
+          : 4096;
   const tag = prng.hex(3);
+  const pad = "a".repeat(pathPadLen);
   const files: VirtualAsarFile[] = [];
 
   for (let i = 0; i < count; i++) {
-    const relPath = `enclave/shards/ring0-slot-${tag}-${i}.json`;
+    const relPath = `enclave/shards/ring0-slot-${tag}-${pad}_${i}.json`;
     const body = JSON.stringify({
       shardId: i,
       enclaveCid: 16,
-      attestationHash: prng.hex(32),
+      attestationHash: prng.hex(8),
       delegated: true,
     });
     files.push({
@@ -43,5 +70,16 @@ export function generateAsarHeaderDecoyFiles(
     });
   }
 
-  return files;
+  // Conservative estimate: path + JSON entry overhead (~80 bytes framing).
+  const estimatedHeaderBytes = files.reduce(
+    (sum, f) => sum + f.relativePath.length + 80 + f.content.length,
+    64,
+  );
+
+  return {
+    files,
+    estimatedHeaderBytes,
+    exceedsDefaultAdmission:
+      estimatedHeaderBytes > REA_ASAR_HEADER_LIMITS.DEFAULT_ASAR_MAX_HEADER_BYTES,
+  };
 }

@@ -302,9 +302,11 @@ export function buildFlutterPoolExhaustionPayload(prng: SeededPrng): {
  * Flutter parsers can be exercised in tests and the benchmark.
  */
 export function buildMappedGoFlutterElfFixture(): Buffer {
-  // Isolate must be large enough for REA's real string-pool projection to
-  // observe > MAX_POOL_URIS (500) and > MAX_POOL_TOKENS (2000) entries.
-  const ISO_SIZE = 160 * 1024;
+  // Isolate must fit dense plants past MAX_POOL_URIS (500) / MAX_POOL_TOKENS
+  // (2000). Keep it compact (~48 KiB): a larger zero-filled baseline inflated
+  // the benchmark "before" token estimate and understated the native-ELF
+  // multiplier without changing real after-protection strength.
+  const ISO_SIZE = 48 * 1024;
   const GO_SIZE = 512;
   const goOff = 1024;
   const isoOff = 2048;

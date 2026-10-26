@@ -1,4 +1,5 @@
 import { SeededPrng } from "../../core/prng.js";
+import { planWasmInterfaceBudgetExhaustion } from "../exhaustion/wasm-interface-exhaustion.js";
 import type { ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
 import { buildCanaryAndDiagnosticPayloads } from "../deception/format-payloads.js";
@@ -189,6 +190,9 @@ export function protectWasmBinary(
   readonly chaffPayloadsEmbedded: number;
   readonly canaryTokensEmbedded: number;
   readonly diagnosticsEmbedded: number;
+  readonly interfaceDescriptorsEmbedded: number;
+  readonly projectedInterfaceChargeBytes: number;
+  readonly exceedsRepresentationBudget: boolean;
 } {
   if (
     bytes.length < 8 ||
@@ -282,11 +286,35 @@ export function protectWasmBinary(
     ),
   );
 
+  // Projected WasmInterfaceBudget exhaustion plan (Wabt path / in-process probe).
+  const ifacePlan = planWasmInterfaceBudgetExhaustion(prng, intensity);
+  const ifacePayload = Buffer.from(
+    JSON.stringify({
+      schema: "bla-wasm-interface-exhaustion/v1",
+      descriptors: ifacePlan.descriptors.map((d) => ({
+        module: d.moduleName,
+        name: d.exportName,
+        params: d.paramCount,
+        results: d.resultCount,
+        charge: d.reaChargedRepresentationBytes,
+      })),
+      totalCharge: ifacePlan.totalReaChargedBytes,
+      exceeds: ifacePlan.exceedsRepresentationBudget,
+    }),
+    "utf8",
+  );
+  addedSections.push(
+    createWasmCustomSection("bla.wasm.interface.exhaustion", ifacePayload),
+  );
+
   return {
     buffer: Buffer.concat([...keptChunks, ...addedSections]),
     customSectionsAdded: addedSections.length,
     chaffPayloadsEmbedded: chaffPayloads.length,
     canaryTokensEmbedded: deception.canary.syntheticCanaryTokens.length,
     diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
+    interfaceDescriptorsEmbedded: ifacePlan.descriptors.length,
+    projectedInterfaceChargeBytes: ifacePlan.totalReaChargedBytes,
+    exceedsRepresentationBudget: ifacePlan.exceedsRepresentationBudget,
   };
 }

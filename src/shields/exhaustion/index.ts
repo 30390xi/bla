@@ -41,6 +41,8 @@ import {
 import {
   REA_ASAR_HEADER_LIMITS,
   generateAsarHeaderDecoyFiles,
+  planAsarHeaderAmplification,
+  type AsarHeaderAmplificationPlan,
 } from "./asar-header-amplifier.js";
 
 export {
@@ -60,6 +62,8 @@ export {
   generateFridaCaptureSaturation,
   generateRegexWorkerTarpit,
   generateAsarHeaderDecoyFiles,
+  planAsarHeaderAmplification,
+  type AsarHeaderAmplificationPlan,
   type ReaSubsystemBudgetSpec,
   type ObligationFloodResult,
   type CallGraphLabyrinthResult,
