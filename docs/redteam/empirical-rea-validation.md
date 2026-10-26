@@ -1,6 +1,6 @@
 # Empirical REA red-team validation
 
-Generated: 2026-10-27, 04:44:41 (Asia/Shanghai)
+Generated: 2026-10-27, 04:56:45 (Asia/Shanghai)
 BLA root: `/workspace/bla-dev/bla`
 REA root: `/workspace/bla-dev/rea`
 Intensity: `bankrupt` · seed: `bla-redteam-empirical-v1`
@@ -19,13 +19,17 @@ tshark: `TShark (Wireshark) 4.4.19.`
 | safetensors | ok | ok | no | noted |
 | gguf | ok | error | MODEL_METADATA_NESTING | agree |
 | gpu_ptx | ok | ok | no | noted |
+| electron_asar | ok | error | DEFAULT_ASAR_MAX_HEADER_BYTES | agree |
+| wasm_module | ok | budget_rejected | WASM_INTERFACE_REPRESENTATION_BYTES | agree |
+| sqlite_db | capability_gated | capability_gated | no | agree |
+| electron_fuses | ok | budget_rejected | ELECTRON_FUSE_LIMITS.maximumSentinelsPerSlice | agree |
 
 ## Per-format empirical outcomes
 
 ### go_buildinfo
 
-- Input before: 166027 (162.1 KiB)
-- Input after: 1329394 (1.27 MiB)
+- Input before: 51339 (50.1 KiB)
+- Input after: 1214706 (1.16 MiB)
 - Before: status=ok; budgetHit=false; note=no_buildinfo_observed
 - After: status=error; budgetHit=MAX_BUILD_INFO_BYTES; error=BinaryResourceFailure: Go build-info string length exceeds the 1 MiB limit
 
@@ -46,14 +50,14 @@ _no metrics_
 
 ### flutter_pool
 
-- Input before: 166027 (162.1 KiB)
-- Input after: 1329394 (1.27 MiB)
+- Input before: 51339 (50.1 KiB)
+- Input after: 1214706 (1.16 MiB)
 - Before: status=ok; budgetHit=false
 - After: status=ok; budgetHit=MAX_POOL_URIS|MAX_POOL_TOKENS; note=REA would report truncated package_uris/dart_uris/class_like_tokens with 'at least N' limitations
 
 **Before metrics**
 
-- `isolateBytes`: 163840
+- `isolateBytes`: 49152
 - `packageUriCount`: 0
 - `dartUriCount`: 0
 - `classLikeTokenCount`: 0
@@ -63,7 +67,7 @@ _no metrics_
 
 **After metrics**
 
-- `isolateBytes`: 163840
+- `isolateBytes`: 49152
 - `packageUriCount`: 532
 - `dartUriCount`: 532
 - `classLikeTokenCount`: 2032
@@ -225,6 +229,110 @@ _no metrics_
 
 - PTX is text-scanned only; REA GPU object decode needs native tooling (not empirically verified for fatbin/SPIR-V)
 
+### electron_asar
+
+- Input before: 607
+- Input after: 17752989 (16.93 MiB)
+- Before: status=ok; budgetHit=false
+- After: status=error; budgetHit=DEFAULT_ASAR_MAX_HEADER_BYTES; error=ArtifactReaderFailure: ASAR header/index admission is limited to 16 MiB / 16777216 bytes. On MCP, call update_analysis_settings with setting asar.max_header_bytes, action set, and a value in bytes up to 256 MiB / 268435456 bytes (default 16 MiB / 16777216 bytes),
+
+**Before metrics**
+
+- `headerBytes`: 512
+- `archiveBytes`: 607
+- `jsonBytes`: 501
+- `listingEntries`: 2
+- `listingPathBytes`: 19
+
+**After metrics**
+
+_no metrics_
+
+**Estimate comparison**
+
+- AGREE with BLA exceedsDefaultAdmission=true (header after metrics=ASAR header/index admission is limited to 16 MiB / 16777216 bytes. On MCP, call update_analysis_settings with setting asar.max_header_bytes, action set, and a value in bytes up to 256 MiB / 268435456 bytes (default 16 MiB / 16777216 bytes),)
+
+### wasm_module
+
+- Input before: 54
+- Input after: 3870869 (3.69 MiB)
+- Before: status=ok; budgetHit=false
+- After: status=budget_rejected; budgetHit=WASM_INTERFACE_REPRESENTATION_BYTES; error=AnalysisResourceConstraintError: Resource constraint during inspect_wasm_artifact: Typed WASM interface decoding exceeds the WABT output representation budget; note=WasmInterfaceBudget refused projected interface inventory (Wabt E2E needs REA_WABT_BIN_DIRECTORY)
+
+**Before metrics**
+
+- `validates`: true
+- `sectionCount`: 4
+- `customSectionNames`: []
+- `exportNames`: ["computeDigest"]
+- `importCount`: 0
+- `projectedChargeBytes`: 34929624
+- `representationBudget`: 33554432
+- `descriptorCount`: 128
+- `exceedsRepresentationBudget`: true
+
+**After metrics**
+
+- `validates`: true
+- `sectionCount`: 13
+- `customSectionNames`: ["name","bla.enclave.manifest","enclave.attestation.0","enclave.attestation.1","enclave.attestation.2","bla.canary.credentials","bla.system.diagnostics","bla.export.name.decoys","bla.wasm.interface.exhaustion"]
+- `exportNames`: ["computeDigest"]
+- `importCount`: 0
+- `projectedChargeBytes`: 34929624
+- `representationBudget`: 33554432
+- `descriptorCount`: 128
+- `exceedsRepresentationBudget`: true
+- `chargeWhenTripped`: 33292236
+
+**Estimate comparison**
+
+- AGREE with BLA exceedsRepresentationBudget=true (projected=34929624)
+- Full Wabt WAT decode is tool-backed; in-process WasmInterfaceBudget reserved with projected descriptors
+
+### sqlite_db
+
+- Input before: 12288 (12.0 KiB)
+- Input after: 57344 (56.0 KiB)
+- Before: status=capability_gated; budgetHit=false; error=SqliteInspectionFailure: SQLite inspection requires the native DatabaseSync.limits API to bound untrusted values and SQL. Use Node.js 24.15 or newer in the supported 24.x line, or a compatible Node.js 26+ runtime.; note=REA SQLite inspection requires Node.js 24.15+ / 26+ DatabaseSync.limits; honey/canary evidence recorded via BLA inspect instead
+- After: status=capability_gated; budgetHit=false; error=SqliteInspectionFailure: SQLite inspection requires the native DatabaseSync.limits API to bound untrusted values and SQL. Use Node.js 24.15 or newer in the supported 24.x line, or a compatible Node.js 26+ runtime.; note=REA SQLite inspection requires Node.js 24.15+ / 26+ DatabaseSync.limits; honey/canary evidence recorded via BLA inspect instead
+
+**Before metrics**
+
+- `blaHoneyTables`: 0
+- `blaTableCount`: 1
+- `blaProtected`: false
+
+**After metrics**
+
+- `blaHoneyTables`: 5
+- `blaTableCount`: 6
+- `blaProtected`: true
+
+**Estimate comparison**
+
+- NOTED: REA SQLite inspection capability-gated on Node <24.15; BLA honey/canary evidence recorded
+- AGREE: BLA honeyTablesInjected=5, canaryTokens=8
+
+### electron_fuses
+
+- Input before: 51339 (50.1 KiB)
+- Input after: 1214706 (1.16 MiB)
+- Before: status=ok; budgetHit=false
+- After: status=budget_rejected; budgetHit=ELECTRON_FUSE_LIMITS.maximumSentinelsPerSlice; error=ElectronFuseResourceFailure: Slice 0 contains more than 32 Electron fuse sentinels.
+
+**Before metrics**
+
+- `sentinelCount`: null
+- `sliceCount`: 1
+
+**After metrics**
+
+_no metrics_
+
+**Estimate comparison**
+
+- AGREE: decoy sentinels 34 > maximumSentinelsPerSlice=32
+
 ## Analyzers NOT empirically verified on this box
 
 - **Ghidra / Hopper native decompile** — requires Ghidra/Hopper install (not available without root/GUI)
@@ -232,7 +340,9 @@ _no metrics_
 - **LLDB / GDB native tracing** — requires lldb/gdb + debuggee; not installed here
 - **Rizin / Cutter** — requires rizin binary
 - **JADX Android decompile** — requires JADX JVM tooling
-- **EVM EVMole worker full interface recovery** — worker subprocess/path not exercised end-to-end; inputBytes budget checked in-process
+- **EVM EVMole worker full interface recovery** — Not pathable in-process: EvmoleInterfaceWorker refuses library import ('Owned worker request path missing') and only runs under REA's owned subprocess launcher (prlimit address-space/CPU/file-size, 256 MiB heap, IPC reply schema). The evmole npm package exists in the REA tree but cannot be driven without that ownership harness. inputBytes (4 MiB) admission is checked in-process via probeEvm.
+- **WASM Wabt full WAT decode (wasm-objdump / wasm2wat)** — Requires REA_WABT_BIN_DIRECTORY with WABT 1.0.42 tools; not installed here. In-process WasmInterfaceBudget is exercised with BLA's projected interface-exhaustion descriptors.
+- **SQLite inspect_sqlite_database (full REA worker)** — REA inspectSqliteDatabaseSnapshot requires Node.js DatabaseSync.limits (24.15+ / 26+). This box runs Node 22.23.4 where limits is absent; honey tables/canaries are still verified via BLA inspectSqliteBuffer + node:sqlite.
 - **SPIR-V / CUDA fatbinary / AMD GPU object** — BLA skips these formats (GPU_OBJECT_HARDENING_SKIP_REASON); no shield to validate
 - **Firmware analysis** — BLA skips firmware (FIRMWARE_HARDENING_SKIP_REASON); needs vendor parsers
 
