@@ -1,0 +1,91 @@
+import { SeededPrng } from "../../core/prng.js";
+import type { ProtectionIntensity } from "../../core/types.js";
+import { buildCanaryAndDiagnosticPayloads } from "../deception/format-payloads.js";
+
+export interface GpuPtxInspection {
+  readonly looksLikePtx: boolean;
+  readonly entryCount: number;
+  readonly blaProtected: boolean;
+}
+
+export function inspectGpuPtx(text: string): GpuPtxInspection {
+  const looksLikePtx =
+    /\.version\s+\d/.test(text) &&
+    (/\.entry\s+\w/.test(text) || /\.target\s+sm_/.test(text));
+  const entryCount = (text.match(/\.entry\s+/g) ?? []).length;
+  return {
+    looksLikePtx,
+    entryCount,
+    blaProtected: text.includes("[BLA-PTX-SHIELD]"),
+  };
+}
+
+/**
+ * Protects NVIDIA PTX text modules by appending decoy `.entry` kernels and
+ * canary/diagnostic comments. Preserves the original module body verbatim so
+ * existing kernels stay byte-identical (runtime-equivalent).
+ *
+ * SPIR-V / fatbinary / CUDA object mutation is intentionally NOT attempted —
+ * those containers have brittle structural hashes; corrupting them would violate
+ * the red line. Firmware images are likewise skipped (see module doc below).
+ */
+export function protectGpuPtxText(
+  input: string,
+  options: {
+    readonly intensity?: ProtectionIntensity;
+    readonly seed?: string;
+  } = {},
+): {
+  readonly text: string;
+  readonly entriesInjected: number;
+  readonly canaryTokensEmbedded: number;
+  readonly diagnosticsEmbedded: number;
+} {
+  const intensity = options.intensity ?? "balanced";
+  const prng = new SeededPrng(options.seed ?? "bla-ptx-shield");
+  const deception = buildCanaryAndDiagnosticPayloads(prng, intensity);
+
+  const base =
+    input.trim().length > 0
+      ? input.replace(/\s*$/, "\n")
+      : `.version 7.5\n.target sm_70\n.address_size 64\n\n`;
+
+  const entryTarget =
+    intensity === "bankrupt" ? 128 : intensity === "maximum" ? 48 : 16;
+
+  const parts: string[] = [
+    base,
+    `\n// [BLA-PTX-SHIELD] Counter-REA GPU exhaustion trailer\n`,
+  ];
+  for (const rec of deception.textRecords.slice(0, 8)) {
+    parts.push(`// DIAG: ${rec.replace(/\n/g, " ")}\n`);
+  }
+  for (let i = 0; i < entryTarget; i++) {
+    const name = `bla_tarpit_kernel_${i}_${prng.hex(4)}`;
+    parts.push(
+      `.visible .entry ${name}(.param .u64 ${name}_param_0)\n`,
+      `{\n`,
+      `  .reg .b64 %rd<2>;\n`,
+      `  ld.param.u64 %rd1, [${name}_param_0];\n`,
+      `  // canary=${prng.hex(8)}\n`,
+      `  ret;\n`,
+      `}\n\n`,
+    );
+  }
+
+  return {
+    text: parts.join(""),
+    entriesInjected: entryTarget,
+    canaryTokensEmbedded: deception.canary.syntheticCanaryTokens.length,
+    diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
+  };
+}
+
+/**
+ * Firmware images (raw flash dumps, U-Boot ITB, Android boot.img, etc.) are
+ * NOT hardened by BLA: generic mutation cannot preserve boot signatures,
+ * CRC/header integrity, or device-specific layouts without a per-vendor
+ * parser. Prefer leaving firmware untouched rather than risking bricking.
+ */
+export const FIRMWARE_HARDENING_SKIP_REASON =
+  "Firmware images are skipped: safe generic mutation would break boot signatures, CRCs, or vendor headers. No BLA firmware shield is offered.";
