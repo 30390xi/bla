@@ -12,6 +12,10 @@ import {
   type ElectronHardeningContext,
   type ElectronHardeningReport,
 } from "./electron-fuses.js";
+import {
+  buildGoBuildInfoExhaustionPayload,
+  buildFlutterPoolExhaustionPayload,
+} from "./go-flutter-exhaustion.js";
 
 export class InvalidNativeBinaryError extends Error {
   constructor(message: string) {
@@ -61,8 +65,11 @@ export interface NativeBinaryInspection {
   readonly rustcCommitHashesCount: number;
   readonly electronFuseSentinelsCount: number;
   readonly dartSnapshotHashesCount: number;
+  readonly dartPoolPackageUriCount: number;
+  readonly dartPoolTokenCount: number;
   readonly hasRustDepV0: boolean;
   readonly hasGoBuildInfo: boolean;
+  readonly goBuildInfoFramed: boolean;
   readonly extractedStringsCount: number;
   readonly blaProtected: boolean;
 }
@@ -388,7 +395,26 @@ export function inspectNativeBinary(bytes: Buffer): NativeBinaryInspection {
   const hasGoBuildInfo =
     textLatin1.includes(".go.buildinfo") ||
     textLatin1.includes("__go_buildinfo") ||
-    textLatin1.includes("\xff Go buildinf:");
+    textLatin1.includes("\xff Go buildinf:") ||
+    textLatin1.includes("[BLA-GO-BUILDINFO]");
+  const goBuildInfoFramed =
+    textLatin1.includes("[BLA-GO-BUILDINFO]") ||
+    textLatin1.includes(".gopclntab") ||
+    textLatin1.includes("runtime.moduledata");
+
+  let dartPoolPackageUriCount = 0;
+  let dartPoolTokenCount = 0;
+  for (const run of textLatin1.split("\0")) {
+    if (run.startsWith("package:") || run.startsWith("dart:")) {
+      dartPoolPackageUriCount++;
+    } else if (
+      run.length >= 5 &&
+      run.length <= 128 &&
+      /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(run)
+    ) {
+      dartPoolTokenCount++;
+    }
+  }
 
   const printableMatches = textLatin1.match(/[A-Za-z0-9_/:.-]{6,}/g) ?? [];
   const blaProtected =
@@ -406,8 +432,11 @@ export function inspectNativeBinary(bytes: Buffer): NativeBinaryInspection {
     rustcCommitHashesCount: rustcMatches.size,
     electronFuseSentinelsCount: fuseInspection.sentinelCount,
     dartSnapshotHashesCount,
+    dartPoolPackageUriCount,
+    dartPoolTokenCount,
     hasRustDepV0,
     hasGoBuildInfo,
+    goBuildInfoFramed,
     extractedStringsCount: printableMatches.length,
     blaProtected,
   };
@@ -454,45 +483,6 @@ export function buildDecoyRustAuditablePayload(prng: SeededPrng): Buffer {
 }
 
 /**
- * Builds 66 Dart AOT snapshot records (`0xf5, 0xf5, 0xdc, 0xdc` + 16-byte header + 32-hex hash)
- * plus conflicting `"Dart VM version:"` and `6` `"based on LLVM ..."` strings to trip REA's
- * `FlutterPayloadScan.ts` (`MAX_SNAPSHOT_HASH_CANDIDATES = 64` & `MAX_TOOLCHAIN_LINES = 4`).
- */
-function buildFlutterDartSnapshotOverflowPayload(prng: SeededPrng): Buffer {
-  const records: Buffer[] = [];
-  const snapshotCount =
-    REA_INTERNAL_LIMITS.DART_MAX_SNAPSHOT_HASH_CANDIDATES + 2; // 66 > 64
-
-  for (let i = 0; i < snapshotCount; i++) {
-    const rec = Buffer.alloc(52, 0);
-    rec[0] = 0xf5;
-    rec[1] = 0xf5;
-    rec[2] = 0xdc;
-    rec[3] = 0xdc;
-    rec.writeBigUInt64LE(64n, 4); // headerLength
-    rec.writeBigUInt64LE(3n, 12); // kind = 3 (FullAOT)
-    const hash32 = i.toString(16).padStart(8, "0") + prng.hex(24);
-    rec.write(hash32, 20, "ascii");
-    records.push(rec);
-  }
-
-  // Conflicting Dart VM versions (`dartVersionCapped = true`) + >4 LLVM toolchain lines (`toolchainCapped = true`)
-  const labeledLines = [
-    `\0Dart VM version: 3.5.0-enclave-tee-ring0 (stable) on "linux_x64"\0`,
-    `Dart VM version: 3.6.2-sgx-isolated-bridge (stable) on "macos_arm64"\0`,
-    `based on LLVM 17.0.6 (https://enclave.internal/llvm-tee-01)\0`,
-    `based on LLVM 18.1.2 (https://enclave.internal/llvm-tee-02)\0`,
-    `based on LLVM 18.1.8 (https://enclave.internal/llvm-tee-03)\0`,
-    `based on LLVM 19.1.0 (https://enclave.internal/llvm-tee-04)\0`,
-    `based on LLVM 19.1.4 (https://enclave.internal/llvm-tee-05)\0`,
-    `based on LLVM 20.0.0 (https://enclave.internal/llvm-tee-06)\0`,
-  ].join("");
-
-  records.push(Buffer.from(labeledLines, "latin1"));
-  return Buffer.concat(records);
-}
-
-/**
  * Protects a Native Binary (ELF / Mach-O / PE) against REA's native & desktop analyzers
  * while strictly preserving ELF64 `PT_LOAD` (`p_offset`, `p_filesz`, `p_memsz` / BSS) and
  * section header boundaries. Real Electron fuses are only mutated when an explicit
@@ -510,6 +500,9 @@ export function protectNativeBinary(
   readonly rustcHashesInjected: number;
   readonly electronFuseSentinelsInjected: number;
   readonly dartSnapshotHashesInjected: number;
+  readonly dartPoolUrisInjected: number;
+  readonly dartPoolTokensInjected: number;
+  readonly goBuildInfoExceedsLimit: boolean;
   readonly chaffPayloadsEmbedded: number;
   readonly binarySectionsPatched: number;
   readonly electronHardeningReport?: ElectronHardeningReport;
@@ -555,15 +548,8 @@ export function protectNativeBinary(
     rustcLines.push(`/rustc/${hash}/library/core/src/enclave_guard.rs\0`);
   }
 
-  // 2. Generate decoy Go module metadata lines
-  const goLines = [
-    `path\tgithub.com/tee-enclave/zero-trust-shim\n`,
-    `mod\tgithub.com/tee-enclave/zero-trust-shim\tv4.2.0\th1:${prng.hex(32)}=\n`,
-    `dep\tgithub.com/intel-sgx/enclave-sdk-go\tv2.14.0\th1:${prng.hex(32)}=\n`,
-    `dep\tgithub.com/google/go-tpm-tools\tv0.4.4\th1:${prng.hex(32)}=\n`,
-    `build\t-compiler=gc\n`,
-    `build\tCGO_ENABLED=1\n`,
-  ].join("");
+  // 2. Framed Go buildinfo + pclntab/moduledata bait
+  const goBuildInfo = buildGoBuildInfoExhaustionPayload(prng, intensity);
 
   // 3. Generate architectural chaff strings + Canary Honeypot + System-Diagnostic Rabbit Holes for Ghidra/Hopper/IDA
   const chaffBlock = chaffPayloads
@@ -584,12 +570,13 @@ export function protectNativeBinary(
     ),
   ].join("");
   const depV0Payload = buildDecoyRustAuditablePayload(prng);
-  const dartOverflowPayload = buildFlutterDartSnapshotOverflowPayload(prng);
+  const flutterPool = buildFlutterPoolExhaustionPayload(prng);
+  const dartOverflowPayload = flutterPool.buffer;
 
   const shieldTrailer = Buffer.concat([
     Buffer.from("\0[BLA-NATIVE-SHIELD-V1]\0.dep-v0\0", "utf8"),
     Buffer.from(rustcLines.join(""), "latin1"),
-    Buffer.from(goLines, "utf8"),
+    goBuildInfo.buffer,
     decoySentinelsBuffer,
     dartOverflowPayload,
     Buffer.from(chaffBlock, "utf8"),
@@ -641,8 +628,10 @@ export function protectNativeBinary(
     buffer: outBytes,
     rustcHashesInjected: rustcCount,
     electronFuseSentinelsInjected: decoySentinelsInjected,
-    dartSnapshotHashesInjected:
-      REA_INTERNAL_LIMITS.DART_MAX_SNAPSHOT_HASH_CANDIDATES + 2,
+    dartSnapshotHashesInjected: flutterPool.snapshotHashes,
+    dartPoolUrisInjected: flutterPool.packageAndDartUris,
+    dartPoolTokensInjected: flutterPool.classLikeTokens,
+    goBuildInfoExceedsLimit: goBuildInfo.exceedsMaxBuildInfoBytes,
     chaffPayloadsEmbedded: chaffPayloads.length,
     binarySectionsPatched,
     ...(electronHardeningReport ? { electronHardeningReport } : {}),
