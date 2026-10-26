@@ -15,6 +15,8 @@ import {
 import {
   buildGoBuildInfoExhaustionPayload,
   buildFlutterPoolExhaustionPayload,
+  buildMappedGoBuildInfoPlant,
+  buildMappedFlutterIsolatePoolPlant,
 } from "./go-flutter-exhaustion.js";
 
 export class InvalidNativeBinaryError extends Error {
@@ -482,6 +484,123 @@ export function buildDecoyRustAuditablePayload(prng: SeededPrng): Buffer {
   );
 }
 
+
+/** Resolve ELF64 section names from the section-header string table. */
+export function resolveElf64SectionNames(
+  bytes: Buffer,
+  layout: Elf64LayoutSummary,
+): Map<string, Elf64SectionHeaderSummary> {
+  const map = new Map<string, Elf64SectionHeaderSummary>();
+  if (
+    layout.shnum === 0 ||
+    layout.shstrndx === 0 ||
+    layout.shstrndx >= layout.shnum
+  ) {
+    return map;
+  }
+  const strSec = layout.sectionHeaders[layout.shstrndx];
+  if (!strSec || strSec.size === 0 || strSec.offset + strSec.size > bytes.length) {
+    return map;
+  }
+  const strtab = bytes.subarray(strSec.offset, strSec.offset + strSec.size);
+  for (const sh of layout.sectionHeaders) {
+    if (sh.index === 0) continue;
+    if (sh.nameOffset >= strtab.length) continue;
+    let end = sh.nameOffset;
+    while (end < strtab.length && strtab[end] !== 0) end++;
+    const name = strtab.subarray(sh.nameOffset, end).toString("utf8");
+    if (name.length > 0) map.set(name, sh);
+  }
+  return map;
+}
+
+/**
+ * Plant framed Go buildinfo into `.go.buildinfo` (preferred) or the first
+ * writable non-executable PT_LOAD file range so REA's mapped parser trips.
+ * Never mutates program/section header fields — only file-backed bytes.
+ */
+function injectMappedGoBuildInfo(
+  working: Buffer,
+  layout: Elf64LayoutSummary,
+  intensity: ProtectionIntensity,
+): { planted: boolean; tripsMax: boolean; offset: number; size: number } {
+  // Only mutate a named `.go.buildinfo` PROGBITS section. Generic PT_LOAD
+  // fallback would rewrite arbitrary ELF fixtures and violate the
+  // trailer-only / section-integrity red line for non-Go binaries.
+  const names = resolveElf64SectionNames(working, layout);
+  const named = names.get(".go.buildinfo");
+  if (!named || named.type !== 1 || named.size < 48) {
+    return { planted: false, tripsMax: false, offset: -1, size: 0 };
+  }
+  const alignPad = Number((16n - (named.addr % 16n)) % 16n);
+  const writeAt = named.offset + alignPad;
+  const room = named.size - alignPad;
+  if (room < 48) {
+    return { planted: false, tripsMax: false, offset: -1, size: 0 };
+  }
+  const plant = buildMappedGoBuildInfoPlant(intensity, room);
+  if (plant.buffer.length === 0) {
+    return { planted: false, tripsMax: false, offset: -1, size: 0 };
+  }
+  // Clear the section then plant so prior padding cannot confuse parsers.
+  working.fill(0, named.offset, named.offset + named.size);
+  plant.buffer.copy(working, writeAt);
+  return {
+    planted: true,
+    tripsMax: plant.tripsMaxBuildInfoBytes,
+    offset: writeAt,
+    size: plant.buffer.length,
+  };
+}
+
+/**
+ * Plant Flutter pool strings inside `.isolate` / isolate snapshot data regions
+ * (or after an embedded Dart snapshot magic) so REA's string-pool projection
+ * from isolate data observes the decoys.
+ */
+function injectMappedFlutterIsolatePool(
+  working: Buffer,
+  layout: Elf64LayoutSummary,
+  prng: SeededPrng,
+): { planted: boolean; uris: number; tokens: number; offset: number } {
+  // Only plant into an explicitly named `.isolate` section so generic
+  // `.rodata` / ELF fixtures stay byte-identical under trailer-only protect.
+  const names = resolveElf64SectionNames(working, layout);
+  const named = names.get(".isolate");
+  if (!named || named.type !== 1 || named.size < 64) {
+    return { planted: false, uris: 0, tokens: 0, offset: -1 };
+  }
+  let plantAt = named.offset;
+  let includeHeader = true;
+  if (
+    named.size >= 52 &&
+    working[named.offset] === 0xf5 &&
+    working[named.offset + 1] === 0xf5 &&
+    working[named.offset + 2] === 0xdc &&
+    working[named.offset + 3] === 0xdc
+  ) {
+    plantAt = named.offset + 52;
+    includeHeader = false;
+  }
+  const capacity = named.offset + named.size - plantAt;
+  if (capacity < 64) {
+    return { planted: false, uris: 0, tokens: 0, offset: -1 };
+  }
+  const plant = buildMappedFlutterIsolatePoolPlant(capacity, prng, {
+    includeSnapshotHeader: includeHeader,
+  });
+  if (plant.buffer.length === 0) {
+    return { planted: false, uris: 0, tokens: 0, offset: -1 };
+  }
+  plant.buffer.copy(working, plantAt);
+  return {
+    planted: true,
+    uris: plant.packageAndDartUris,
+    tokens: plant.classLikeTokens,
+    offset: plantAt,
+  };
+}
+
 /**
  * Protects a Native Binary (ELF / Mach-O / PE) against REA's native & desktop analyzers
  * while strictly preserving ELF64 `PT_LOAD` (`p_offset`, `p_filesz`, `p_memsz` / BSS) and
@@ -503,6 +622,8 @@ export function protectNativeBinary(
   readonly dartPoolUrisInjected: number;
   readonly dartPoolTokensInjected: number;
   readonly goBuildInfoExceedsLimit: boolean;
+  readonly mappedGoBuildInfoPlanted: boolean;
+  readonly mappedFlutterPoolPlanted: boolean;
   readonly chaffPayloadsEmbedded: number;
   readonly binarySectionsPatched: number;
   readonly electronHardeningReport?: ElectronHardeningReport;
@@ -539,6 +660,21 @@ export function protectNativeBinary(
     prng,
     decoySentinelsInjected,
   );
+
+  let mappedGoBuildInfoPlanted = false;
+  let mappedFlutterPoolPlanted = false;
+  let mappedGoTripsMax = false;
+  if (elfBefore) {
+    const goPlant = injectMappedGoBuildInfo(workingInput, elfBefore, intensity);
+    mappedGoBuildInfoPlanted = goPlant.planted;
+    mappedGoTripsMax = goPlant.tripsMax;
+    const flutterPlant = injectMappedFlutterIsolatePool(
+      workingInput,
+      elfBefore,
+      prng,
+    );
+    mappedFlutterPoolPlanted = flutterPlant.planted;
+  }
 
   // 1. Generate 68 distinct `/rustc/<40-hex>/` strings (> REA's MAX_RUSTC_HASHES = 64!)
   const rustcCount = 68;
@@ -631,7 +767,10 @@ export function protectNativeBinary(
     dartSnapshotHashesInjected: flutterPool.snapshotHashes,
     dartPoolUrisInjected: flutterPool.packageAndDartUris,
     dartPoolTokensInjected: flutterPool.classLikeTokens,
-    goBuildInfoExceedsLimit: goBuildInfo.exceedsMaxBuildInfoBytes,
+    goBuildInfoExceedsLimit:
+      goBuildInfo.exceedsMaxBuildInfoBytes || mappedGoTripsMax,
+    mappedGoBuildInfoPlanted,
+    mappedFlutterPoolPlanted,
     chaffPayloadsEmbedded: chaffPayloads.length,
     binarySectionsPatched,
     ...(electronHardeningReport ? { electronHardeningReport } : {}),

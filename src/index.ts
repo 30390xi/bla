@@ -180,8 +180,12 @@ export {
   inspectGpuPtx,
   protectGpuPtxText,
   FIRMWARE_HARDENING_SKIP_REASON,
+  GPU_OBJECT_HARDENING_SKIP_REASON,
 } from "./shields/formats/gpu-ptx.js";
 export {
   buildGoBuildInfoExhaustionPayload,
   buildFlutterPoolExhaustionPayload,
+  buildMappedGoBuildInfoPlant,
+  buildMappedFlutterIsolatePoolPlant,
+  buildMappedGoFlutterElfFixture,
 } from "./shields/formats/go-flutter-exhaustion.js";
