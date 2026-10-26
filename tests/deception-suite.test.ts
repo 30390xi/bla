@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import { SeededPrng } from "../src/core/prng.js";
 import {
   generateArchitectureMirage,
+  generateCanaryHoneypot,
   generateCounterReaDeceptionSuite,
   generateDecompilerPseudocodeIllusion,
   generateEvidenceContractPoison,
   generateSemanticHoneypot,
   generateShadowBusinessLogic,
+  generateSystemDiagnosticDecoy,
 } from "../src/shields/deception/index.js";
 
 describe("Counter-REA Model-Misjudgment Induction Suite", () => {
@@ -49,7 +51,30 @@ describe("Counter-REA Model-Misjudgment Induction Suite", () => {
       new SeededPrng("full-deception"),
       "bankrupt",
     );
-    expect(suite.totalDeceptionNodesInjected).toBeGreaterThanOrEqual(28);
+    expect(suite.totalDeceptionNodesInjected).toBeGreaterThanOrEqual(44);
     expect(suite.combinedJsCode).toContain("_blaGrpcServiceMirage_");
+  });
+
+  it("generates Canary Credential Honeypots triggering REA recordedTransportUrl ambiguous redaction and System-Diagnostic Rabbit Holes", () => {
+    const prng = new SeededPrng("canary-diag");
+    const canary = generateCanaryHoneypot(prng, "bankrupt");
+    expect(canary.syntheticCanaryTokens).toHaveLength(8);
+    expect(canary.triggersReaTransportRedaction).toBe(true);
+    expect(canary.triggersReaQueryConflictUnknown).toBe(true);
+
+    // Verify exact REA recordedTransportUrl.ts:25-46 condition:
+    // WHATWG URL.parse sees username/password, while REA's two-slash prefix regex returns null!
+    const sampleUrl = canary.ambiguousCredentialUrls[0]!;
+    const parsedUrl = new URL(sampleUrl);
+    expect(parsedUrl.username.length).toBeGreaterThan(0);
+    expect(parsedUrl.password.length).toBeGreaterThan(0);
+    const reaTwoSlashPrefix = /^[\x00-\x20]*(?:([A-Za-z][A-Za-z0-9+.-]*):)?\/\//u;
+    expect(reaTwoSlashPrefix.exec(sampleUrl)).toBeNull();
+
+    const diag = generateSystemDiagnosticDecoy(prng, "bankrupt");
+    expect(diag.diagnosticsInjected).toHaveLength(8);
+    expect(diag.estimatedTroubleshootingTokensInduced).toBeGreaterThanOrEqual(12_000);
+    expect(diag.code).toContain("DarwinProcessOwnershipInspectionError");
+    expect(diag.code).toContain("GhidraSnapshotCacheMismatchError");
   });
 });

@@ -15,7 +15,7 @@ This repository contains **BLA (`bla-agents` — Blind LLM Agents)**, an open-so
   - `token-estimator.ts`: Models REA MCP tool turns and token cost across Claude Opus 4, Sonnet 4, and o3.
 - `src/shields/`:
   - `exhaustion/`: Surgical Resource-Exhaustion Engine (`rea-budget-matrix.ts`, `obligation-flooder.ts`, `callgraph-labyrinth.ts`, `bpe-token-amplifier.ts`, `wasm-interface-exhaustion.ts`, `cdp-shape-budget-breaker.ts`, `frida-capture-saturation.ts`, `regex-worker-tarpit.ts`, `asar-header-amplifier.ts`).
-  - `deception/`: Surgical Model-Misjudgment Induction Engine (`shadow-business-logic.ts`, `evidence-contract-poison.ts`, `architecture-mirage.ts`, `semantic-honeypot.ts`, `decompiler-illusion.ts`, `prompt-completion-poison.ts`, `diff-noise-injector.ts`, `crash-trace-decoy.ts`).
+  - `deception/`: Surgical Model-Misjudgment Induction Engine (`shadow-business-logic.ts`, `evidence-contract-poison.ts`, `architecture-mirage.ts`, `semantic-honeypot.ts`, `decompiler-illusion.ts`, `prompt-completion-poison.ts`, `diff-noise-injector.ts`, `crash-trace-decoy.ts`, `canary-honeypot.ts`, `system-diagnostic-decoy.ts`).
   - `chaff/chaff-generator.ts`: Generates benign hardware-enclave delegation manifests and decoy offset contracts.
   - `tarpit/opaque-predicates.ts` & `tarpit-generator.ts`: Number-theoretic opaque predicates ($O(1)$ runtime invariants) and REA Semantic Budget Breakers.
   - `runtime/runtime-shield.ts` & `runtime/memory-diff-shield.ts`: "Truman Show" Anti-CDP / Anti-Inspector / Anti-Frida dynamic runtime deception shield, plus Synchronized Shadow Heap Churn and Split-Share Rolling XOR memory masking against $M_0 \to M_1$ runtime memory diffing.

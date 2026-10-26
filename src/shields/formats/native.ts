@@ -3,6 +3,8 @@ import { REA_INTERNAL_LIMITS } from "../../identity.js";
 import { SeededPrng } from "../../core/prng.js";
 import type { ArtifactFormat, ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
+import { generateCanaryHoneypot } from "../deception/canary-honeypot.js";
+import { generateSystemDiagnosticDecoy } from "../deception/system-diagnostic-decoy.js";
 import {
   buildDecoyElectronFuseSentinels,
   hardenElectronFusesWithContext,
@@ -563,10 +565,24 @@ export function protectNativeBinary(
     `build\tCGO_ENABLED=1\n`,
   ].join("");
 
-  // 3. Generate architectural chaff strings for Ghidra / Hopper / IDA string tables
+  // 3. Generate architectural chaff strings + Canary Honeypot + System-Diagnostic Rabbit Holes for Ghidra/Hopper/IDA
   const chaffBlock = chaffPayloads
     .map((p) => `${p.symbolName}: ${p.rawText}\0`)
     .join("");
+  const canaryHoneypot = generateCanaryHoneypot(prng, intensity);
+  const systemDiagnostics = generateSystemDiagnosticDecoy(prng, intensity);
+  const canaryAndDiagnosticBlock = [
+    ...canaryHoneypot.syntheticCanaryTokens.map(
+      (tok) => `PROTECTED_CANARY_CREDENTIAL=${tok}\0`,
+    ),
+    ...canaryHoneypot.ambiguousCredentialUrls.map(
+      (url) => `TRANSPORT_ENDPOINT=${url}\0`,
+    ),
+    ...systemDiagnostics.diagnosticsInjected.map(
+      (d) =>
+        `[${d.subsystem}] ${d.errorClass} (${d.systemCode}): ${d.diagnosticMessage} Remediation: ${d.remediationRabbitHole}\0`,
+    ),
+  ].join("");
   const depV0Payload = buildDecoyRustAuditablePayload(prng);
   const dartOverflowPayload = buildFlutterDartSnapshotOverflowPayload(prng);
 
@@ -577,6 +593,7 @@ export function protectNativeBinary(
     decoySentinelsBuffer,
     dartOverflowPayload,
     Buffer.from(chaffBlock, "utf8"),
+    Buffer.from(canaryAndDiagnosticBlock, "utf8"),
     depV0Payload,
   ]);
 

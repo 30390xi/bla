@@ -34,6 +34,15 @@ import {
   generateCrashTraceDecoy,
   type CrashTraceDecoyResult,
 } from "./crash-trace-decoy.js";
+import {
+  generateCanaryHoneypot,
+  type CanaryHoneypotResult,
+} from "./canary-honeypot.js";
+import {
+  generateSystemDiagnosticDecoy,
+  type SystemDiagnosticDecoyEntry,
+  type SystemDiagnosticDecoyResult,
+} from "./system-diagnostic-decoy.js";
 
 export {
   generateShadowBusinessLogic,
@@ -44,6 +53,8 @@ export {
   generatePromptCompletionPoison,
   generateVersionDiffNoise,
   generateCrashTraceDecoy,
+  generateCanaryHoneypot,
+  generateSystemDiagnosticDecoy,
   type ShadowBusinessLogicResult,
   type ShadowLogicArchetype,
   type CompetingExplanationLure,
@@ -54,6 +65,9 @@ export {
   type PromptCompletionPoisonResult,
   type DiffNoiseInjectionResult,
   type CrashTraceDecoyResult,
+  type CanaryHoneypotResult,
+  type SystemDiagnosticDecoyEntry,
+  type SystemDiagnosticDecoyResult,
 };
 
 export interface CounterReaDeceptionSuiteResult {
@@ -63,13 +77,15 @@ export interface CounterReaDeceptionSuiteResult {
   readonly architectureMirage: ArchitectureMirageResult;
   readonly semanticHoneypot: SemanticHoneypotResult;
   readonly decompilerIllusion: DecompilerIllusionResult;
+  readonly canaryHoneypot: CanaryHoneypotResult;
+  readonly systemDiagnostics: SystemDiagnosticDecoyResult;
   readonly totalDeceptionNodesInjected: number;
 }
 
 /**
  * Generates the unified Counter-REA Model-Misjudgment Induction Suite
  * (`shadow-business-logic` + `evidence-contract-poison` + `architecture-mirage` +
- * `semantic-honeypot` + `decompiler-illusion`).
+ * `semantic-honeypot` + `decompiler-illusion` + `canary-honeypot` + `system-diagnostic-decoy`).
  */
 export function generateCounterReaDeceptionSuite(
   prng: SeededPrng,
@@ -83,6 +99,8 @@ export function generateCounterReaDeceptionSuite(
   const promptCompletionPoison = generatePromptCompletionPoison(prng, intensity);
   const diffNoise = generateVersionDiffNoise(prng, intensity);
   const crashDecoy = generateCrashTraceDecoy(prng, intensity);
+  const canaryHoneypot = generateCanaryHoneypot(prng, intensity);
+  const systemDiagnostics = generateSystemDiagnosticDecoy(prng, intensity);
 
   const combinedJsCode = [
     shadowLogic.code,
@@ -93,6 +111,8 @@ export function generateCounterReaDeceptionSuite(
     promptCompletionPoison.code,
     diffNoise.code,
     crashDecoy.code,
+    canaryHoneypot.code,
+    systemDiagnostics.code,
   ].join("\n\n");
 
   const totalDeceptionNodesInjected =
@@ -103,7 +123,9 @@ export function generateCounterReaDeceptionSuite(
     decompilerIllusion.illusionPatternsInjected +
     promptCompletionPoison.prioritySortedSymbols.length +
     diffNoise.permutedBlocksCount +
-    crashDecoy.decoyCrashSignalsEmbedded.length;
+    crashDecoy.decoyCrashSignalsEmbedded.length +
+    canaryHoneypot.syntheticCanaryTokens.length +
+    systemDiagnostics.diagnosticsInjected.length;
 
   return {
     combinedJsCode,
@@ -112,6 +134,8 @@ export function generateCounterReaDeceptionSuite(
     architectureMirage,
     semanticHoneypot,
     decompilerIllusion,
+    canaryHoneypot,
+    systemDiagnostics,
     totalDeceptionNodesInjected,
   };
 }
