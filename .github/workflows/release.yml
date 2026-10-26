@@ -103,7 +103,19 @@ jobs:
             fi
           fi
 
-          # 3. Verify existing remote/local tag points to current HEAD_SHA
+          PRIMARY_NPM_VERSION=$(npm view "bla-agents@${LOCAL_VERSION}" version 2>/dev/null || echo "none")
+          echo "local_version=${LOCAL_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+          if [ "${LOCAL_VERSION}" != "${PRIMARY_NPM_VERSION}" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ] || [[ "${TRIGGER_REF}" == refs/tags/* ]]; then
+            SHOULD_PUBLISH="true"
+          else
+            SHOULD_PUBLISH="false"
+            echo "bla-agents@${LOCAL_VERSION} is already published on npm; skipping release on regular branch push."
+          fi
+
+          # 3. Verify existing remote/local tag points to current HEAD_SHA when publishing/releasing
           EXISTING_TAG_SHA=""
           if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
             git fetch origin "refs/tags/${TAG}:refs/tags/${TAG}" --force
@@ -111,24 +123,14 @@ jobs:
           elif git rev-parse "${TAG}" >/dev/null 2>&1; then
             EXISTING_TAG_SHA=$(git rev-list -n 1 "${TAG}")
           fi
+          echo "existing_tag_sha=${EXISTING_TAG_SHA}" >> "$GITHUB_OUTPUT"
 
-          if [ -n "${EXISTING_TAG_SHA}" ] && [ "${EXISTING_TAG_SHA}" != "${HEAD_SHA}" ]; then
+          if [ "${SHOULD_PUBLISH}" = "true" ] && [ -n "${EXISTING_TAG_SHA}" ] && [ "${EXISTING_TAG_SHA}" != "${HEAD_SHA}" ]; then
             echo "::error::Existing tag '${TAG}' points to ${EXISTING_TAG_SHA}, which differs from checkout commit ${HEAD_SHA}. Refusing cross-commit release."
             exit 1
           fi
 
-          PRIMARY_NPM_VERSION=$(npm view "bla-agents@${LOCAL_VERSION}" version 2>/dev/null || echo "none")
-          ALIAS_NPM_VERSION=$(npm view "bla-shield@${LOCAL_VERSION}" version 2>/dev/null || echo "none")
-          echo "local_version=${LOCAL_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
-          echo "existing_tag_sha=${EXISTING_TAG_SHA}" >> "$GITHUB_OUTPUT"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-
-          if [ "${LOCAL_VERSION}" != "${PRIMARY_NPM_VERSION}" ] || [ "${LOCAL_VERSION}" != "${ALIAS_NPM_VERSION}" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ] || [[ "${TRIGGER_REF}" == refs/tags/* ]]; then
-            echo "should_publish=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_publish=false" >> "$GITHUB_OUTPUT"
-          fi
+          echo "should_publish=${SHOULD_PUBLISH}" >> "$GITHUB_OUTPUT"
 
       - name: Run full verification gates (typecheck, build, test, 8-target benchmark)
         if: steps.check_npm.outputs.should_publish == 'true'
@@ -166,7 +168,7 @@ jobs:
           '
           cat release-assets/SHA256SUMS.txt
 
-      - name: Publish bla-agents and bla-shield tarballs to npm
+      - name: Publish bla-agents tarball to npm
         if: steps.check_npm.outputs.should_publish == 'true'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -174,20 +176,12 @@ jobs:
         run: |
           set -euo pipefail
           PRIMARY_TGZ="./release-assets/bla-agents-${VERSION}.tgz"
-          ALIAS_TGZ="./release-assets/bla-shield-${VERSION}.tgz"
 
           if npm view "bla-agents@${VERSION}" version >/dev/null 2>&1; then
             echo "bla-agents@${VERSION} is already published on npm; skipping primary publish."
           else
             npm publish "${PRIMARY_TGZ}" --provenance --access public \
               || npm publish "${PRIMARY_TGZ}" --access public
-          fi
-
-          if npm view "bla-shield@${VERSION}" version >/dev/null 2>&1; then
-            echo "bla-shield@${VERSION} is already published on npm; skipping alias publish."
-          else
-            npm publish "${ALIAS_TGZ}" --provenance --access public \
-              || npm publish "${ALIAS_TGZ}" --access public
           fi
 
       - name: Create or idempotently verify GitHub Release (no cross-commit clobber)
