@@ -39,8 +39,10 @@ benchmark. Includes commit `1490af1` and all subsequent work through this tag.
   force `ifaceState=partial` past `WASM_INTERFACE_REPRESENTATION_BYTES`
   (soft-skips to projected `WasmInterfaceBudget` when Wabt is absent).
 - **14-target Counter-REA benchmark** (adds BEAM / EVM / PCAP / PTX to the
-  prior showcase) with aggregate ~596× token amplification and 100% runtime
+  prior showcase) with aggregate ~597× token amplification and 100% runtime
   equivalence across all targets.
+- **Launch-ready README** with honest empirical-vs-estimate separation and
+  current format coverage matrix (verified / designed-for / skipped).
 
 ### Changed
 
@@ -62,6 +64,10 @@ benchmark. Includes commit `1490af1` and all subsequent work through this tag.
 - SQLite honey that disclosed schema under Node 24 without tripping REA's
   column-evaluation path — generated trap columns now force
   `SqliteColumnEvaluationFailure` on honey row selects.
+- Safetensors shield that previously left REA `after=ok` — attaches a deep
+  nested `bla_enclave_topology` **extra** key on the first tensor descriptor
+  (HuggingFace ignores unknown fields; tensor bytes unchanged) so REA hits
+  `MODEL_JSON_NESTING` / *Safetensors JSON nesting exceeds 32 levels*.
 
 ### Docs
 
