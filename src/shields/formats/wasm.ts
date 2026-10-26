@@ -53,6 +53,64 @@ function encodeWasmName(str: string): Buffer {
   return Buffer.concat([encodeUnsignedLeb128(utf8.length), utf8]);
 }
 
+
+/**
+ * Append decoy export entries that alias an existing function index.
+ * Original exports are preserved; WebAssembly.validate and original
+ * Instantiation stay intact. Bankrupt intensity sizes names so REA's
+ * Wabt→WasmInterfaceBudget path exceeds WASM_INTERFACE_REPRESENTATION_BYTES.
+ */
+function appendDecoyExports(
+  exportSectionPayload: Buffer,
+  decoys: readonly { readonly name: string; readonly funcIndex: number }[],
+): Buffer {
+  if (decoys.length === 0) return exportSectionPayload;
+  let p = 0;
+  const { value: count, nextOffset } = decodeUnsignedLeb128(exportSectionPayload, 0);
+  p = nextOffset;
+  const existing = exportSectionPayload.subarray(p);
+  const decoyParts: Buffer[] = [];
+  for (const d of decoys) {
+    decoyParts.push(
+      encodeWasmName(d.name),
+      Buffer.from([0x00]), // func
+      encodeUnsignedLeb128(d.funcIndex),
+    );
+  }
+  return Buffer.concat([
+    encodeUnsignedLeb128(count + decoys.length),
+    existing,
+    ...decoyParts,
+  ]);
+}
+
+function planWasmExportNameDecoys(
+  prng: SeededPrng,
+  intensity: ProtectionIntensity,
+  funcIndex: number,
+): readonly { readonly name: string; readonly funcIndex: number }[] {
+  // bankrupt: ~250 × ~12 KiB names → Wabt interface charge ≫ 32 MiB.
+  const count =
+    intensity === "stealth"
+      ? 0
+      : intensity === "balanced"
+        ? 2
+        : intensity === "maximum"
+          ? 8
+          : 250;
+  const namePad = intensity === "bankrupt" ? 12_000 : intensity === "maximum" ? 48 : 16;
+  const tag = prng.hex(4);
+  const out: { name: string; funcIndex: number }[] = [];
+  for (let i = 0; i < count; i++) {
+    const pad = "e".repeat(namePad);
+    out.push({
+      name: `bla_enclave_export_${tag}_${i}_${pad}`,
+      funcIndex,
+    });
+  }
+  return out;
+}
+
 function createWasmCustomSection(name: string, content: Buffer): Buffer {
   const nameEncoded = encodeWasmName(name);
   const sectionPayload = Buffer.concat([nameEncoded, content]);
@@ -193,6 +251,7 @@ export function protectWasmBinary(
   readonly interfaceDescriptorsEmbedded: number;
   readonly projectedInterfaceChargeBytes: number;
   readonly exceedsRepresentationBudget: boolean;
+  readonly exportDecoysInjected: number;
 } {
   if (
     bytes.length < 8 ||
@@ -209,9 +268,14 @@ export function protectWasmBinary(
   const chaffPayloads = generateChaffPayloads(prng, intensity);
   const deception = buildCanaryAndDiagnosticPayloads(prng, intensity);
 
-  // Retain non-custom sections (1..12), strip original debug/name custom sections (0)
+  // Retain non-custom sections (1..12), strip original debug/name custom sections (0).
+  // At bankrupt intensity, densify the export section with long-name aliases of
+  // existing funcs so REA's real Wabt→WasmInterfaceBudget path trips (custom
+  // sections alone do not expand the typed interface inventory).
+  const decoyExports = planWasmExportNameDecoys(prng, intensity, 0);
   const keptChunks: Buffer[] = [bytes.subarray(0, 8)];
   let offset = 8;
+  let exportDecoysInjected = 0;
   while (offset < bytes.length) {
     const sectionStart = offset;
     const sectionId = bytes[offset++]!;
@@ -219,7 +283,20 @@ export function protectWasmBinary(
     const sectionEnd = nextOffset + sectionSize;
     if (sectionEnd > bytes.length) break;
 
-    if (sectionId !== 0) {
+    if (sectionId === 0) {
+      // strip original custom/debug
+    } else if (sectionId === 7 && decoyExports.length > 0) {
+      const payload = bytes.subarray(nextOffset, sectionEnd);
+      const expanded = appendDecoyExports(payload, decoyExports);
+      keptChunks.push(
+        Buffer.concat([
+          Buffer.from([0x07]),
+          encodeUnsignedLeb128(expanded.length),
+          expanded,
+        ]),
+      );
+      exportDecoysInjected = decoyExports.length;
+    } else {
       keptChunks.push(bytes.subarray(sectionStart, sectionEnd));
     }
     offset = sectionEnd;
@@ -316,5 +393,6 @@ export function protectWasmBinary(
     interfaceDescriptorsEmbedded: ifacePlan.descriptors.length,
     projectedInterfaceChargeBytes: ifacePlan.totalReaChargedBytes,
     exceedsRepresentationBudget: ifacePlan.exceedsRepresentationBudget,
+    exportDecoysInjected,
   };
 }

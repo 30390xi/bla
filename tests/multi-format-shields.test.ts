@@ -41,6 +41,7 @@ describe("Multi-Format Shields (WASM, Python, Native ELF/Mach-O/PE, C/Rust/Go He
     expect(protectedRes.customSectionsAdded).toBe(9);
     // balanced intensity stays under the 32 MiB REA interface budget; bankrupt exceeds.
     expect(protectedRes.exceedsRepresentationBudget).toBe(false);
+    expect(protectedRes.exportDecoysInjected).toBe(2);
     expect(protectedRes.canaryTokensEmbedded).toBeGreaterThanOrEqual(2);
     expect(protectedRes.diagnosticsEmbedded).toBeGreaterThanOrEqual(2);
     expect(protectedRes.chaffPayloadsEmbedded).toBeGreaterThanOrEqual(4);
