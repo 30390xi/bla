@@ -2,6 +2,7 @@ import { REA_INTERNAL_LIMITS } from "../../identity.js";
 import { SeededPrng } from "../../core/prng.js";
 import type { ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
+import { buildCanaryAndDiagnosticPayloads } from "../deception/format-payloads.js";
 
 export interface ModelInspectionSummary {
   readonly validModel: boolean;
@@ -201,11 +202,14 @@ export function protectSafetensorsBuffer(
   readonly buffer: Buffer;
   readonly chaffPayloadsEmbedded: number;
   readonly triggeredJsonNestingBreaker: boolean;
+  readonly canaryTokensEmbedded: number;
+  readonly diagnosticsEmbedded: number;
 } {
   const { header: headerObj, tensorData } = validateSafetensorsBuffer(bytes);
   const intensity = options.intensity ?? "balanced";
   const prng = new SeededPrng(options.seed ?? "bla-safetensors-shield-v1");
   const chaffPayloads = generateChaffPayloads(prng, intensity);
+  const deception = buildCanaryAndDiagnosticPayloads(prng, intensity);
 
   const existingMeta =
     typeof headerObj.__metadata__ === "object" && headerObj.__metadata__ !== null
@@ -224,6 +228,24 @@ export function protectSafetensorsBuffer(
     }
   });
 
+  // Canary + diagnostic metadata keyed under the existing enclave.* nesting-breaker namespace.
+  // Values are strings (Safetensors __metadata__ contract); tensors are untouched.
+  deception.canary.syntheticCanaryTokens.forEach((tok, idx) => {
+    existingMeta[`enclave.canary.token.${idx}`] ??= tok;
+  });
+  deception.canary.ambiguousCredentialUrls.forEach((url, idx) => {
+    existingMeta[`enclave.canary.transport.${idx}`] ??= url;
+  });
+  deception.diagnostics.diagnosticsInjected.forEach((d, idx) => {
+    existingMeta[`enclave.diagnostic.${idx}`] ??= JSON.stringify({
+      subsystem: d.subsystem,
+      errorClass: d.errorClass,
+      systemCode: d.systemCode,
+      diagnosticMessage: d.diagnosticMessage,
+      remediationRabbitHole: d.remediationRabbitHole,
+    });
+  });
+
   headerObj.__metadata__ = existingMeta;
 
   const buffer = buildSafetensorsBuffer(headerObj, tensorData);
@@ -232,6 +254,8 @@ export function protectSafetensorsBuffer(
     buffer,
     chaffPayloadsEmbedded,
     triggeredJsonNestingBreaker: false,
+    canaryTokensEmbedded: deception.canary.syntheticCanaryTokens.length,
+    diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
   };
 }
 
@@ -344,10 +368,13 @@ export function protectGgufBuffer(
   readonly buffer: Buffer;
   readonly chaffPayloadsEmbedded: number;
   readonly triggeredMetadataNestingBreaker: boolean;
+  readonly canaryTokensEmbedded: number;
+  readonly diagnosticsEmbedded: number;
 } {
   const intensity = options.intensity ?? "balanced";
   const prng = new SeededPrng(options.seed ?? "bla-gguf-shield-v1");
   const chaffPayloads = generateChaffPayloads(prng, intensity);
+  const deception = buildCanaryAndDiagnosticPayloads(prng, intensity);
 
   const parsed = parseExistingGgufHeader(bytes);
   const existingKvSlice = parsed ? bytes.subarray(24, parsed.kvEndOffset) : Buffer.alloc(0);
@@ -377,7 +404,39 @@ export function protectGgufBuffer(
     kvEntries.push(Buffer.concat([key, type, val]));
   }
 
-  // KV 3: enclave.nesting.breaker — 35 nested ARRAY frames (> MODEL_METADATA_NESTING = 32)
+  // KV canary / diagnostic STRING metadata (under enclave.* hierarchy)
+  deception.canary.syntheticCanaryTokens.forEach((tok, idx) => {
+    const keyName = `enclave.canary.token.${idx}`;
+    if (!parsed || !parsed.existingKeys.has(keyName)) {
+      const key = encodeGgufString(keyName);
+      const type = Buffer.alloc(4);
+      type.writeUInt32LE(8, 0);
+      kvEntries.push(Buffer.concat([key, type, encodeGgufString(tok)]));
+    }
+  });
+  deception.canary.ambiguousCredentialUrls.forEach((url, idx) => {
+    const keyName = `enclave.canary.transport.${idx}`;
+    if (!parsed || !parsed.existingKeys.has(keyName)) {
+      const key = encodeGgufString(keyName);
+      const type = Buffer.alloc(4);
+      type.writeUInt32LE(8, 0);
+      kvEntries.push(Buffer.concat([key, type, encodeGgufString(url)]));
+    }
+  });
+  deception.diagnostics.diagnosticsInjected.forEach((d, idx) => {
+    const keyName = `enclave.diagnostic.${idx}`;
+    if (!parsed || !parsed.existingKeys.has(keyName)) {
+      const key = encodeGgufString(keyName);
+      const type = Buffer.alloc(4);
+      type.writeUInt32LE(8, 0);
+      const val = encodeGgufString(
+        `[${d.errorClass}] (${d.systemCode}) ${d.diagnosticMessage}`,
+      );
+      kvEntries.push(Buffer.concat([key, type, val]));
+    }
+  });
+
+  // KV nesting: enclave.nesting.breaker — 35 nested ARRAY frames (> MODEL_METADATA_NESTING = 32)
   const nestingDepth = REA_INTERNAL_LIMITS.MODEL_MAX_METADATA_NESTING + 3;
   if (!parsed || !parsed.existingKeys.has("enclave.nesting.breaker")) {
     const key = encodeGgufString("enclave.nesting.breaker");
@@ -419,5 +478,7 @@ export function protectGgufBuffer(
     buffer: Buffer.concat([combined, alignedPad]),
     chaffPayloadsEmbedded: chaffPayloads.length,
     triggeredMetadataNestingBreaker: true,
+    canaryTokensEmbedded: deception.canary.syntheticCanaryTokens.length,
+    diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
   };
 }
