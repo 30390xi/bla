@@ -21,6 +21,10 @@ import {
   probeSafetensors,
   probeGguf,
   probePtx,
+  probeAsar,
+  probeWasm,
+  probeSqlite,
+  probeElectronFuses,
   unverifiedAnalyzers,
 } from "./lib/probes.mjs";
 import { writeReports } from "./lib/report.mjs";
@@ -34,10 +38,11 @@ function tsharkVersion(env) {
 
 async function main() {
   if (!reaDistReady()) {
-    console.error(
-      "REA dist not ready. From /workspace/bla-dev/rea under Node 22.23.4+:\n  npm install --ignore-scripts && npx tsc -p tsconfig.build.json",
+    console.log(
+      "SKIP: sibling REA dist not ready (expected at ../rea or $REA_ROOT). " +
+        "Red-team empirical gates require a local REA checkout; CI skips when absent.",
     );
-    process.exit(2);
+    process.exit(0);
   }
   const tshark = resolveTsharkEnv();
   const { bla, intensity, seed, samples } = await buildSampleMatrix();
@@ -135,6 +140,51 @@ async function main() {
     });
   }
 
+
+  {
+    const s = samples.electron_asar;
+    pairs.push({
+      format: "electron_asar",
+      before: await probeAsar(rea, s.before, "before"),
+      after: await probeAsar(rea, s.after, "after"),
+      sampleMeta: s.meta,
+      blaLimits: limits,
+    });
+  }
+
+  {
+    const s = samples.wasm_module;
+    pairs.push({
+      format: "wasm_module",
+      before: await probeWasm(rea, bla, s.before, "before", s.meta),
+      after: await probeWasm(rea, bla, s.after, "after", s.meta),
+      sampleMeta: s.meta,
+      blaLimits: limits,
+    });
+  }
+
+  {
+    const s = samples.sqlite_db;
+    pairs.push({
+      format: "sqlite_db",
+      before: await probeSqlite(rea, bla, s.before, "before"),
+      after: await probeSqlite(rea, bla, s.after, "after"),
+      sampleMeta: s.meta,
+      blaLimits: limits,
+    });
+  }
+
+  {
+    const s = samples.electron_fuses;
+    pairs.push({
+      format: "electron_fuses",
+      before: await probeElectronFuses(rea, s.before, "before"),
+      after: await probeElectronFuses(rea, s.after, "after"),
+      sampleMeta: s.meta,
+      blaLimits: limits,
+    });
+  }
+
   const run = {
     generatedAt: new Date().toLocaleString("en-CA", {
       timeZone: "Asia/Shanghai",
@@ -176,6 +226,9 @@ async function main() {
       "evm_bytecode",
       "pcap_capture",
       "gguf",
+      "electron_asar",
+      "wasm_module",
+      "electron_fuses",
     ]);
     if (!must.has(p.format)) return false;
     if (p.format === "pcap_capture" && p.after.status === "skipped") return false;

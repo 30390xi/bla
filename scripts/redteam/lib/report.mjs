@@ -121,6 +121,50 @@ function compareToEstimates(pair) {
       "PTX is text-scanned only; REA GPU object decode needs native tooling (not empirically verified for fatbin/SPIR-V)",
     );
   }
+  if (format === "electron_asar") {
+    const expect = sampleMeta?.exceedsDefaultAdmission === true;
+    const hit = after.budgetHit === true;
+    notes.push(
+      hit === expect
+        ? `AGREE with BLA exceedsDefaultAdmission=${expect} (header after metrics=${after.metrics?.headerBytes ?? after.errorMessage})`
+        : `DIVERGE: BLA exceedsDefaultAdmission=${expect}, empirical budgetHit=${hit} (${after.budgetName ?? after.errorName})`,
+    );
+  }
+  if (format === "wasm_module") {
+    const expect = sampleMeta?.exceedsRepresentationBudget === true;
+    const hit = after.budgetHit === true;
+    notes.push(
+      hit === expect
+        ? `AGREE with BLA exceedsRepresentationBudget=${expect} (projected=${sampleMeta?.projectedInterfaceChargeBytes})`
+        : `DIVERGE: BLA exceeds=${expect}, empirical budgetHit=${hit}`,
+    );
+    notes.push(
+      "Full Wabt WAT decode is tool-backed; in-process WasmInterfaceBudget reserved with projected descriptors",
+    );
+  }
+  if (format === "sqlite_db") {
+    notes.push(
+      after.status === "capability_gated"
+        ? "NOTED: REA SQLite inspection capability-gated on Node <24.15; BLA honey/canary evidence recorded"
+        : after.budgetHit
+          ? `empirical budgetHit=${after.budgetName}`
+          : `empirical status=${after.status}; honeyTables=${after.metrics?.blaHoneyTables}`,
+    );
+    if ((sampleMeta?.honeyTablesInjected ?? 0) > 0) {
+      notes.push(
+        `AGREE: BLA honeyTablesInjected=${sampleMeta.honeyTablesInjected}, canaryTokens=${sampleMeta.canaryTokensEmbedded}`,
+      );
+    }
+  }
+  if (format === "electron_fuses") {
+    const expect = (sampleMeta?.electronFuseSentinelsInjected ?? 0) > 32;
+    const hit = after.budgetHit === true;
+    notes.push(
+      hit === expect
+        ? `AGREE: decoy sentinels ${sampleMeta?.electronFuseSentinelsInjected} > maximumSentinelsPerSlice=32`
+        : `DIVERGE: injected=${sampleMeta?.electronFuseSentinelsInjected}, empirical budgetHit=${hit} (${after.budgetName ?? after.errorName})`,
+    );
+  }
   // Before should generally NOT hit budgets
   if (before.budgetHit && format !== "gpu_ptx") {
     notes.push(
@@ -153,7 +197,7 @@ export function buildReportDocument(run) {
       ? "agree"
       : cmp.some((c) => c.startsWith("DIVERGE"))
         ? "diverge"
-        : cmp.some((c) => c.startsWith("SKIPPED") || c.startsWith("EXPECTED") || c.startsWith("PTX"))
+        : cmp.some((c) => c.startsWith("SKIPPED") || c.startsWith("EXPECTED") || c.startsWith("PTX") || c.startsWith("NOTED") || c.startsWith("Full Wabt"))
           ? "noted"
           : "—";
     lines.push(

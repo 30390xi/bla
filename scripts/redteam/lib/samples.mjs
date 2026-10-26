@@ -29,6 +29,26 @@ export async function loadBla() {
     protectSafetensorsBuffer: (await import(join(base, "model.js")))
       .protectSafetensorsBuffer,
     protectGgufBuffer: (await import(join(base, "model.js"))).protectGgufBuffer,
+    packAsarBuffer: (await import(join(base, "asar.js"))).packAsarBuffer,
+    unpackAsarBuffer: (await import(join(base, "asar.js"))).unpackAsarBuffer,
+    protectWasmBinary: (await import(join(base, "wasm.js"))).protectWasmBinary,
+    inspectWasmBinary: (await import(join(base, "wasm.js"))).inspectWasmBinary,
+    protectSqliteBuffer: (await import(join(base, "sqlite.js"))).protectSqliteBuffer,
+    buildSampleSqliteDatabase: (await import(join(base, "sqlite.js")))
+      .buildSampleSqliteDatabase,
+    inspectSqliteBuffer: (await import(join(base, "sqlite.js"))).inspectSqliteBuffer,
+    inspectElectronFusesBuffer: (
+      await import(join(base, "electron-fuses.js"))
+    ).inspectElectronFusesBuffer,
+    planAsarHeaderAmplification: (
+      await import(join(BLA_ROOT, "dist/shields/exhaustion/asar-header-amplifier.js"))
+    ).planAsarHeaderAmplification,
+    planWasmInterfaceBudgetExhaustion: (
+      await import(
+        join(BLA_ROOT, "dist/shields/exhaustion/wasm-interface-exhaustion.js")
+      )
+    ).planWasmInterfaceBudgetExhaustion,
+    SeededPrng: (await import(join(BLA_ROOT, "dist/core/prng.js"))).SeededPrng,
     REA_INTERNAL_LIMITS: (await import(join(BLA_ROOT, "dist/identity.js")))
       .REA_INTERNAL_LIMITS,
   };
@@ -129,6 +149,40 @@ export function buildMinimalGguf() {
   return b;
 }
 
+
+/** Minimal Electron ASAR with package.json + main.js. */
+export function buildMinimalAsar(bla) {
+  return bla.packAsarBuffer([
+    {
+      relativePath: "package.json",
+      content: Buffer.from(
+        JSON.stringify({ name: "redteam-asar", main: "main.js" }),
+        "utf8",
+      ),
+    },
+    {
+      relativePath: "main.js",
+      content: Buffer.from(
+        "exports.ping = function ping() { return 42; };\n",
+        "utf8",
+      ),
+    },
+  ]);
+}
+
+/** Minimal valid WASM exporting computeDigest(i32,i32)->i32. */
+export function buildMinimalWasm() {
+  return Buffer.from([
+    0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+    0x01, 0x07, 0x01, 0x60, 0x02, 0x7f, 0x7f, 0x01, 0x7f,
+    0x03, 0x02, 0x01, 0x00,
+    0x07, 0x11, 0x01, 0x0d,
+    0x63, 0x6f, 0x6d, 0x70, 0x75, 0x74, 0x65, 0x44, 0x69, 0x67, 0x65, 0x73, 0x74,
+    0x00, 0x00,
+    0x0a, 0x0c, 0x01, 0x0a, 0x00, 0x20, 0x00, 0x20, 0x01, 0x73, 0x41, 0x2a, 0x6a, 0x0b,
+  ]);
+}
+
 /**
  * Build the red-team sample matrix: one entry per empirically runnable format.
  */
@@ -164,6 +218,45 @@ export async function buildSampleMatrix() {
     ggufHard = bla.protectGgufBuffer(ggufRaw, { intensity, seed });
   } catch (err) {
     ggufHard = { buffer: ggufRaw, error: String(err?.message ?? err) };
+  }
+
+  // Electron ASAR — densify header past DEFAULT_ASAR_MAX_HEADER_BYTES (16 MiB).
+  const asarRaw = buildMinimalAsar(bla);
+  const asarFiles = [...bla.unpackAsarBuffer(asarRaw)];
+  const asarPlan = bla.planAsarHeaderAmplification(
+    new bla.SeededPrng(`${seed}:asar`),
+    intensity,
+  );
+  for (const decoy of asarPlan.files) asarFiles.push(decoy);
+  const asarHard = {
+    buffer: bla.packAsarBuffer(asarFiles),
+    decoyFiles: asarPlan.files.length,
+    estimatedHeaderBytes: asarPlan.estimatedHeaderBytes,
+    exceedsDefaultAdmission: asarPlan.exceedsDefaultAdmission,
+  };
+
+  // WASM — bankrupt interface exhaustion past 32 MiB representation budget.
+  const wasmRaw = buildMinimalWasm();
+  const wasmHard = bla.protectWasmBinary(wasmRaw, { intensity, seed });
+
+  // SQLite — honey tables + canaries (REA inspect is Node 24.15+ gated).
+  let sqliteRaw = Buffer.alloc(0);
+  let sqliteHard = {
+    buffer: Buffer.alloc(0),
+    error: null,
+    honeyTablesInjected: 0,
+    canaryTokensEmbedded: 0,
+  };
+  try {
+    sqliteRaw = bla.buildSampleSqliteDatabase();
+    sqliteHard = bla.protectSqliteBuffer(sqliteRaw, { intensity, seed });
+  } catch (err) {
+    sqliteHard = {
+      buffer: sqliteRaw,
+      error: String(err?.message ?? err),
+      honeyTablesInjected: 0,
+      canaryTokensEmbedded: 0,
+    };
   }
 
   return {
@@ -233,6 +326,46 @@ export async function buildSampleMatrix() {
           error: ggufHard.error,
           triggeredMetadataNestingBreaker:
             ggufHard.triggeredMetadataNestingBreaker === true,
+        },
+      },
+      electron_asar: {
+        format: "electron_asar",
+        before: asarRaw,
+        after: asarHard.buffer,
+        meta: {
+          decoyFiles: asarHard.decoyFiles,
+          estimatedHeaderBytes: asarHard.estimatedHeaderBytes,
+          exceedsDefaultAdmission: asarHard.exceedsDefaultAdmission,
+        },
+      },
+      wasm_module: {
+        format: "wasm_module",
+        before: wasmRaw,
+        after: wasmHard.buffer,
+        meta: {
+          customSectionsAdded: wasmHard.customSectionsAdded,
+          interfaceDescriptorsEmbedded: wasmHard.interfaceDescriptorsEmbedded,
+          projectedInterfaceChargeBytes: wasmHard.projectedInterfaceChargeBytes,
+          exceedsRepresentationBudget: wasmHard.exceedsRepresentationBudget,
+        },
+      },
+      sqlite_db: {
+        format: "sqlite_db",
+        before: sqliteRaw,
+        after: sqliteHard.buffer,
+        meta: {
+          error: sqliteHard.error,
+          honeyTablesInjected: sqliteHard.honeyTablesInjected,
+          canaryTokensEmbedded: sqliteHard.canaryTokensEmbedded,
+        },
+      },
+      electron_fuses: {
+        // Same hardened ELF carries decoy Electron fuse sentinels (34 > 32).
+        format: "electron_fuses",
+        before: elfRaw,
+        after: elfHard.buffer,
+        meta: {
+          electronFuseSentinelsInjected: elfHard.electronFuseSentinelsInjected,
         },
       },
     },

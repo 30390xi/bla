@@ -35,7 +35,8 @@ describe("Prompt Completion, Version Diff, Crash Trace & Regex/ASAR Shields", ()
     expect(regex.nearMissCandidatesGenerated).toBe(64);
 
     const asarFiles = generateAsarHeaderDecoyFiles(prng, "bankrupt");
-    expect(asarFiles).toHaveLength(24);
+    expect(asarFiles.length).toBeGreaterThan(1000);
+    expect(asarFiles).toHaveLength(4000);
     expect(asarFiles[0]!.relativePath).toContain("enclave/shards/");
   });
 });

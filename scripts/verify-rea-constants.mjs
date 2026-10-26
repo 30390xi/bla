@@ -10,7 +10,8 @@
  *   node scripts/verify-rea-constants.mjs
  *   REA_ROOT=/path/to/rea node scripts/verify-rea-constants.mjs
  *
- * Exit code 0 = all asserted constants match; 1 = drift detected or REA missing.
+ * Exit code 0 = all asserted constants match, OR sibling REA absent (soft-skip).
+ * Exit code 1 = drift detected when REA is present.
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -243,8 +244,11 @@ function main() {
   console.log(`  REA_ROOT = ${REA_ROOT}`);
 
   if (!existsSync(REA_ROOT) || !existsSync(join(REA_ROOT, "src"))) {
-    console.error("\nFAIL  REA checkout not found. Clone morluto/rea next to bla or set REA_ROOT.");
-    process.exit(1);
+    console.log(
+      `SKIP: sibling REA checkout not found at ${REA_ROOT}. ` +
+        "verify:rea requires a local REA tree; CI skips when absent.",
+    );
+    process.exit(0);
   }
 
   const files = [

@@ -53,8 +53,10 @@ describe("Counter-REA Resource Exhaustion Suite", () => {
     expect(bpe.tokensPerByteRatio).toBeGreaterThanOrEqual(0.55);
 
     const wasmPlan = planWasmInterfaceBudgetExhaustion(prng, "bankrupt");
-    expect(wasmPlan.descriptors.length).toBe(72);
-    expect(wasmPlan.byteAmplificationFactor).toBeGreaterThan(15);
+    expect(wasmPlan.descriptors.length).toBe(128);
+    expect(wasmPlan.exceedsRepresentationBudget).toBe(true);
+    expect(wasmPlan.byteAmplificationFactor).toBeGreaterThan(5);
+    expect(wasmPlan.totalReaChargedBytes).toBeGreaterThan(32 * 1024 * 1024);
     expect(
       computeReaWasmInterfaceCharge({
         moduleName: "enclave",

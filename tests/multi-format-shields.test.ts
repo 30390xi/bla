@@ -38,7 +38,9 @@ describe("Multi-Format Shields (WASM, Python, Native ELF/Mach-O/PE, C/Rust/Go He
       intensity: "balanced",
       seed: "wasm-test-seed",
     });
-    expect(protectedRes.customSectionsAdded).toBe(8);
+    expect(protectedRes.customSectionsAdded).toBe(9);
+    // balanced intensity stays under the 32 MiB REA interface budget; bankrupt exceeds.
+    expect(protectedRes.exceedsRepresentationBudget).toBe(false);
     expect(protectedRes.canaryTokensEmbedded).toBeGreaterThanOrEqual(2);
     expect(protectedRes.diagnosticsEmbedded).toBeGreaterThanOrEqual(2);
     expect(protectedRes.chaffPayloadsEmbedded).toBeGreaterThanOrEqual(4);

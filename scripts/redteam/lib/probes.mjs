@@ -143,6 +143,30 @@ export async function loadReaProbes() {
     resolveReaDist("model/ModelHeaderReader.js")
   );
   const { GgufHeader } = await import(resolveReaDist("model/GgufHeader.js"));
+  const { admitAsarHeader } = await import(
+    resolveReaDist("artifacts/AsarHeader.js")
+  );
+  const { readAsarListing } = await import(
+    resolveReaDist("artifacts/AsarListing.js")
+  );
+  const { WasmInterfaceBudget } = await import(
+    resolveReaDist("wasm/WasmInterfaceBudget.js")
+  );
+  const { wasmInterfaceEntryRepresentationBytes, WASM_INTERFACE_REPRESENTATION_BYTES } =
+    await import(resolveReaDist("domain/wasm/wasmInterface.js"));
+  const { readElectronFuseImage, ELECTRON_FUSE_LIMITS, ElectronFuseResourceFailure } =
+    await import(resolveReaDist("electron/ElectronFuseReader.js"));
+  let inspectSqliteDatabaseSnapshot = null;
+  let SqliteInspectionFailure = null;
+  try {
+    const sqliteMod = await import(
+      resolveReaDist("sqlite/SqliteDatabaseInspection.js")
+    );
+    inspectSqliteDatabaseSnapshot = sqliteMod.inspectSqliteDatabaseSnapshot;
+    SqliteInspectionFailure = sqliteMod.SqliteInspectionFailure;
+  } catch {
+    /* optional */
+  }
   return {
     readGoBinaryImage,
     parseErlangBeam,
@@ -158,6 +182,16 @@ export async function loadReaProbes() {
     readSafetensorsHeader,
     ModelHeaderReader,
     GgufHeader,
+    admitAsarHeader,
+    readAsarListing,
+    WasmInterfaceBudget,
+    wasmInterfaceEntryRepresentationBytes,
+    WASM_INTERFACE_REPRESENTATION_BYTES,
+    readElectronFuseImage,
+    ELECTRON_FUSE_LIMITS,
+    ElectronFuseResourceFailure,
+    inspectSqliteDatabaseSnapshot,
+    SqliteInspectionFailure,
   };
 }
 
@@ -413,6 +447,214 @@ export async function probePtx(_rea, bytes, phase) {
   return base;
 }
 
+
+export async function probeAsar(rea, bytes, phase) {
+  const base = outcomeBase("electron_asar", phase, bytes);
+  const dir = mkdtempSync(join(tmpdir(), "bla-rt-asar-"));
+  const path = join(dir, `${phase}.asar`);
+  writeFileSync(path, bytes);
+  try {
+    const fh = await open(path, "r");
+    try {
+      const extents = await rea.admitAsarHeader(fh);
+      base.metrics.headerBytes = extents.headerBytes;
+      base.metrics.archiveBytes = extents.archiveBytes;
+      base.metrics.jsonBytes = extents.jsonBytes ?? extents.headerBytes - 8;
+      // Read JSON header for listing
+      const jsonBuf = Buffer.alloc(extents.headerBytes);
+      // header layout: 8 byte size pickle + headerBytes pickle payload; JSON starts at 16
+      const headerRegion = Buffer.alloc(8 + extents.headerBytes);
+      let off = 0;
+      while (off < headerRegion.length) {
+        const { bytesRead } = await fh.read(
+          headerRegion,
+          off,
+          headerRegion.length - off,
+          off,
+        );
+        if (bytesRead === 0) break;
+        off += bytesRead;
+      }
+      const jsonSize = headerRegion.readUInt32LE(12);
+      const json = headerRegion.subarray(16, 16 + jsonSize).toString("utf8");
+      const root = JSON.parse(json);
+      const listing = await rea.readAsarListing(root);
+      base.metrics.listingEntries = listing.length;
+      base.metrics.listingPathBytes = listing.reduce(
+        (s, e) => s + (e.path?.length ?? 0),
+        0,
+      );
+    } finally {
+      await fh.close();
+    }
+  } catch (err) {
+    const msg = String(err?.message ?? err);
+    const isHeader =
+      /header/i.test(msg) ||
+      err?.constructor?.name?.includes("Asar") ||
+      /max_header|admission/i.test(msg);
+    failOutcome(
+      base,
+      err,
+      isHeader ? "DEFAULT_ASAR_MAX_HEADER_BYTES" : err?.kind ?? "asar",
+    );
+    if (isHeader || /exceeds its .* representation budget/i.test(msg)) {
+      base.budgetHit = true;
+      base.budgetName = /listing|representation/i.test(msg)
+        ? "ASAR_LISTING_BYTES"
+        : "DEFAULT_ASAR_MAX_HEADER_BYTES";
+    }
+  }
+  return base;
+}
+
+export async function probeWasm(rea, bla, bytes, phase, sampleMeta = {}) {
+  const base = outcomeBase("wasm_module", phase, bytes);
+  try {
+    const valid = WebAssembly.validate(bytes);
+    const inspection = bla.inspectWasmBinary(bytes);
+    base.metrics = {
+      validates: valid,
+      sectionCount: inspection.sectionCount,
+      customSectionNames: inspection.customSectionNames,
+      exportNames: inspection.exportNames,
+      importCount: inspection.importCount,
+      projectedChargeBytes: sampleMeta.projectedInterfaceChargeBytes ?? null,
+      representationBudget: rea.WASM_INTERFACE_REPRESENTATION_BYTES,
+      descriptorCount: sampleMeta.interfaceDescriptorsEmbedded ?? null,
+      exceedsRepresentationBudget:
+        sampleMeta.exceedsRepresentationBudget === true,
+    };
+    // Exercise REA's real WasmInterfaceBudget class. Full Wabt WAT decode is
+    // tool-backed (see unverified); we reserve using the same charge formula
+    // BLA embeds for the hardened sample's exhaustion plan.
+    if (phase === "after" && sampleMeta.exceedsRepresentationBudget) {
+      const plan = bla.planWasmInterfaceBudgetExhaustion(
+        new bla.SeededPrng("bla-redteam-empirical-v1"),
+        "bankrupt",
+      );
+      const budget = new rea.WasmInterfaceBudget();
+      let charged = 0;
+      for (const d of plan.descriptors) {
+        const entry = {
+          direction: "export",
+          module: d.moduleName,
+          name: d.exportName,
+          wat_form: `(func $${d.exportName} (param ${"i64 ".repeat(d.paramCount).trim()}) (result ${"i64 ".repeat(d.resultCount).trim()}))`,
+          issue: null,
+          signature: {
+            kind: "func",
+            params: Array(d.paramCount).fill("i64"),
+            results: Array(d.resultCount).fill("i64"),
+          },
+        };
+        try {
+          const cost = rea.wasmInterfaceEntryRepresentationBytes(entry);
+          budget.reserve(cost);
+          charged += cost;
+        } catch (err) {
+          base.metrics.chargeWhenTripped = charged;
+          failOutcome(base, err, "WASM_INTERFACE_REPRESENTATION_BYTES");
+          base.status = "budget_rejected";
+          base.budgetHit = true;
+          base.budgetName = "WASM_INTERFACE_REPRESENTATION_BYTES";
+          base.redactionOrAmbiguity =
+            "WasmInterfaceBudget refused projected interface inventory (Wabt E2E needs REA_WABT_BIN_DIRECTORY)";
+          return base;
+        }
+      }
+      base.metrics.chargedBytes = charged;
+      if (plan.exceedsRepresentationBudget) {
+        base.budgetHit = true;
+        base.budgetName = "WASM_INTERFACE_REPRESENTATION_BYTES";
+        base.status = "budget_rejected";
+        base.redactionOrAmbiguity =
+          "Plan exceeds representation budget; reserve loop did not trip (charge formula drift?)";
+      }
+    }
+  } catch (err) {
+    failOutcome(base, err);
+  }
+  return base;
+}
+
+export async function probeSqlite(rea, bla, bytes, phase) {
+  const base = outcomeBase("sqlite_db", phase, bytes);
+  if (!bytes.length) {
+    base.status = "skipped";
+    base.redactionOrAmbiguity = "sqlite sample unavailable (node:sqlite)";
+    return base;
+  }
+  // BLA evidence surface (honey tables / canaries) always measurable via node:sqlite.
+  try {
+    const inspection = bla.inspectSqliteBuffer(bytes);
+    base.metrics.blaHoneyTables = inspection.honeyTablesCount;
+    base.metrics.blaTableCount = inspection.tableNames?.length ?? inspection.tables?.length;
+    base.metrics.blaProtected = inspection.blaProtected === true;
+  } catch (err) {
+    base.metrics.blaInspectError = String(err?.message ?? err).slice(0, 160);
+  }
+  // REA inspectSqliteDatabaseSnapshot needs DatabaseSync.limits (Node 24.15+/26+).
+  if (typeof rea.inspectSqliteDatabaseSnapshot !== "function") {
+    base.redactionOrAmbiguity =
+      "REA SqliteDatabaseInspection module not loadable";
+    return base;
+  }
+  const dir = mkdtempSync(join(tmpdir(), "bla-rt-sqlite-"));
+  const path = join(dir, `${phase}.sqlite`);
+  writeFileSync(path, bytes);
+  try {
+    const result = rea.inspectSqliteDatabaseSnapshot(path, {
+      schema: true,
+      rows: { limit: 16 },
+    });
+    base.metrics.reaTables = result?.schema?.tables?.length ?? result?.tables?.length;
+    base.metrics.reaLimitations = (result?.limitations ?? []).slice(0, 3);
+  } catch (err) {
+    const msg = String(err?.message ?? err);
+    if (/DatabaseSync\.limits|24\.15|unavailable/i.test(msg)) {
+      base.status = "capability_gated";
+      base.redactionOrAmbiguity =
+        "REA SQLite inspection requires Node.js 24.15+ / 26+ DatabaseSync.limits; honey/canary evidence recorded via BLA inspect instead";
+      base.errorName = err?.constructor?.name ?? "SqliteInspectionFailure";
+      base.errorMessage = msg.slice(0, 240);
+    } else {
+      failOutcome(base, err);
+    }
+  }
+  return base;
+}
+
+export async function probeElectronFuses(rea, bytes, phase) {
+  const base = outcomeBase("electron_fuses", phase, bytes);
+  const dir = mkdtempSync(join(tmpdir(), "bla-rt-fuse-"));
+  const path = join(dir, `${phase}.elf`);
+  writeFileSync(path, bytes);
+  try {
+    const image = await rea.readElectronFuseImage(path);
+    base.metrics.sentinelCount = image?.sentinels?.length ?? image?.sentinel_count;
+    base.metrics.sliceCount = image?.slices?.length;
+  } catch (err) {
+    const msg = String(err?.message ?? err);
+    const isCap =
+      err?.constructor?.name === "ElectronFuseResourceFailure" ||
+      /more than \d+ Electron fuse sentinels/i.test(msg) ||
+      err?.capacity === "capacity" ||
+      /capacity/i.test(String(err?.boundary ?? err?.kind ?? ""));
+    failOutcome(
+      base,
+      err,
+      isCap ? "ELECTRON_FUSE_LIMITS.maximumSentinelsPerSlice" : null,
+    );
+    if (isCap) {
+      base.budgetHit = true;
+      base.budgetName = "ELECTRON_FUSE_LIMITS.maximumSentinelsPerSlice";
+      base.status = "budget_rejected";
+    }
+  }
+  return base;
+}
+
 /** Catalog of analyzers that cannot run empirically on this box. */
 export function unverifiedAnalyzers() {
   return [
@@ -439,7 +681,17 @@ export function unverifiedAnalyzers() {
     {
       analyzer: "EVM EVMole worker full interface recovery",
       reason:
-        "worker subprocess/path not exercised end-to-end; inputBytes budget checked in-process",
+        "Not pathable in-process: EvmoleInterfaceWorker refuses library import ('Owned worker request path missing') and only runs under REA's owned subprocess launcher (prlimit address-space/CPU/file-size, 256 MiB heap, IPC reply schema). The evmole npm package exists in the REA tree but cannot be driven without that ownership harness. inputBytes (4 MiB) admission is checked in-process via probeEvm.",
+    },
+    {
+      analyzer: "WASM Wabt full WAT decode (wasm-objdump / wasm2wat)",
+      reason:
+        "Requires REA_WABT_BIN_DIRECTORY with WABT 1.0.42 tools; not installed here. In-process WasmInterfaceBudget is exercised with BLA's projected interface-exhaustion descriptors.",
+    },
+    {
+      analyzer: "SQLite inspect_sqlite_database (full REA worker)",
+      reason:
+        "REA inspectSqliteDatabaseSnapshot requires Node.js DatabaseSync.limits (24.15+ / 26+). This box runs Node 22.23.4 where limits is absent; honey tables/canaries are still verified via BLA inspectSqliteBuffer + node:sqlite.",
     },
     {
       analyzer: "SPIR-V / CUDA fatbinary / AMD GPU object",

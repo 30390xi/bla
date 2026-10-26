@@ -18,7 +18,7 @@ const samplesPath = join(process.cwd(), "scripts/redteam/lib/samples.mjs");
 const probesPath = join(process.cwd(), "scripts/redteam/lib/probes.mjs");
 
 describe("red-team harness sample generators", () => {
-  it("builds minimal BEAM / EVM / PCAP / GGUF / PTX fixtures with expected magic", async () => {
+  it("builds minimal BEAM / EVM / PCAP / GGUF / PTX / WASM fixtures with expected magic", async () => {
     const samples = await import(samplesPath);
     const beam = samples.buildMinimalBeam();
     expect(beam.subarray(0, 4).toString("latin1")).toBe("FOR1");
@@ -38,6 +38,10 @@ describe("red-team harness sample generators", () => {
 
     const ptx = samples.buildMinimalPtx().toString("utf8");
     expect(ptx).toContain(".entry demo");
+
+    const wasm = samples.buildMinimalWasm();
+    expect([...wasm.subarray(0, 4)]).toEqual([0x00, 0x61, 0x73, 0x6d]);
+    expect(WebAssembly.validate(wasm)).toBe(true);
   });
 
   it("projectStringPoolReaFaithful reports wouldCap past REA URI/token limits", async () => {
@@ -68,7 +72,7 @@ describe("red-team harness sample generators", () => {
 describe("mapped Go/Flutter plants vs REA pool caps", () => {
   it("mapped Flutter isolate plant exceeds per-kind MAX_POOL_URIS and MAX_POOL_TOKENS", () => {
     const plant = buildMappedFlutterIsolatePoolPlant(
-      160 * 1024,
+      48 * 1024,
       new SeededPrng("redteam-flutter-cap"),
     );
     // packageAndDartUris counts both kinds; each alone must clear 500.
@@ -104,6 +108,47 @@ describe("mapped Go/Flutter plants vs REA pool caps", () => {
     );
     expect(pool.classLikeTokenCount).toBeGreaterThan(
       REA_INTERNAL_LIMITS.DART_MAX_POOL_TOKENS,
+    );
+  });
+});
+
+describe("ASAR header amplification vs REA admission", () => {
+  it("bankrupt plan exceeds DEFAULT_ASAR_MAX_HEADER_BYTES (16 MiB)", async () => {
+    const { planAsarHeaderAmplification, REA_ASAR_HEADER_LIMITS } = await import(
+      "../src/shields/exhaustion/asar-header-amplifier.js"
+    );
+    const { SeededPrng: Prng } = await import("../src/core/prng.js");
+    const { packAsarBuffer } = await import("../src/shields/formats/asar.js");
+    const plan = planAsarHeaderAmplification(new Prng("asar-cap"), "bankrupt");
+    expect(plan.exceedsDefaultAdmission).toBe(true);
+    expect(plan.files.length).toBeGreaterThan(1000);
+    const packed = packAsarBuffer([
+      {
+        relativePath: "package.json",
+        content: Buffer.from('{"name":"t","main":"m.js"}'),
+      },
+      { relativePath: "m.js", content: Buffer.from("exports.x=1") },
+      ...plan.files,
+    ]);
+    const headerSize = packed.readUInt32LE(4);
+    expect(headerSize).toBeGreaterThan(
+      REA_ASAR_HEADER_LIMITS.DEFAULT_ASAR_MAX_HEADER_BYTES,
+    );
+  });
+});
+
+describe("WASM interface exhaustion vs representation budget", () => {
+  it("bankrupt plan exceeds WASM_INTERFACE_REPRESENTATION_BYTES", async () => {
+    const { planWasmInterfaceBudgetExhaustion } = await import(
+      "../src/shields/exhaustion/wasm-interface-exhaustion.js"
+    );
+    const plan = planWasmInterfaceBudgetExhaustion(
+      new SeededPrng("wasm-cap"),
+      "bankrupt",
+    );
+    expect(plan.exceedsRepresentationBudget).toBe(true);
+    expect(plan.totalReaChargedBytes).toBeGreaterThan(
+      REA_INTERNAL_LIMITS.WASM_INTERFACE_REPRESENTATION_BYTES,
     );
   });
 });

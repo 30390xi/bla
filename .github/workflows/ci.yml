@@ -42,7 +42,7 @@ jobs:
       - name: Run unit & multi-format shield tests
         run: npm test
 
-      - name: Run 8-target Counter-REA showcase benchmark
+      - name: Run Counter-REA showcase benchmark
         run: npm run benchmark
 
       - name: Verify CLI doctor & update commands
@@ -50,3 +50,39 @@ jobs:
           node dist/cli.js --version
           node dist/cli.js doctor --json
           node dist/cli.js update --json
+
+      - name: Detect sibling REA checkout (optional)
+        id: rea
+        shell: bash
+        run: |
+          # Sibling checkout patterns: ../rea (monorepo-style) or $REA_ROOT.
+          REA_CANDIDATE="${REA_ROOT:-$(dirname "$GITHUB_WORKSPACE")/rea}"
+          if [ -d "$REA_CANDIDATE/src" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "root=$REA_CANDIDATE" >> "$GITHUB_OUTPUT"
+            echo "Sibling REA found at $REA_CANDIDATE"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "root=" >> "$GITHUB_OUTPUT"
+            echo "No sibling REA checkout — verify:rea / redteam:rea will skip with notice."
+          fi
+
+      - name: Verify REA constant alignment (skip if REA absent)
+        env:
+          REA_ROOT: ${{ steps.rea.outputs.root }}
+        run: npm run verify:rea
+
+      - name: Empirical REA red-team (skip if REA absent)
+        env:
+          REA_ROOT: ${{ steps.rea.outputs.root }}
+        run: |
+          if [ "${{ steps.rea.outputs.present }}" != "true" ]; then
+            echo "SKIP: npm run redteam:rea (sibling REA not checked out alongside BLA)"
+            exit 0
+          fi
+          # Ensure REA dist is built when the sibling tree is present.
+          if [ ! -f "${REA_ROOT}/dist/go/GoBinaryImage.js" ]; then
+            echo "Building REA dist for red-team…"
+            (cd "$REA_ROOT" && npm install --ignore-scripts && npx tsc -p tsconfig.build.json)
+          fi
+          npm run redteam:rea
