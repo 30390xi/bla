@@ -19,12 +19,12 @@ import type {
 import { generateChaffPayloads } from "../shields/chaff/chaff-generator.js";
 import { transformJavaScriptWithBlaShield } from "../shields/javascript/ast-shield.js";
 import { generateHoneySourceMap } from "../shields/formats/sourcemap.js";
-import { packAsarBuffer, unpackAsarBuffer, type VirtualAsarFile } from "../shields/formats/asar.js";
+import { packAsarBuffer, unpackAsarBuffer, validateAsarProtectionInput, type VirtualAsarFile } from "../shields/formats/asar.js";
 import { protectWasmBinary } from "../shields/formats/wasm.js";
-import { protectPythonPycBuffer, protectPythonSource } from "../shields/formats/python.js";
-import { protectNativeBinary } from "../shields/formats/native.js";
+import { findPythonPrologueInsertionOffset, protectPythonPycBuffer, protectPythonSource } from "../shields/formats/python.js";
+import { protectNativeBinary, validateElf64Layout } from "../shields/formats/native.js";
 import { protectZipOrApkBuffer, validateZipProtectionInput, UnsupportedApkProtectionError } from "../shields/formats/archive.js";
-import { protectSqliteBuffer } from "../shields/formats/sqlite.js";
+import { protectSqliteBuffer, validateSqliteFileInput } from "../shields/formats/sqlite.js";
 import { protectGgufBuffer, protectSafetensorsBuffer } from "../shields/formats/model.js";
 import { protectAndroidDexBuffer, protectIl2cppMetadataBuffer } from "../shields/formats/mobile-game.js";
 import { protectApplePlistBuffer } from "../shields/formats/apple-plist.js";
@@ -60,6 +60,10 @@ export function protectTarget(options: ProtectionOptions): ProtectionResult {
   );
   assertSafeOutputPath(absInput, absOutput, format === "directory", options.inPlace);
   if (format === "archive-zip") validateZipProtectionInput(readFileSync(absInput));
+  if (format === "electron-asar") validateAsarProtectionInput(readFileSync(absInput));
+  if (format === "sqlite") validateSqliteFileInput(absInput);
+  if (format === "python-source") findPythonPrologueInsertionOffset(readFileSync(absInput, "utf8"));
+  if (format === "native-elf") validateElf64Layout(readFileSync(absInput));
 
   const intensity = options.intensity ?? "balanced";
   const seed = String(options.seed ?? "bla-shield-seed-v1");

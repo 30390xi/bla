@@ -14,29 +14,54 @@ export {
 } from "./shields/runtime/runtime-shield.js";
 export {
   transformJavaScriptWithBlaShield,
+  InvalidJavaScriptCarrierError,
+  inferJsLoaderFromPath,
+  inferJsCarrierFromPath,
+  collectEsmExportedSymbols,
+  type JsCarrierType,
+  type JsLoaderType,
+  type JsTransformOptions,
   type JsShieldTransformResult,
 } from "./shields/javascript/ast-shield.js";
 export { generateHoneySourceMap, type HoneySourceMap } from "./shields/formats/sourcemap.js";
 export {
+  UnsupportedAsarError,
+  validateAsarBuffer,
+  validateAsarProtectionInput,
   unpackAsarBuffer,
   packAsarBuffer,
   type VirtualAsarFile,
+  type AsarHeaderNode,
+  type AsarValidationOptions,
 } from "./shields/formats/asar.js";
 export {
+  UnsupportedElectronFuseContextError,
+  inspectElectronFusesBuffer,
   inspectElectronFusesInBuffer,
+  hardenElectronFusesWithContext,
   hardenAndOverflowElectronFuses,
+  type ElectronFuseStatus,
+  type ElectronFuseInspectionResult,
   type ElectronFuseInspectionSummary,
+  type ElectronHardeningContext,
+  type ElectronHardeningReport,
 } from "./shields/formats/electron-fuses.js";
 export { inspectWasmBinary, protectWasmBinary } from "./shields/formats/wasm.js";
 export {
+  InvalidPythonSourceError,
+  findPythonPrologueInsertionOffset,
   protectPythonSource,
   inspectPythonPyc,
   protectPythonPycBuffer,
+  type PythonPrologueAnalysis,
 } from "./shields/formats/python.js";
 export {
+  InvalidNativeBinaryError,
+  validateElf64Layout,
   inspectNativeBinary,
   protectNativeBinary,
   buildDecoyRustAuditablePayload,
+  type Elf64LayoutSummary,
 } from "./shields/formats/native.js";
 export {
   emitCompileTimeNativeHeader,
@@ -44,10 +69,20 @@ export {
   type EmittedNativeHeader,
 } from "./shields/formats/headers.js";
 export {
+  SqliteWalConsistencyError,
+  DEFAULT_SQLITE_SENSITIVITY_POLICY,
+  validateSqliteFileInput,
+  validateSqliteStandaloneBuffer,
+  evaluateSqliteSensitivityPolicy,
+  minimizeSqliteDatabaseBuffer,
   inspectSqliteBuffer,
   protectSqliteBuffer,
   buildSampleSqliteDatabase,
   type SqliteInspectionSummary,
+  type SqliteSensitivityRule,
+  type SqliteSensitivityPolicy,
+  type SqliteSensitiveColumnFinding,
+  type SqlitePolicyEvaluationReport,
 } from "./shields/formats/sqlite.js";
 export {
   buildSafetensorsBuffer,
@@ -94,8 +129,13 @@ export * from "./shields/formats/dotnet-managed.js";
 export * from "./shields/formats/jvm-bytecode.js";
 export * from "./core/config.js";
 export * from "./core/sarif.js";
+export * from "./core/release-plan.js";
+export * from "./core/debug-posture.js";
+export * from "./core/coverage-contract.js";
 export {
   resolveSupportedAgentClients,
+  detectInstalledClients,
+  CLIENT_COMPATIBILITY_MATRIX,
   type SupportedAgentClientId,
 } from "./setup/clients.js";
 export { runSetup, runUninstall } from "./setup/setup.js";

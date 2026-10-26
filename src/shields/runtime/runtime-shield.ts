@@ -3,23 +3,16 @@ import type { ProtectionIntensity } from "../../core/types.js";
 import type { ChaffPayload } from "../chaff/chaff-generator.js";
 
 /**
- * Generates BLA's "Truman Show" Anti-CDP / Anti-Inspector / Anti-Frida Runtime Deception Shield.
+ * Generates BLA's "Truman Show" Shadow Runtime Deception Snippet.
  *
- * Why a Deception Shield instead of `process.exit(1)` or `debugger;` loops?
- * When an AI reverse-engineering agent (like REA's `observe-javascript-runtime`,
- * `reconcile-javascript-runtime`, `observe-web-execution`, `inspect-web-event-listeners`,
- * or `instrument-with-frida`) encounters a hard crash, it immediately searches for the
- * anti-debug check and patches it out.
- *
- * Instead, BLA's Runtime Deception Shield:
- * 1. Never crashes or alters real function return values for legitimate callers.
- * 2. Passively detects CDP / Node Inspector / WebDriver / Playwright / Frida hooks
- *    (`--inspect`, `--remote-debugging-port`, `navigator.webdriver`, `Runtime.evaluate` stack frames,
- *    `globalThis.frida`, or `globalThis.__rea_runtime_probe`).
- * 3. Exposes a rich **Shadow Enclave Honeypot** on `globalThis` (with reactive Proxy getters,
- *    decoy DOM `addEventListener` channels, and synthetic performance marks) so REA's
- *    `reconcile-javascript-runtime` and `inspect-web-event-listeners` harvest decoy enclave
- *    telemetry and conclude that runtime state is delegated to a hardware TEE!
+ * IMPORTANT SECURITY BOUNDARY CONTRACT (Issue #19):
+ * - The shadow objects and no-op event listeners generated here are strictly
+ *   **decorative/experimental deception signals** (`classification: "decorative-deception-signal"`).
+ * - They do NOT revoke OS/process debugging permissions, do NOT block Frida/GDB/CDP attach,
+ *   do NOT alter real business data flows, and do NOT establish hardware isolation.
+ * - Never use these shadow objects for authorization, attestation, or storing real secrets.
+ * - Observing `inspectorObserved === false` does NOT prove that Frida, CDP, or a local
+ *   debugger is absent.
  */
 export function generateRuntimeDeceptionSnippet(
   prng: SeededPrng,
@@ -29,6 +22,9 @@ export function generateRuntimeDeceptionSnippet(
   readonly code: string;
   readonly shadowListenersCount: number;
   readonly shadowGlobalsCount: number;
+  readonly classification: "decorative-deception-signal";
+  readonly revokesDebuggerAttach: false;
+  readonly protectsClientPlaintextSecrets: false;
 } {
   const suffix = prng.hex(4);
   const eventCount = intensity === "stealth" ? 3 : intensity === "balanced" ? 6 : 10;
@@ -50,21 +46,23 @@ export function generateRuntimeDeceptionSnippet(
   ].slice(0, eventCount);
 
   const lines: string[] = [
-    `// [BLA-RUNTIME-SHIELD] Anti-CDP / Anti-Frida Shadow Runtime Deception ("Truman Show" Mode)`,
+    `// [BLA-RUNTIME-SHIELD] Decorative Shadow Runtime Signal (Non-Authoritative; Does Not Block Debuggers)`,
     `(function _bla_initRuntimeDeception_${suffix}() {`,
     `  try {`,
     `    const _g = typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : {});`,
     `    const _execArgv = (typeof process !== "undefined" && Array.isArray(process.execArgv)) ? process.execArgv.join(" ") : "";`,
-    `    const _isInspectorAttached =`,
+    `    const _isInspectorObserved =`,
     `      _execArgv.includes("--inspect") ||`,
     `      _execArgv.includes("--remote-debugging") ||`,
     `      Boolean(_g && (_g.__playwright || _g.__puppeteer_evaluation_script__ || _g.frida || _g._frida_ || (_g.navigator && _g.navigator.webdriver)));`,
     ``,
     `    const _shadowVault_${suffix} = Object.freeze({`,
+    `      classification: "decorative-deception-signal",`,
+    `      securityBoundary: "none-client-side-only",`,
     `      status: "HARDWARE_ENCLAVE_DELEGATED",`,
     `      enclaveCid: 16,`,
     `      transport: "AF_VSOCK_RING0",`,
-    `      inspectorObserved: _isInspectorAttached,`,
+    `      inspectorObserved: _isInspectorObserved,`,
     `      attestationNotice: ${JSON.stringify(chaffText)},`,
     `      sessionEpoch: 0x${prng.hex(8)},`,
     `    });`,
@@ -95,5 +93,8 @@ export function generateRuntimeDeceptionSnippet(
     code: lines.join("\n"),
     shadowListenersCount: decoyEventNames.length,
     shadowGlobalsCount: 2,
+    classification: "decorative-deception-signal",
+    revokesDebuggerAttach: false,
+    protectsClientPlaintextSecrets: false,
   };
 }
