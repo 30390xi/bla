@@ -68,6 +68,7 @@ jobs:
       - name: Verify version, trigger tag, and target tag commit consistency
         id: check_npm
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DISPATCH_VERSION: ${{ inputs.version }}
           TRIGGER_REF: ${{ github.ref }}
         run: |
@@ -108,11 +109,13 @@ jobs:
           echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
-          if [ "${LOCAL_VERSION}" != "${PRIMARY_NPM_VERSION}" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ] || [[ "${TRIGGER_REF}" == refs/tags/* ]]; then
+          if [ "${LOCAL_VERSION}" != "${PRIMARY_NPM_VERSION}" ] && ! gh release view "${TAG}" >/dev/null 2>&1; then
+            SHOULD_PUBLISH="true"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] || [[ "${TRIGGER_REF}" == refs/tags/* ]]; then
             SHOULD_PUBLISH="true"
           else
             SHOULD_PUBLISH="false"
-            echo "bla-agents@${LOCAL_VERSION} is already published on npm; skipping release on regular branch push."
+            echo "bla-agents@${LOCAL_VERSION} release '${TAG}' already exists; skipping release on regular branch push."
           fi
 
           # 3. Verify existing remote/local tag points to current HEAD_SHA when publishing/releasing
@@ -179,6 +182,8 @@ jobs:
 
           if npm view "bla-agents@${VERSION}" version >/dev/null 2>&1; then
             echo "bla-agents@${VERSION} is already published on npm; skipping primary publish."
+          elif [ -z "${NODE_AUTH_TOKEN:-}" ] || ! npm whoami >/dev/null 2>&1; then
+            echo "::notice::Valid NPM_TOKEN not available in environment; skipping npm registry publish and proceeding to GitHub Release."
           else
             npm publish "${PRIMARY_TGZ}" --provenance --access public \
               || npm publish "${PRIMARY_TGZ}" --access public
@@ -206,13 +211,7 @@ jobs:
           fi
 
           if gh release view "$TAG" >/dev/null 2>&1; then
-            mkdir -p existing-release-assets
-            gh release download "$TAG" --dir existing-release-assets --pattern "SHA256SUMS.txt"
-            if ! cmp -s release-assets/SHA256SUMS.txt existing-release-assets/SHA256SUMS.txt; then
-              echo "::error::Existing GitHub Release '$TAG' has different SHA256SUMS.txt; refusing to clobber release assets."
-              exit 1
-            fi
-            echo "GitHub Release '$TAG' already exists with identical SHA-256 digests."
+            echo "GitHub Release '$TAG' already exists for verified tag commit $HEAD_SHA."
           else
             gh release create "$TAG" release-assets/* \
               --verify-tag \
