@@ -1,6 +1,6 @@
 # Empirical REA red-team validation
 
-Generated: 2026-10-27, 05:06:22 (Asia/Shanghai)
+Generated: 2026-10-27, 05:12:05 (Asia/Shanghai)
 BLA root: `/workspace/bla-dev/bla`
 REA root: `/workspace/bla-dev/rea`
 Intensity: `bankrupt` · seed: `bla-redteam-empirical-v1`
@@ -16,7 +16,7 @@ tshark: `TShark (Wireshark) 4.4.19.`
 | erlang_beam | ok | error | max_chunks | agree |
 | evm_bytecode | ok | ok | EVM_INTERFACE_LIMITS.inputBytes (approach) | agree |
 | pcap_capture | ok | budget_rejected | TSHARK_JSON_MAX_BYTES | agree |
-| safetensors | ok | ok | no | noted |
+| safetensors | ok | error | MODEL_JSON_NESTING | — |
 | gguf | ok | error | MODEL_METADATA_NESTING | agree |
 | gpu_ptx | ok | ok | no | noted |
 | electron_asar | ok | error | DEFAULT_ASAR_MAX_HEADER_BYTES | agree |
@@ -163,9 +163,9 @@ _no metrics_
 ### safetensors
 
 - Input before: 128
-- Input after: 9560 (9.3 KiB)
+- Input after: 10328 (10.1 KiB)
 - Before: status=ok; budgetHit=false
-- After: status=ok; budgetHit=false
+- After: status=error; budgetHit=MODEL_JSON_NESTING; error=ModelFormatFailure: Safetensors JSON nesting exceeds 32 levels
 
 **Before metrics**
 
@@ -175,14 +175,12 @@ _no metrics_
 
 **After metrics**
 
-- `tensorCount`: 1
-- `metadataCount`: 44
-- `limitations`: []
+_no metrics_
 
 **Estimate comparison**
 
-- EXPECTED: safetensors does NOT trip MODEL_JSON_NESTING (HF validity red line); canaries only
-- empirical: header parse succeeded (no nesting breaker)
+- UNEXPECTED: nesting breaker on safetensors
+- empirical budgetHit=MODEL_JSON_NESTING
 
 ### gguf
 

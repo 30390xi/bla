@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-27, 05:06:22",
+  "generatedAt": "2026-10-27, 05:12:05",
   "blaRoot": "/workspace/bla-dev/bla",
   "reaRoot": "/workspace/bla-dev/rea",
   "intensity": "bankrupt",
@@ -646,21 +646,17 @@
       "after": {
         "format": "safetensors",
         "phase": "after",
-        "inputBytes": 9560,
-        "status": "ok",
-        "errorName": null,
-        "errorMessage": null,
-        "budgetHit": false,
-        "budgetName": null,
+        "inputBytes": 10328,
+        "status": "error",
+        "errorName": "ModelFormatFailure",
+        "errorMessage": "Safetensors JSON nesting exceeds 32 levels",
+        "budgetHit": true,
+        "budgetName": "MODEL_JSON_NESTING",
         "redactionOrAmbiguity": null,
-        "metrics": {
-          "tensorCount": 1,
-          "metadataCount": 44,
-          "limitations": []
-        }
+        "metrics": {}
       },
       "sampleMeta": {
-        "triggeredJsonNestingBreaker": false,
+        "triggeredJsonNestingBreaker": true,
         "canaryTokensEmbedded": 8
       },
       "blaLimits": {
