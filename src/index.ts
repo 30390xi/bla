@@ -129,6 +129,15 @@ export {
   type OneClickDefenseStageSummary,
 } from "./engine/defender.js";
 export { runShowcaseBenchmark } from "./engine/benchmark.js";
+export {
+  discoverHardenableArtifacts,
+  hardenProject,
+  formatHardenProjectReport,
+  BLA_BUILD_OUTPUT_DIR_NAMES,
+  type HardenProjectReport,
+  type HardenArtifactSummary,
+  type DiscoveredArtifact,
+} from "./engine/harden.js";
 export * from "./shields/exhaustion/index.js";
 export * from "./shields/deception/index.js";
 export * from "./shields/formats/apple-plist.js";

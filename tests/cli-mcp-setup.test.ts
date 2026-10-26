@@ -77,6 +77,7 @@ describe("CLI Setup, Doctor, Benchmark & MCP Server", () => {
       });
       const tools = (listRes?.result as { tools: Array<{ name: string }> }).tools;
       expect(tools.map((t) => t.name)).toEqual([
+        "bla_harden",
         "bla_defend",
         "bla_audit",
         "bla_protect",

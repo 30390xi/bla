@@ -1,0 +1,189 @@
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  discoverHardenableArtifacts,
+  hardenProject,
+} from "../src/engine/harden.js";
+import { handleMcpRequest } from "../src/mcp/server.js";
+import { runCli } from "../src/cli.js";
+import { writeZipArchive } from "../src/shields/formats/archive.js";
+
+const tempDirs: string[] = [];
+function createTempDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), "bla-harden-"));
+  tempDirs.push(dir);
+  return dir;
+}
+
+afterEach(() => {
+  for (const dir of tempDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+function minimalDex(): Buffer {
+  const dex = Buffer.alloc(112, 0);
+  dex.write("dex\n035\0", 0, "ascii");
+  dex.writeUInt32LE(112, 32);
+  dex.writeUInt32LE(112, 36);
+  dex.writeUInt32LE(0x12345678, 40);
+  return dex;
+}
+
+function minimalWasm(): Buffer {
+  // \0asm + version 1
+  return Buffer.from([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]);
+}
+
+describe("bla_harden auto-discovery + one-sentence UX", () => {
+  it("discovers mixed artifact types under dist/ and hardens them all", () => {
+    const root = createTempDir();
+    const dist = join(root, "dist");
+    mkdirSync(dist, { recursive: true });
+
+    writeFileSync(
+      join(dist, "app.js"),
+      `export function unlockPremium(token) { return token === "LIVE-KEY"; }\n`,
+      "utf8",
+    );
+    writeFileSync(join(dist, "module.wasm"), minimalWasm());
+    writeFileSync(join(dist, "classes.dex"), minimalDex());
+    writeFileSync(
+      join(dist, "payload.py"),
+      "def verify_license(key: str) -> bool:\n    return key.startswith('ENT-')\n",
+      "utf8",
+    );
+    // Noise that must be ignored
+    mkdirSync(join(root, "node_modules", "left-pad"), { recursive: true });
+    writeFileSync(join(root, "node_modules", "left-pad", "index.js"), "module.exports=1\n");
+    writeFileSync(join(root, "README.md"), "# demo\n");
+
+    const discovered = discoverHardenableArtifacts(root);
+    const formats = discovered.map((d) => d.format).sort();
+    expect(formats).toEqual(
+      expect.arrayContaining(["javascript", "wasm", "android-dex", "python-source"]),
+    );
+    expect(discovered.every((d) => !d.path.includes("node_modules"))).toBe(true);
+
+    const report = hardenProject({
+      directory: root,
+      intensity: "bankrupt",
+      seed: "harden-mix-v1",
+      emitManifest: true,
+    });
+
+    expect(report.discoveredCount).toBeGreaterThanOrEqual(4);
+    expect(report.hardenedCount).toBe(report.discoveredCount);
+    expect(report.failedCount).toBe(0);
+    expect(report.overallSuccess).toBe(true);
+    expect(report.oneSentenceUsage).toContain("bla_harden");
+
+    for (const a of report.artifacts) {
+      expect(a.success).toBe(true);
+      expect(a.defenseScore).toBeGreaterThanOrEqual(50);
+      expect(existsSync(a.outputPath)).toBe(true);
+      const bytes = readFileSync(a.outputPath);
+      // Every hardened format should still be loadable / magic-valid
+      if (a.format === "wasm") {
+        expect(bytes.subarray(0, 4).toString("latin1")).toBe("\0asm");
+      }
+      if (a.format === "android-dex") {
+        expect(bytes.subarray(0, 4).toString("latin1")).toBe("dex\n");
+        expect(bytes.toString("latin1")).toContain("PROTECTED_CANARY_CREDENTIAL=");
+      }
+      if (a.format === "javascript") {
+        expect(bytes.toString("utf8")).toContain("unlockPremium");
+      }
+      if (a.format === "python-source") {
+        expect(bytes.toString("utf8")).toContain("verify_license");
+      }
+    }
+  });
+
+  it("exposes bla_harden over MCP and CLI `bla harden`", async () => {
+    const root = createTempDir();
+    const dist = join(root, "dist");
+    mkdirSync(dist, { recursive: true });
+    writeFileSync(
+      join(dist, "core.js"),
+      `export const secret = (k) => k.length > 8;\n`,
+      "utf8",
+    );
+
+    const mcpRes = await handleMcpRequest({
+      jsonrpc: "2.0",
+      id: 7,
+      method: "tools/call",
+      params: {
+        name: "bla_harden",
+        arguments: { directory: root, intensity: "bankrupt" },
+      },
+    });
+    expect(mcpRes?.result).toBeDefined();
+    const structured = (mcpRes!.result as { structuredContent: { overallSuccess: boolean; hardenedCount: number; discoveredCount: number } }).structuredContent;
+    expect(structured.discoveredCount).toBeGreaterThanOrEqual(1);
+    expect(structured.hardenedCount).toBe(structured.discoveredCount);
+    expect(structured.overallSuccess).toBe(true);
+
+    const promptRes = await handleMcpRequest({
+      jsonrpc: "2.0",
+      id: 8,
+      method: "prompts/get",
+      params: {
+        name: "bla-harden-project",
+        arguments: { directory: "." },
+      },
+    });
+    const messages = (promptRes!.result as { messages: Array<{ content: { text: string } }> }).messages;
+    expect(messages[0]!.content.text).toContain("bla_harden");
+
+    const log: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => {
+      log.push(args.map(String).join(" "));
+    };
+    try {
+      const code = await runCli(["harden", root, "--json"]);
+      expect(code).toBe(0);
+    } finally {
+      console.log = originalLog;
+    }
+    const cliReport = JSON.parse(log.join("\n")) as {
+      overallSuccess: boolean;
+      hardenedCount: number;
+    };
+    expect(cliReport.overallSuccess).toBe(true);
+    expect(cliReport.hardenedCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it("hardens DEX members inside an unsigned APK-shaped ZIP discovered under release/", () => {
+    const root = createTempDir();
+    const release = join(root, "release");
+    mkdirSync(release, { recursive: true });
+    const apk = writeZipArchive([
+      { name: "AndroidManifest.xml", data: Buffer.from("<manifest package='com.demo'/>") },
+      { name: "classes.dex", data: minimalDex() },
+    ]);
+    writeFileSync(join(release, "app-unsigned.apk"), apk);
+
+    const report = hardenProject({
+      directory: root,
+      intensity: "stealth",
+      seed: "apk-discover",
+      emitManifest: false,
+    });
+    expect(report.discoveredCount).toBeGreaterThanOrEqual(1);
+    const apkArtifact = report.artifacts.find((a) => a.format === "android-apk");
+    expect(apkArtifact).toBeDefined();
+    expect(apkArtifact!.success).toBe(true);
+  });
+});

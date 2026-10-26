@@ -634,7 +634,7 @@ export function runSetup(options: SetupRunOptions = {}): SetupRunResult {
     manifestPath,
     message:
       overallStatus === "applied"
-        ? `Configured BLA MCP server and skill for ${appliedCount} agent client(s). Restart your agent to load BLA tools.`
+        ? `Configured BLA MCP server and skill for ${appliedCount} agent client(s). Restart your agent to load BLA tools, then run bla_harden . (or: Harden my software against REA).`
         : `Completed setup with status '${overallStatus}' (${appliedCount}/${completedActions.length} applied).`,
   };
 }

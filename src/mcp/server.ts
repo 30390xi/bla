@@ -6,6 +6,7 @@ import { auditTarget } from "../engine/auditor.js";
 import { protectTarget } from "../engine/protector.js";
 import { verifyTarget } from "../engine/verifier.js";
 import { defendTarget } from "../engine/defender.js";
+import { hardenProject } from "../engine/harden.js";
 import { runShowcaseBenchmark } from "../engine/benchmark.js";
 import {
   emitCompileTimeNativeHeader,
@@ -61,6 +62,7 @@ export interface McpPromptDefinition {
 }
 
 export interface McpEngineHandlers {
+  readonly hardenProject: typeof hardenProject;
   readonly defendTarget: typeof defendTarget;
   readonly auditTarget: typeof auditTarget;
   readonly protectTarget: typeof protectTarget;
@@ -73,6 +75,7 @@ export interface McpEngineHandlers {
 }
 
 const DEFAULT_ENGINE_HANDLERS: McpEngineHandlers = Object.freeze({
+  hardenProject,
   defendTarget,
   auditTarget,
   protectTarget,
@@ -90,6 +93,30 @@ export const SUPPORTED_MCP_PROTOCOL_VERSIONS = Object.freeze([
 ] as const);
 
 export const BLA_MCP_TOOLS: readonly McpToolDefinition[] = Object.freeze([
+  {
+    name: "bla_harden",
+    description:
+      "DEFAULT one-sentence Counter-REA hardening. Auto-discovers build outputs (dist/, build/, out/, release/, .asar, native binaries, .wasm, .py/.pyc, .sqlite, .safetensors/.gguf, .dex, .class, etc.), detects each artifact's format, and runs the full audit→defend→verify pipeline with the bankrupt profile. Pass just a project or build directory (default: cwd). Prefer this over bla_defend when the user says 'harden my software' without naming a specific file.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        directory: {
+          type: "string",
+          description: "Project or build directory to harden (default: current working directory)",
+        },
+        intensity: {
+          type: "string",
+          enum: ["stealth", "balanced", "maximum", "bankrupt"],
+          description: "Protection intensity preset (default: bankrupt)",
+        },
+        emit_manifest: {
+          type: "boolean",
+          description: "Emit a signed .bla-manifest.json per artifact (default: true)",
+        },
+      },
+      additionalProperties: false,
+    },
+  },
   {
     name: "bla_defend",
     description:
@@ -277,6 +304,18 @@ export const BLA_MCP_TOOLS: readonly McpToolDefinition[] = Object.freeze([
 ]);
 
 export const BLA_MCP_PROMPTS: readonly McpPromptDefinition[] = Object.freeze([
+  {
+    name: "bla-harden-project",
+    description:
+      "One-sentence Counter-REA hardening: discover every protectable build artifact under a project directory and run bla_harden (audit→defend→verify, bankrupt profile).",
+    arguments: [
+      {
+        name: "directory",
+        description: "Project or build directory (default: .)",
+        required: false,
+      },
+    ],
+  },
   {
     name: "shield-against-rea",
     description:
@@ -592,7 +631,21 @@ export async function handleMcpRequest(
             }
           }
         }
-        const targetPath = String(promptArgs.target_path);
+        let promptText: string;
+        if (promptDef.name === "bla-harden-project") {
+          const directory =
+            typeof promptArgs.directory === "string" && promptArgs.directory.trim().length > 0
+              ? String(promptArgs.directory)
+              : ".";
+          promptText =
+            `Harden my software against REA in one step: call bla_harden with { "directory": "${directory}" }. ` +
+            `It auto-discovers build outputs, runs audit→defend→verify with the bankrupt profile on every artifact, and returns a per-artifact summary. ` +
+            `Do not ask which files to protect — discover them.`;
+        } else {
+          const targetPath = String(promptArgs.target_path ?? ".");
+          promptText =
+            `Inspect and audit '${targetPath}' using bla_inspect_release and bla_audit, then review findings before applying bla_protect or bla_defend and verifying with bla_verify.`;
+        }
         return {
           jsonrpc: "2.0",
           id: req.id,
@@ -603,7 +656,7 @@ export async function handleMcpRequest(
                 role: "user",
                 content: {
                   type: "text",
-                  text: `Inspect and audit '${targetPath}' using bla_inspect_release and bla_audit, then review findings before applying bla_protect or bla_defend and verifying with bla_verify.`,
+                  text: promptText,
                 },
               },
             ],
@@ -628,7 +681,20 @@ export async function handleMcpRequest(
         const name = tool.name;
         let payload: unknown;
 
-        if (name === "bla_defend") {
+        if (name === "bla_harden") {
+          payload = handlers.hardenProject({
+            directory:
+              typeof args.directory === "string" && args.directory.trim().length > 0
+                ? (args.directory as string)
+                : process.cwd(),
+            intensity:
+              typeof args.intensity === "string"
+                ? (args.intensity as ProtectionIntensity)
+                : "bankrupt",
+            emitManifest:
+              args.emit_manifest === undefined ? true : Boolean(args.emit_manifest),
+          });
+        } else if (name === "bla_defend") {
           payload = handlers.defendTarget({
             inputPath: args.input_path as string,
             ...(typeof args.output_path === "string"

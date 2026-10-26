@@ -516,13 +516,17 @@ describe("Issue #10: MCP Runtime Argument Validation, Prompts Contract & Subproc
     expect(prompts.length).toBeGreaterThanOrEqual(1);
 
     for (const p of prompts) {
+      const isHarden = p.name === "bla-harden-project";
+      const args = isHarden
+        ? { directory: "./dist" }
+        : { target_path: "./dist/app.js" };
       const getRes = await handleMcpRequest({
         jsonrpc: "2.0",
         id: 2,
         method: "prompts/get",
         params: {
           name: p.name,
-          arguments: { target_path: "./dist/app.js" },
+          arguments: args,
         },
       });
       expect(getRes?.error).toBeUndefined();
@@ -531,9 +535,14 @@ describe("Issue #10: MCP Runtime Argument Validation, Prompts Contract & Subproc
         messages: Array<{ role: string; content: { type: string; text: string } }>;
       };
       expect(result.messages.length).toBeGreaterThan(0);
-      expect(result.messages[0]?.content.text).toContain("./dist/app.js");
+      if (isHarden) {
+        expect(result.messages[0]?.content.text).toContain("bla_harden");
+        expect(result.messages[0]?.content.text).toContain("./dist");
+      } else {
+        expect(result.messages[0]?.content.text).toContain("./dist/app.js");
+      }
 
-      // Missing target_path must return -32602
+      // Missing required args must return -32602; optional-only prompts succeed.
       const badRes = await handleMcpRequest({
         jsonrpc: "2.0",
         id: 3,
@@ -543,7 +552,11 @@ describe("Issue #10: MCP Runtime Argument Validation, Prompts Contract & Subproc
           arguments: {},
         },
       });
-      expect(badRes?.error?.code).toBe(-32602);
+      if (p.arguments.some((a) => a.required)) {
+        expect(badRes?.error?.code).toBe(-32602);
+      } else {
+        expect(badRes?.error).toBeUndefined();
+      }
     }
   });
 

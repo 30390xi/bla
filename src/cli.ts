@@ -10,6 +10,7 @@ import { auditTarget } from "./engine/auditor.js";
 import { protectTarget } from "./engine/protector.js";
 import { verifyTarget } from "./engine/verifier.js";
 import { defendTarget } from "./engine/defender.js";
+import { formatHardenProjectReport, hardenProject } from "./engine/harden.js";
 import { runShowcaseBenchmark } from "./engine/benchmark.js";
 import {
   emitCompileTimeNativeHeader,
@@ -40,6 +41,7 @@ Usage:
 
 Commands:
   setup                       Configure agent MCP integrations & install the BLA skill
+  harden [dir]                DEFAULT: auto-discover build outputs under a project/build dir and bankrupt-harden all of them
   defend <target>             One-click full Counter-REA pipeline (inspect -> audit -> bankrupt protect -> verify)
   inspect-release <target>    Read-only local source-map & symbol exposure check
   audit <target>              Pre-flight REA exposure & vulnerability scan
@@ -268,6 +270,29 @@ export async function runCli(argv: readonly string[] = process.argv.slice(2)): P
         const report = inspectReleaseExposure(target);
         console.log(JSON.stringify(report, null, 2));
         return report.status === "complete" ? 0 : 2;
+      }
+
+      case "harden": {
+        const loaded = loadBlaConfig(process.cwd(), parsed.configPath);
+        const directory = parsed.positionals[0] ?? loaded.config.input ?? process.cwd();
+        const explicitIntensity = argv.includes("--intensity")
+          ? parsed.intensity
+          : (loaded.config.intensity ?? "bankrupt");
+        const report = hardenProject({
+          directory,
+          intensity: explicitIntensity,
+          ...((parsed.seed ?? loaded.config.seed) !== undefined
+            ? { seed: (parsed.seed ?? loaded.config.seed)! }
+            : {}),
+          emitManifest: argv.includes("--manifest") || loaded.config.emitManifest !== false,
+          ...(parsed.output !== undefined ? { outputDirectory: parsed.output } : {}),
+        });
+        if (parsed.json) {
+          console.log(JSON.stringify(report, null, 2));
+        } else {
+          console.log(formatHardenProjectReport(report));
+        }
+        return report.overallSuccess || report.discoveredCount === 0 ? (report.discoveredCount === 0 ? 2 : 0) : 2;
       }
 
       case "defend": {
