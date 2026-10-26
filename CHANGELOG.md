@@ -43,6 +43,7 @@ benchmark. Includes commit `1490af1` and all subsequent work through this tag.
   equivalence across all targets.
 - **Launch-ready README** with honest empirical-vs-estimate separation and
   current format coverage matrix (verified / designed-for / skipped).
+- **STATE.md** project snapshot (coverage, empirical headlines, publish checklist).
 
 ### Changed
 
@@ -57,6 +58,12 @@ benchmark. Includes commit `1490af1` and all subsequent work through this tag.
 
 ### Fixed
 
+- `bla harden .` skipped project-root artifacts whenever `dist/` (or another
+  build dir) existed — supplemental root walk now picks up root-level
+  `.sqlite` / `.py` / `.wasm` / binaries without sweeping `src/`.
+- CLI help still said "8-target" benchmark and underspecified intensity
+  defaults; now documents 14-target suite, harden/defend→bankrupt, and a
+  Quick start block matching REA's one-command smoothness.
 - Shield gaps where custom-section-only WASM densification did not expand
   REA's typed Wabt interface inventory — fixed by injecting real long-name
   export decoys that alias existing functions while preserving the original
