@@ -39,6 +39,26 @@ const SKIP_DIR_NAMES = new Set([
   "venv",
 ]);
 
+/**
+ * Source / docs trees skipped only on the *supplemental* project-root walk
+ * (when dist/build/… already exist). Full-tree walks with no build dir still
+ * descend into these so pure-source projects harden cleanly.
+ */
+const SUPPLEMENTAL_SKIP_DIR_NAMES = new Set([
+  ...SKIP_DIR_NAMES,
+  ...BLA_BUILD_OUTPUT_DIR_NAMES,
+  "src",
+  "lib",
+  "test",
+  "tests",
+  "docs",
+  "examples",
+  "__tests__",
+  "fixtures",
+  "scripts",
+  "benchmarks",
+]);
+
 const MAX_DISCOVERED_ARTIFACTS = 64;
 const MAX_WALK_DEPTH = 8;
 
@@ -79,6 +99,7 @@ export interface HardenProjectReport {
   readonly discoveredCount: number;
   readonly hardenedCount: number;
   readonly failedCount: number;
+  readonly outputDirectory: string;
   readonly artifacts: readonly HardenArtifactSummary[];
   readonly oneSentenceUsage: string;
 }
@@ -91,7 +112,10 @@ function isProtectableFormat(format: ArtifactFormat): boolean {
  * Prefer known build-output directories when present; otherwise walk the project
  * root. Always skips VCS/dependency caches.
  */
-function resolveSearchRoots(absRoot: string): readonly string[] {
+function resolveSearchRoots(absRoot: string): {
+  readonly preferred: readonly string[];
+  readonly includeProjectRootSupplemental: boolean;
+} {
   const preferred: string[] = [];
   for (const name of BLA_BUILD_OUTPUT_DIR_NAMES) {
     const candidate = join(absRoot, name);
@@ -110,7 +134,12 @@ function resolveSearchRoots(absRoot: string): readonly string[] {
   } catch {
     /* absent */
   }
-  return preferred.length > 0 ? preferred : [absRoot];
+  if (preferred.length === 0) {
+    return { preferred: [absRoot], includeProjectRootSupplemental: false };
+  }
+  // Build dirs win for deep discovery, but also scan the project root so
+  // root-level .sqlite / .safetensors / .wasm / binaries / .py are not skipped.
+  return { preferred, includeProjectRootSupplemental: true };
 }
 
 function walkCollect(
@@ -119,6 +148,7 @@ function walkCollect(
   depth: number,
   out: DiscoveredArtifact[],
   maxArtifacts: number,
+  skipDirs: ReadonlySet<string> = SKIP_DIR_NAMES,
 ): void {
   if (out.length >= maxArtifacts || depth > MAX_WALK_DEPTH) return;
   let entries;
@@ -134,8 +164,8 @@ function walkCollect(
       if (entry.isDirectory()) continue;
     }
     if (entry.isDirectory()) {
-      if (SKIP_DIR_NAMES.has(entry.name)) continue;
-      walkCollect(join(dir, entry.name), root, depth + 1, out, maxArtifacts);
+      if (skipDirs.has(entry.name)) continue;
+      walkCollect(join(dir, entry.name), root, depth + 1, out, maxArtifacts, skipDirs);
       continue;
     }
     const full = join(dir, entry.name);
@@ -154,8 +184,9 @@ function walkCollect(
 
 /**
  * Auto-discovers protectable build artifacts under a project or build directory.
- * Recognises dist/build/out/release/.asar/native/.wasm/.py/.pyc/.sqlite/
- * .safetensors/.gguf/.dex/.class/.dll and magic-byte formats.
+ * Prefers dist/build/out/release/…, and also picks up root-level
+ * .asar/native/.wasm/.py/.pyc/.sqlite/.safetensors/.gguf/.dex/.class/.dll
+ * and magic-byte formats even when a build directory exists.
  */
 export function discoverHardenableArtifacts(
   directory: string = process.cwd(),
@@ -179,9 +210,12 @@ export function discoverHardenableArtifacts(
   }
 
   const found: DiscoveredArtifact[] = [];
-  const roots = resolveSearchRoots(abs);
-  for (const root of roots) {
-    walkCollect(root, abs, 0, found, maxArtifacts);
+  const { preferred, includeProjectRootSupplemental } = resolveSearchRoots(abs);
+  for (const root of preferred) {
+    walkCollect(root, abs, 0, found, maxArtifacts, SKIP_DIR_NAMES);
+  }
+  if (includeProjectRootSupplemental) {
+    walkCollect(abs, abs, 0, found, maxArtifacts, SUPPLEMENTAL_SKIP_DIR_NAMES);
   }
   // De-dupe by absolute path (cargo release may overlap target/)
   const seen = new Set<string>();
@@ -303,6 +337,7 @@ export function hardenProject(
     discoveredCount: discovered.length,
     hardenedCount,
     failedCount,
+    outputDirectory: outputRoot,
     artifacts: summaries,
     oneSentenceUsage:
       'Harden my software against REA — call bla_harden with { "directory": "." } (or `bla harden .`).',
@@ -324,7 +359,12 @@ export function formatHardenProjectReport(report: HardenProjectReport): string {
   }
   if (report.discoveredCount === 0) {
     lines.push(
-      "  (no protectable build artifacts found — place outputs under dist/, build/, out/, or release/)",
+      "  (no protectable artifacts found — put build outputs under dist/, build/, out/, or release/, or place .wasm/.sqlite/.safetensors/binaries at the project root)",
+    );
+  } else {
+    lines.push(`Output: ${report.outputDirectory}`);
+    lines.push(
+      "Next: ship or point your release at the hardened copies above (originals are untouched). See DISCLAIMER.md.",
     );
   }
   lines.push(`Tip: ${report.oneSentenceUsage}`);

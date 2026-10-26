@@ -11,11 +11,13 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   discoverHardenableArtifacts,
+  formatHardenProjectReport,
   hardenProject,
 } from "../src/engine/harden.js";
 import { handleMcpRequest } from "../src/mcp/server.js";
 import { runCli } from "../src/cli.js";
 import { writeZipArchive } from "../src/shields/formats/archive.js";
+import { buildSampleSqliteDatabase } from "../src/shields/formats/sqlite.js";
 
 const tempDirs: string[] = [];
 function createTempDir(): string {
@@ -198,6 +200,34 @@ describe("bla_harden auto-discovery + one-sentence UX", () => {
     };
     expect(cliReport.overallSuccess).toBe(true);
     expect(cliReport.hardenedCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it("also discovers root-level artifacts when dist/ already exists", () => {
+    const root = createTempDir();
+    const dist = join(root, "dist");
+    mkdirSync(dist, { recursive: true });
+    writeFileSync(join(dist, "app.js"), `export const x = 1;\n`, "utf8");
+    writeFileSync(join(root, "tools.py"), "def helper():\n    return 1\n", "utf8");
+    writeFileSync(join(root, "local.sqlite"), buildSampleSqliteDatabase());
+    // Source tree must NOT be swept when dist/ exists
+    mkdirSync(join(root, "src"), { recursive: true });
+    writeFileSync(join(root, "src", "internal.js"), `export const secret = 1;\n`, "utf8");
+
+    const discovered = discoverHardenableArtifacts(root);
+    const rels = discovered.map((d) => d.relativePath).sort();
+    expect(rels).toEqual(expect.arrayContaining(["dist/app.js", "tools.py", "local.sqlite"]));
+    expect(rels.some((r) => r.includes("src/"))).toBe(false);
+
+    const report = hardenProject({
+      directory: root,
+      intensity: "stealth",
+      seed: "root-supplemental",
+      emitManifest: false,
+    });
+    expect(report.overallSuccess).toBe(true);
+    expect(report.hardenedCount).toBeGreaterThanOrEqual(3);
+    expect(report.outputDirectory).toContain(".bla-hardened");
+    expect(formatHardenProjectReport(report)).toContain("Output:");
   });
 
   it("hardens DEX members inside an unsigned APK-shaped ZIP discovered under release/", () => {

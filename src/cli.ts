@@ -39,6 +39,11 @@ Usage:
   npx bla-shield <command> [options]
   bla <command> [options]
 
+Quick start:
+  npx bla-agents setup -y          # register bla_harden with your agent
+  bla harden .                     # one-sentence Counter-REA hardening
+  # or tell your agent: "Harden my software against REA"
+
 Commands:
   setup                       Configure agent MCP integrations & install the BLA skill
   harden [dir]                DEFAULT: auto-discover build outputs under a project/build dir and bankrupt-harden all of them
@@ -47,7 +52,7 @@ Commands:
   audit <target>              Pre-flight REA exposure & vulnerability scan
   protect <target>            Inject multi-layer Counter-REA adversarial shield
   verify <target> [original]  Verify Counter-REA defense invariants & token amplification
-  benchmark                   Run the 8-target Counter-REA Showcase Benchmark suite
+  benchmark                   Run the 14-target Counter-REA Showcase Benchmark suite
   emit-headers                Generate compile-time C/C++, Rust, or Go defense headers
   doctor                      Check readiness of BLA engines & agent registrations
   update                      Update global bla-shield installation & print setup refresh instructions
@@ -57,7 +62,8 @@ Commands:
 Options:
   -o, --output <path>         Output file or directory path (for protect / emit-headers)
   --in-place                  Overwrite input target in-place (for protect)
-  --intensity <preset>        Protection preset: stealth | balanced | maximum | bankrupt (default: balanced)
+  --intensity <preset>        stealth | balanced | maximum | bankrupt
+                            (harden/defend default: bankrupt; protect default: balanced)
   --seed <seed>               Deterministic PRNG seed for reproducible protection
   --lang <c|rust|go>          Target language for emit-headers (default: c)
   --client <id>               Agent client ID for setup (repeatable: claude_code, cursor, codex, etc.)
