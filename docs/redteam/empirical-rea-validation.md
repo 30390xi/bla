@@ -1,6 +1,6 @@
 # Empirical REA red-team validation
 
-Generated: 2026-10-27, 05:04:56 (Asia/Shanghai)
+Generated: 2026-10-27, 05:06:22 (Asia/Shanghai)
 BLA root: `/workspace/bla-dev/bla`
 REA root: `/workspace/bla-dev/rea`
 Intensity: `bankrupt` · seed: `bla-redteam-empirical-v1`
