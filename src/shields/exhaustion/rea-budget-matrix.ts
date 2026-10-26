@@ -117,6 +117,56 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
     counterStrategy:
       "Detect CDP/Inspector runtime attachment and serve high-volume decoy script modules to exhaust passive source collection.",
   },
+  {
+    id: "lldb-trace-frames",
+    reaSourceFile: "bridge/native/rea_lldb_tracer.py:31",
+    constantName: "MAX_TRACE_FRAMES",
+    hardLimit: 65_536,
+    unit: "states",
+    failureClassOrStatus: 'outcome: "resource-limit" (process.Kill())',
+    counterStrategy:
+      "Inject high-frequency decoy native call frames and deep backtraces so observe_native_calls hits 65,536 frames or 8 MiB and terminates the traced target.",
+  },
+  {
+    id: "lldb-other-stops",
+    reaSourceFile: "bridge/native/rea_lldb_tracer.py:29",
+    constantName: "MAX_OTHER_STOPS",
+    hardLimit: 256,
+    unit: "states",
+    failureClassOrStatus: 'outcome: "stop-limit" (process.Kill())',
+    counterStrategy:
+      "Emit >= 256 benign non-breakpoint stop observations so LLDB batch tracing aborts with stop-limit.",
+  },
+  {
+    id: "gdb-command-output-records",
+    reaSourceFile: "src/gdb/GdbSessionManager.ts:423",
+    constantName: "MAX_COMMAND_OUTPUT_RECORDS",
+    hardLimit: 16_384,
+    unit: "states",
+    failureClassOrStatus: "AnalysisResourceConstraintError (output truncated)",
+    counterStrategy:
+      "Churn hundreds of shadow heap slots on every call so GDB watchpoint/memory dump records exceed 16,384 MI lines.",
+  },
+  {
+    id: "rizin-command-frames",
+    reaSourceFile: "src/rizin/RizinDebugSessionManager.ts:55",
+    constantName: "MAX_COMMAND_FRAMES",
+    hardLimit: 4_096,
+    unit: "states",
+    failureClassOrStatus: "AnalysisResourceConstraintError (frame cap reached)",
+    counterStrategy:
+      "Flood Rizin runtime memory search/diff commands with synchronized shadow buffer mutations exceeding 4,096 frames.",
+  },
+  {
+    id: "environment-compare-step-diff",
+    reaSourceFile: "src/application/environment/environmentCompareDiff.ts:52",
+    constantName: "STEP_DIFFERENCE_LIMIT",
+    hardLimit: 20,
+    unit: "states",
+    failureClassOrStatus: "Step differences truncated at 20 entries per step",
+    counterStrategy:
+      "Mutate > 24 decoy state fields per step so real state diffs are pushed past REA's 20-difference per-step retention window.",
+  },
 ] as const;
 
 /**

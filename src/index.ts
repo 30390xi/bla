@@ -13,6 +13,13 @@ export {
   generateRuntimeDeceptionSnippet,
 } from "./shields/runtime/runtime-shield.js";
 export {
+  generateShadowHeapChurnShield,
+  encodeSplitShareString,
+  generateSplitShareRuntimeHelper,
+  type ShadowHeapChurnShieldResult,
+  type SplitShareEncodedString,
+} from "./shields/runtime/memory-diff-shield.js";
+export {
   transformJavaScriptWithBlaShield,
   InvalidJavaScriptCarrierError,
   inferJsLoaderFromPath,

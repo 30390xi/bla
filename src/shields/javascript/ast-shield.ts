@@ -7,6 +7,10 @@ import type { ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
 import { generateJsTarpitAndBudgetBreaker } from "../tarpit/tarpit-generator.js";
 import { generateRuntimeDeceptionSnippet } from "../runtime/runtime-shield.js";
+import {
+  generateShadowHeapChurnShield,
+  type ShadowHeapChurnShieldResult,
+} from "../runtime/memory-diff-shield.js";
 import { generateCounterReaExhaustionSuite } from "../exhaustion/index.js";
 import { generateCounterReaDeceptionSuite } from "../deception/index.js";
 
@@ -53,6 +57,8 @@ export interface JsShieldTransformResult {
   readonly ipcAmbiguitySitesInjected: number;
   readonly decoyRoutesInjected: number;
   readonly chaffPayloadsEmbedded: number;
+  readonly shadowHeapSlotsChurned: number;
+  readonly memoryDiffShield: ShadowHeapChurnShieldResult;
 }
 
 const DECOY_ROUTES: readonly string[] = [
@@ -296,6 +302,7 @@ export function transformJavaScriptWithBlaShield(
   );
   const exhaustionSuite = generateCounterReaExhaustionSuite(prng, intensity);
   const deceptionSuite = generateCounterReaDeceptionSuite(prng, intensity);
+  const memoryDiffShield = generateShadowHeapChurnShield(prng, intensity);
 
   const hasExplicitLoaderOrFilename =
     options.loader !== undefined || options.filename !== undefined;
@@ -459,8 +466,13 @@ export function transformJavaScriptWithBlaShield(
         ? "commonjs"
         : "script";
 
-  // 3. Weave unreachable tarpit calls (Fake XRefs) into real function bodies
+  // 3. Weave synchronized shadow-heap churn + unreachable tarpit calls into real function bodies
   for (const body of functionBodies) {
+    const stepCallStmt = t.expressionStatement(
+      t.callExpression(t.identifier(memoryDiffShield.stepperFunctionName), [
+        t.numericLiteral(prng.nextInt(1, 4095)),
+      ]),
+    );
     if (tarpit.decoyFunctionNames.length >= 2) {
       const d1 = prng.pick(tarpit.decoyFunctionNames);
       const d2 = prng.pick(tarpit.decoyFunctionNames);
@@ -482,14 +494,18 @@ export function transformJavaScriptWithBlaShield(
           ),
         ]),
       );
-      body.body.unshift(guard);
-      fakeCrossReferencesCreated += 2;
+      body.body.unshift(stepCallStmt, guard);
+      fakeCrossReferencesCreated += 3;
+    } else {
+      body.body.unshift(stepCallStmt);
+      fakeCrossReferencesCreated += 1;
     }
   }
 
   // 4. Build Decoy IPC Ambiguity & Route Mirage block
   const mirageLines: string[] = [];
   mirageLines.push(`const ${seedVarName} = 7;`);
+  mirageLines.push(memoryDiffShield.code);
   const channelsToMirror =
     observedIpcChannels.size > 0
       ? [...observedIpcChannels]
@@ -579,9 +595,12 @@ export function transformJavaScriptWithBlaShield(
     break;
   }
 
-  const [seedDecl, ...restInjected] = sanitizedInjectedStatements;
-  if (seedDecl) {
-    ast.program.body.splice(insertIndex, 0, seedDecl);
+  const [seedDecl, heapDecl, ...restInjected] = sanitizedInjectedStatements;
+  const topDecls = [seedDecl, heapDecl].filter(
+    (s): s is t.Statement => s !== undefined,
+  );
+  if (topDecls.length > 0) {
+    ast.program.body.splice(insertIndex, 0, ...topDecls);
   }
   ast.program.body.push(...restInjected);
 
@@ -622,7 +641,7 @@ export function transformJavaScriptWithBlaShield(
       exhaustionSuite.totalLabyrinthNodes +
       deceptionSuite.shadowLogic.shadowProceduresCreated.length +
       deceptionSuite.semanticHoneypot.baitSymbols.length +
-      1,
+      2,
     fakeCrossReferencesCreated:
       fakeCrossReferencesCreated + exhaustionSuite.totalCrossReferenceEdges,
     primitiveCandidateBranchesCreated,
@@ -634,5 +653,7 @@ export function transformJavaScriptWithBlaShield(
       deceptionSuite.architectureMirage.decoyRpcMethods.length,
     chaffPayloadsEmbedded:
       chaffPayloads.length + deceptionSuite.evidencePoison.lures.length,
+    shadowHeapSlotsChurned: memoryDiffShield.mutableSlotsCount,
+    memoryDiffShield,
   };
 }

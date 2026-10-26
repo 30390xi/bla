@@ -17,15 +17,20 @@ export interface FridaCaptureSaturationResult {
   readonly code: string;
   readonly payloadJsonDepth: number;
   readonly messageTextBytes: number;
+  readonly realmAgnosticRingSlots: number;
   readonly triggeredFridaLimits: readonly ("json_depth" | "message_text")[];
 }
 
 /**
- * Targets `morluto/rea/src/frida/fridaCaptureLimits.ts`:
- * When Frida (`globalThis.Frida` or `globalThis.Interceptor`) hooks the process,
- * wraps decoy telemetry payloads in > 64 levels of JSON nesting (`MAX_JSON_DEPTH = 64`)
- * and > 32 KiB message descriptions (`MAX_MESSAGE_TEXT_BYTES = 32768`), forcing REA's
- * Frida capture collector to drop and truncate observations.
+ * Targets `morluto/rea/src/frida/fridaCaptureLimits.ts` AND realm-isolated Frida Gum /
+ * GDB / Rizin memory probes:
+ * 1. Because Frida's `Frida` and `Interceptor` globals live inside Frida's isolated Gum
+ *    script realm (not the target's `globalThis`), this shield does NOT rely solely on
+ *    `globalThis.Frida`. Instead, it maintains an always-active, realm-agnostic decoy
+ *    ring buffer in memory (`_blaFridaRealmRing_<tag>`) and generates > 64 levels of JSON
+ *    nesting (`MAX_JSON_DEPTH = 64`) plus > 32 KiB message descriptions
+ *    (`MAX_MESSAGE_TEXT_BYTES = 32768`), forcing REA's Frida capture collector to drop
+ *    and truncate observations.
  */
 export function generateFridaCaptureSaturation(
   prng: SeededPrng,
@@ -36,13 +41,20 @@ export function generateFridaCaptureSaturation(
     (intensity === "stealth" ? 4 : intensity === "balanced" ? 8 : 16);
   const messageTextBytes =
     REA_FRIDA_CAPTURE_LIMITS.MAX_MESSAGE_TEXT_BYTES + 2048;
+  const realmAgnosticRingSlots =
+    intensity === "stealth" ? 8 : intensity === "balanced" ? 16 : 32;
   const tag = prng.hex(3);
 
   const code = [
-    `function _blaFridaCaptureSaturator_${tag}() {`,
+    `const _blaFridaRealmRing_${tag} = { epoch: 0x${prng.hex(6)}, slots: new Array(${realmAgnosticRingSlots}).fill(0) };`,
+    `function _blaFridaCaptureSaturator_${tag}(forceEnvelope) {`,
+    `  _blaFridaRealmRing_${tag}.epoch = (_blaFridaRealmRing_${tag}.epoch + 0x9e3779b9) & 0x7fffffff;`,
+    `  for (let _s = 0; _s < _blaFridaRealmRing_${tag}.slots.length; _s++) {`,
+    `    _blaFridaRealmRing_${tag}.slots[_s] = (_blaFridaRealmRing_${tag}.epoch ^ (_s * 0x85ebca6b)) & 0x7fffffff;`,
+    `  }`,
     `  const _g = typeof globalThis !== "undefined" ? globalThis : {};`,
-    `  if (!_g.Frida && !_g.Interceptor) return null;`,
-    `  let _nested = { enclaveSealed: true, slot: "${tag}" };`,
+    `  if (forceEnvelope === false && !_g.Frida && !_g.Interceptor) return _blaFridaRealmRing_${tag};`,
+    `  let _nested = { enclaveSealed: true, slot: "${tag}", epoch: _blaFridaRealmRing_${tag}.epoch };`,
     `  for (let d = 0; d < ${payloadJsonDepth}; d++) {`,
     `    _nested = { frame: d, child: _nested };`,
     `  }`,
@@ -57,6 +69,7 @@ export function generateFridaCaptureSaturation(
     code,
     payloadJsonDepth,
     messageTextBytes,
+    realmAgnosticRingSlots,
     triggeredFridaLimits: ["json_depth", "message_text"],
   };
 }
