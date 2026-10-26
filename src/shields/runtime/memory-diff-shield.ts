@@ -30,7 +30,7 @@ export interface SplitShareEncodedString {
  * 1. Allocates a pool of mutable, high-salience decoy state slots (`aesRoundKeySchedule`,
  *    `licenseLeaseLedger`, `enclavePcrDigest`, `sessionTicketRing`) plus >= 26 top-level
  *    mutable state keys (exceeding REA's `STEP_DIFFERENCE_LIMIT = 20` in
- *    `src/application/environment/environmentCompareDiff.ts:52`).
+ *    `src/application/environment/environmentCompareDiff.ts`).
  * 2. Exposes an $O(1)$ deterministic stepper (`_blaStepShadowHeap_<tag>(delta)`) woven
  *    into real function prologues so every business function execution synchronously
  *    mutates dozens of decoy memory words in-place.
@@ -50,7 +50,7 @@ export function generateShadowHeapChurnShield(
         : intensity === "maximum"
           ? 48
           : 64;
-  // Exceeds REA's `STEP_DIFFERENCE_LIMIT = 20` (`environmentCompareDiff.ts:52`)
+  // Exceeds REA's `STEP_DIFFERENCE_LIMIT = 20` (`environmentCompareDiff.ts`)
   const diffOverflowFieldsCount =
     REA_INTERNAL_LIMITS.ENVIRONMENT_COMPARE_STEP_DIFF_LIMIT +
     (intensity === "stealth" ? 4 : intensity === "balanced" ? 8 : 12);

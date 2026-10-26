@@ -23,7 +23,7 @@ describe("Counter-REA Resource Exhaustion Suite", () => {
     expect(charge.amplificationRatio).toBeGreaterThan(100);
   });
 
-  it("floods all 22 REA ReconstructionObligationLedger families in bankrupt mode without runtime side effects", () => {
+  it("floods all 25 REA ReconstructionObligationLedger families in bankrupt mode without runtime side effects", () => {
     const prng = new SeededPrng("test-obligation-flood");
     const flood = generateObligationLedgerFlood(prng, "bankrupt");
     expect(flood.totalDecoyObligations).toBe(REA_OBLIGATION_FAMILIES.length);
@@ -76,7 +76,7 @@ describe("Counter-REA Resource Exhaustion Suite", () => {
       "bankrupt",
     );
     expect(suiteA.combinedJsCode).toBe(suiteB.combinedJsCode);
-    expect(suiteA.totalDecoyObligations).toBe(22);
+    expect(suiteA.totalDecoyObligations).toBe(25);
     expect(suiteA.totalLabyrinthNodes).toBe(40);
   });
 });

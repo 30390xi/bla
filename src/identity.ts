@@ -67,22 +67,24 @@ export const REA_INTERNAL_LIMITS = Object.freeze({
   WASM_INTERFACE_REPRESENTATION_BYTES: 33_554_432,
   /** .NET Managed metadata representation budget (`MAX_METADATA_REPRESENTATION_BYTES` = 64 MiB). */
   MANAGED_METADATA_REPRESENTATION_BYTES: 67_108_864,
-  /** LLDB native call tracer aggregate JSON byte cap (`MAX_TRACE_BYTES` = 8 MiB in `bridge/native/rea_lldb_tracer.py:30`). */
+  /** CDP/Web runtime aggregate script-source budget (`WEB_RUNTIME_LIMITS.sourceBytes` = 32 MiB in `src/domain/webRuntime.ts`). */
+  WEB_RUNTIME_SOURCE_BYTES: 33_554_432,
+  /** LLDB native call tracer aggregate JSON byte cap (`MAX_TRACE_BYTES` = 8 MiB in `bridge/native/rea_lldb_tracer.py`). */
   LLDB_MAX_TRACE_BYTES: 8_388_608,
-  /** LLDB native call tracer aggregate frame cap (`MAX_TRACE_FRAMES` = 65,536 in `bridge/native/rea_lldb_tracer.py:31`). */
+  /** LLDB native call tracer aggregate frame cap (`MAX_TRACE_FRAMES` = 65,536 in `bridge/native/rea_lldb_tracer.py`). */
   LLDB_MAX_TRACE_FRAMES: 65_536,
-  /** LLDB native call tracer non-breakpoint stop cap (`MAX_OTHER_STOPS` = 256 in `bridge/native/rea_lldb_tracer.py:29`). */
+  /** LLDB native call tracer non-breakpoint stop cap (`MAX_OTHER_STOPS` = 256 in `bridge/native/rea_lldb_tracer.py`). */
   LLDB_MAX_OTHER_STOPS: 256,
-  /** LLDB Objective-C selector C-string read cap (`MAX_SELECTOR_BYTES` = 1024 in `bridge/native/rea_lldb_tracer.py:27`). */
+  /** LLDB Objective-C selector C-string read cap (`MAX_SELECTOR_BYTES` = 1024 in `bridge/native/rea_lldb_tracer.py`). */
   LLDB_MAX_SELECTOR_BYTES: 1_024,
-  /** GDB session command output byte cap (`MAX_COMMAND_OUTPUT_BYTES` = 16 MiB in `src/gdb/GdbSessionManager.ts:422`). */
+  /** GDB session command output byte cap (`MAX_COMMAND_OUTPUT_BYTES` = 16 MiB in `src/gdb/GdbSessionManager.ts`). */
   GDB_MAX_COMMAND_OUTPUT_BYTES: 16_777_216,
-  /** GDB session MI output record cap (`MAX_COMMAND_OUTPUT_RECORDS` = 16,384 in `src/gdb/GdbSessionManager.ts:423`). */
+  /** GDB session MI output record cap (`MAX_COMMAND_OUTPUT_RECORDS` = 16,384 in `src/gdb/GdbSessionManager.ts`). */
   GDB_MAX_COMMAND_OUTPUT_RECORDS: 16_384,
-  /** Rizin debugger session frame byte cap (`MAX_FRAME_BYTES` = 16 MiB in `src/rizin/RizinDebugSessionManager.ts:52`). */
+  /** Rizin debugger session frame byte cap (`MAX_FRAME_BYTES` = 16 MiB in `src/rizin/RizinDebugSessionManager.ts`). */
   RIZIN_MAX_FRAME_BYTES: 16_777_216,
-  /** Rizin debugger command frame count cap (`MAX_COMMAND_FRAMES` = 4,096 in `src/rizin/RizinDebugSessionManager.ts:55`). */
+  /** Rizin debugger command frame count cap (`MAX_COMMAND_FRAMES` = 4,096 in `src/rizin/RizinDebugSessionManager.ts`). */
   RIZIN_MAX_COMMAND_FRAMES: 4_096,
-  /** Environment differential comparison per-step diff cap (`STEP_DIFFERENCE_LIMIT` = 20 in `src/application/environment/environmentCompareDiff.ts:52`). */
+  /** Environment differential comparison per-step diff cap (`STEP_DIFFERENCE_LIMIT` = 20 in `src/application/environment/environmentCompareDiff.ts`). */
   ENVIRONMENT_COMPARE_STEP_DIFF_LIMIT: 20,
 });

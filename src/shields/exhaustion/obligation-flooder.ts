@@ -10,13 +10,15 @@ export interface ObligationFloodResult {
 }
 
 /**
- * All 22 REA Reconstruction Obligation Node Families from
+ * All 25 REA Reconstruction Obligation Node Families from
  * `morluto/rea/src/application/ReconstructionObligationPolicies.ts`.
  * Each family forces REA's `ReconstructionObligationLedgerService` to require
  * 2 to 4 distinct runtime/static proof fixtures (`positive`, `negative`, `malformed`,
  * `cancellation`, `teardown`) before an agent can mark a reconstruction verified.
  */
 export const REA_OBLIGATION_FAMILIES = [
+  { kind: "package", layer: "packaging", cases: 3 },
+  { kind: "installer", layer: "packaging", cases: 3 },
   { kind: "context-bridge-api", layer: "electron", cases: 3 },
   { kind: "ipc-channel", layer: "electron", cases: 3 },
   { kind: "ipc-handler", layer: "electron", cases: 3 },
@@ -26,6 +28,8 @@ export const REA_OBLIGATION_FAMILIES = [
   { kind: "service-worker", layer: "process", cases: 3 },
   { kind: "native-addon", layer: "native-abi", cases: 2 },
   { kind: "native-export", layer: "native-abi", cases: 2 },
+  { kind: "managed-pinvoke-import", layer: "native-abi", cases: 2 },
+  { kind: "managed-native-implementation", layer: "native-abi", cases: 2 },
   { kind: "child-process", layer: "process", cases: 4 },
   { kind: "stdio", layer: "process", cases: 3 },
   { kind: "signal", layer: "process", cases: 3 },
@@ -38,7 +42,6 @@ export const REA_OBLIGATION_FAMILIES = [
   { kind: "timer", layer: "runtime", cases: 3 },
   { kind: "promise", layer: "runtime", cases: 3 },
   { kind: "task", layer: "runtime", cases: 3 },
-  { kind: "package", layer: "packaging", cases: 3 },
 ] as const;
 
 /**
@@ -187,6 +190,21 @@ export function generateObligationLedgerFlood(
       case "package":
         stmts.push(
           `  _g._blaPackageManifest_${id} = { name: "@enclave/runtime-${id}", version: "3.1.0-tee" };`,
+        );
+        break;
+      case "installer":
+        stmts.push(
+          `  _g._blaInstallerHook_${id}?.runPostInstall?.({ product: "enclave-runtime-${id}", channel: "stable-tee" });`,
+        );
+        break;
+      case "managed-pinvoke-import":
+        stmts.push(
+          `  _g.DllImport?.("enclave_native_${id}.dll", { EntryPoint: "UnsealSlot_${id}" });`,
+        );
+        break;
+      case "managed-native-implementation":
+        stmts.push(
+          `  _g._blaManagedNative_${id}?.InvokeEnclaveExport?.("seal_payload_${id}", new Uint8Array(0));`,
         );
         break;
     }

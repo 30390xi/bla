@@ -17,7 +17,7 @@ export interface ReaSubsystemBudgetSpec {
 export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
   {
     id: "js-primitive-candidates",
-    reaSourceFile: "src/domain/javascript/javascriptSemanticResourceLimits.ts:7",
+    reaSourceFile: "src/domain/javascript/javascriptSemanticResourceLimits.ts",
     constantName: "SEMANTIC_PRIMITIVE_CANDIDATE_LIMIT",
     hardLimit: 256,
     unit: "alternatives",
@@ -27,7 +27,7 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
   },
   {
     id: "js-expression-depth",
-    reaSourceFile: "src/domain/javascript/javascriptSemanticResourceLimits.ts:9",
+    reaSourceFile: "src/domain/javascript/javascriptSemanticResourceLimits.ts",
     constantName: "SEMANTIC_EXPRESSION_DEPTH_LIMIT",
     hardLimit: 256,
     unit: "levels",
@@ -37,7 +37,7 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
   },
   {
     id: "js-getter-expansion",
-    reaSourceFile: "src/domain/javascript/javascriptSemanticResourceLimits.ts:11",
+    reaSourceFile: "src/domain/javascript/javascriptSemanticResourceLimits.ts",
     constantName: "SEMANTIC_GETTER_EXPANSION_LIMIT",
     hardLimit: 512,
     unit: "states",
@@ -47,7 +47,7 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
   },
   {
     id: "js-alias-selections",
-    reaSourceFile: "src/domain/javascript/javascriptSemanticResourceLimits.ts:13",
+    reaSourceFile: "src/domain/javascript/javascriptSemanticResourceLimits.ts",
     constantName: "SEMANTIC_ALIAS_SELECTION_LIMIT",
     hardLimit: 512,
     unit: "states",
@@ -57,7 +57,7 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
   },
   {
     id: "js-primitive-json-bytes",
-    reaSourceFile: "src/domain/javascript/javascriptSemanticResourceLimits.ts:15",
+    reaSourceFile: "src/domain/javascript/javascriptSemanticResourceLimits.ts",
     constantName: "SEMANTIC_PRIMITIVE_JSON_BYTES_LIMIT",
     hardLimit: 1_048_576,
     unit: "bytes",
@@ -67,7 +67,7 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
   },
   {
     id: "wasm-interface-representation",
-    reaSourceFile: "src/domain/wasm/wasmInterface.ts:90",
+    reaSourceFile: "src/domain/wasm/wasmInterface.ts",
     constantName: "WASM_INTERFACE_REPRESENTATION_BYTES",
     hardLimit: 33_554_432,
     unit: "bytes",
@@ -78,7 +78,7 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
   },
   {
     id: "sqlite-column-evaluation",
-    reaSourceFile: "src/sqlite/SqliteDatabaseLimits.ts:28",
+    reaSourceFile: "src/sqlite/SqliteDatabaseLimits.ts",
     constantName: "SqliteColumnEvaluationFailure",
     hardLimit: 1,
     unit: "states",
@@ -89,7 +89,7 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
   },
   {
     id: "safetensors-json-nesting",
-    reaSourceFile: "src/model/SafetensorsHeader.ts:74",
+    reaSourceFile: "src/model/SafetensorsHeader.ts",
     constantName: "MODEL_JSON_NESTING",
     hardLimit: 32,
     unit: "levels",
@@ -99,7 +99,7 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
   },
   {
     id: "gguf-metadata-nesting",
-    reaSourceFile: "src/model/GgufHeader.ts:121",
+    reaSourceFile: "src/model/GgufHeader.ts",
     constantName: "MODEL_METADATA_NESTING",
     hardLimit: 32,
     unit: "levels",
@@ -109,9 +109,9 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
   },
   {
     id: "cdp-script-source-budget",
-    reaSourceFile: "src/browser/CdpScriptSourceBudget.ts:10",
+    reaSourceFile: "src/domain/webRuntime.ts",
     constantName: "WEB_RUNTIME_LIMITS.sourceBytes",
-    hardLimit: 16_777_216,
+    hardLimit: 33_554_432,
     unit: "bytes",
     failureClassOrStatus: "CDP_SCRIPT_SOURCE_BYTES_OMISSION_REASON",
     counterStrategy:
@@ -119,7 +119,7 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
   },
   {
     id: "lldb-trace-frames",
-    reaSourceFile: "bridge/native/rea_lldb_tracer.py:31",
+    reaSourceFile: "bridge/native/rea_lldb_tracer.py",
     constantName: "MAX_TRACE_FRAMES",
     hardLimit: 65_536,
     unit: "states",
@@ -129,7 +129,7 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
   },
   {
     id: "lldb-other-stops",
-    reaSourceFile: "bridge/native/rea_lldb_tracer.py:29",
+    reaSourceFile: "bridge/native/rea_lldb_tracer.py",
     constantName: "MAX_OTHER_STOPS",
     hardLimit: 256,
     unit: "states",
@@ -139,7 +139,7 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
   },
   {
     id: "gdb-command-output-records",
-    reaSourceFile: "src/gdb/GdbSessionManager.ts:423",
+    reaSourceFile: "src/gdb/GdbSessionManager.ts",
     constantName: "MAX_COMMAND_OUTPUT_RECORDS",
     hardLimit: 16_384,
     unit: "states",
@@ -149,7 +149,7 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
   },
   {
     id: "rizin-command-frames",
-    reaSourceFile: "src/rizin/RizinDebugSessionManager.ts:55",
+    reaSourceFile: "src/rizin/RizinDebugSessionManager.ts",
     constantName: "MAX_COMMAND_FRAMES",
     hardLimit: 4_096,
     unit: "states",
@@ -159,7 +159,7 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
   },
   {
     id: "environment-compare-step-diff",
-    reaSourceFile: "src/application/environment/environmentCompareDiff.ts:52",
+    reaSourceFile: "src/application/environment/environmentCompareDiff.ts",
     constantName: "STEP_DIFFERENCE_LIMIT",
     hardLimit: 20,
     unit: "states",
@@ -269,7 +269,7 @@ export function getExhaustionProfileForIntensity(intensity: ProtectionIntensity)
         aliasSelectorCount: 640,
         cartesianBranchCount: 36,
         cartesianStringLength: 260,
-        obligationDecoyFamilies: 22,
+        obligationDecoyFamilies: 25,
         sccClusterCount: 8,
       };
   }
