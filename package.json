@@ -69,7 +69,8 @@
     "release:patch": "npm version patch -m 'chore(release): bla-agents v%s' && git push --follow-tags",
     "release:minor": "npm version minor -m 'chore(release): bla-agents v%s' && git push --follow-tags",
     "prepublishOnly": "npm run build && npm test",
-    "verify:rea": "node scripts/verify-rea-constants.mjs"
+    "verify:rea": "node scripts/verify-rea-constants.mjs",
+    "redteam:rea": "node scripts/redteam/run.mjs"
   },
   "dependencies": {
     "@babel/generator": "^7.26.0",

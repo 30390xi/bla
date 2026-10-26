@@ -1,0 +1,913 @@
+{
+  "generatedAt": "2026-10-27, 04:44:41",
+  "blaRoot": "/workspace/bla-dev/bla",
+  "reaRoot": "/workspace/bla-dev/rea",
+  "intensity": "bankrupt",
+  "seed": "bla-redteam-empirical-v1",
+  "nodeVersion": "v22.23.4",
+  "tshark": {
+    "available": true,
+    "version": "TShark (Wireshark) 4.4.19."
+  },
+  "pairs": [
+    {
+      "format": "go_buildinfo",
+      "before": {
+        "format": "go_buildinfo",
+        "phase": "before",
+        "inputBytes": 166027,
+        "status": "ok",
+        "errorName": null,
+        "errorMessage": null,
+        "budgetHit": false,
+        "budgetName": null,
+        "redactionOrAmbiguity": "no_buildinfo_observed",
+        "metrics": {
+          "hasBuildInfo": false,
+          "encoding": null,
+          "goVersion": null,
+          "moduleTextBytes": 0
+        }
+      },
+      "after": {
+        "format": "go_buildinfo",
+        "phase": "after",
+        "inputBytes": 1329394,
+        "status": "error",
+        "errorName": "BinaryResourceFailure",
+        "errorMessage": "Go build-info string length exceeds the 1 MiB limit",
+        "budgetHit": true,
+        "budgetName": "MAX_BUILD_INFO_BYTES",
+        "redactionOrAmbiguity": null,
+        "metrics": {}
+      },
+      "sampleMeta": {
+        "mappedGo": true,
+        "mappedFlutter": true,
+        "goTripsMax": true
+      },
+      "blaLimits": {
+        "SEMANTIC_PRIMITIVE_CANDIDATE_LIMIT": 256,
+        "SEMANTIC_EXPRESSION_DEPTH_LIMIT": 256,
+        "SEMANTIC_GETTER_EXPANSION_LIMIT": 512,
+        "SEMANTIC_ALIAS_SELECTION_LIMIT": 512,
+        "SEMANTIC_PRIMITIVE_JSON_BYTES_LIMIT": 1048576,
+        "ELECTRON_CALL_PATH_DEPTH_LIMIT": 128,
+        "ELECTRON_CALL_PATH_VISIT_LIMIT": 1000000,
+        "ELECTRON_FUSE_SENTINEL": "dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX",
+        "ELECTRON_MAX_SENTINELS_PER_SLICE": 32,
+        "RUST_MAX_COMMIT_HASHES": 64,
+        "RUST_DEP_V0_SECTION_BYTES": 1048576,
+        "DART_MAX_SNAPSHOT_HASH_CANDIDATES": 64,
+        "DART_MAX_TOOLCHAIN_LINES": 4,
+        "MODEL_MAX_JSON_NESTING": 32,
+        "MODEL_MAX_METADATA_NESTING": 32,
+        "SQLITE_OUTPUT_BYTES_LIMIT": 16777216,
+        "WASM_INTERFACE_REPRESENTATION_BYTES": 33554432,
+        "MANAGED_METADATA_REPRESENTATION_BYTES": 67108864,
+        "WEB_RUNTIME_SOURCE_BYTES": 33554432,
+        "LLDB_MAX_TRACE_BYTES": 8388608,
+        "LLDB_MAX_TRACE_FRAMES": 65536,
+        "LLDB_MAX_OTHER_STOPS": 256,
+        "LLDB_MAX_SELECTOR_BYTES": 1024,
+        "GDB_MAX_COMMAND_OUTPUT_BYTES": 16777216,
+        "GDB_MAX_COMMAND_OUTPUT_RECORDS": 16384,
+        "RIZIN_MAX_FRAME_BYTES": 16777216,
+        "RIZIN_MAX_COMMAND_FRAMES": 4096,
+        "ENVIRONMENT_COMPARE_STEP_DIFF_LIMIT": 20,
+        "GO_MAX_BUILD_INFO_BYTES": 1048576,
+        "GO_MAX_HEADER_SEARCH_BYTES": 268435456,
+        "DART_MAX_POOL_URIS": 500,
+        "DART_MAX_POOL_TOKENS": 2000,
+        "BEAM_MAX_CHUNKS": 256,
+        "BEAM_MAX_ATOMS": 65536,
+        "BEAM_DEFAULT_MAX_CHUNKS": 64,
+        "BEAM_DEFAULT_MAX_ATOMS": 4096,
+        "EVM_INPUT_BYTES": 4194304,
+        "EVM_OUTPUT_BYTES": 16777216,
+        "EVM_DIAGNOSTIC_BYTES": 1048576,
+        "PCAP_TSHARK_JSON_MAX_BYTES": 8388608,
+        "GPU_REPORT_BYTES": 16777216,
+        "GPU_OBJECT_BYTES": 134217728,
+        "FIRMWARE_MAX_STAGING_BYTES": 536870912,
+        "FIRMWARE_MAX_EXTRACTION_DEPTH": 10
+      }
+    },
+    {
+      "format": "flutter_pool",
+      "before": {
+        "format": "flutter_pool",
+        "phase": "before",
+        "inputBytes": 166027,
+        "status": "ok",
+        "errorName": null,
+        "errorMessage": null,
+        "budgetHit": false,
+        "budgetName": null,
+        "redactionOrAmbiguity": null,
+        "metrics": {
+          "isolateBytes": 163840,
+          "packageUriCount": 0,
+          "dartUriCount": 0,
+          "classLikeTokenCount": 0,
+          "printableRunCount": 1,
+          "collectionCapped": false,
+          "reportWouldCap": false
+        }
+      },
+      "after": {
+        "format": "flutter_pool",
+        "phase": "after",
+        "inputBytes": 1329394,
+        "status": "ok",
+        "errorName": null,
+        "errorMessage": null,
+        "budgetHit": true,
+        "budgetName": "MAX_POOL_URIS|MAX_POOL_TOKENS",
+        "redactionOrAmbiguity": "REA would report truncated package_uris/dart_uris/class_like_tokens with 'at least N' limitations",
+        "metrics": {
+          "isolateBytes": 163840,
+          "packageUriCount": 532,
+          "dartUriCount": 532,
+          "classLikeTokenCount": 2032,
+          "printableRunCount": 3098,
+          "collectionCapped": false,
+          "reportWouldCap": true
+        }
+      },
+      "sampleMeta": {
+        "mappedGo": true,
+        "mappedFlutter": true,
+        "goTripsMax": true
+      },
+      "blaLimits": {
+        "SEMANTIC_PRIMITIVE_CANDIDATE_LIMIT": 256,
+        "SEMANTIC_EXPRESSION_DEPTH_LIMIT": 256,
+        "SEMANTIC_GETTER_EXPANSION_LIMIT": 512,
+        "SEMANTIC_ALIAS_SELECTION_LIMIT": 512,
+        "SEMANTIC_PRIMITIVE_JSON_BYTES_LIMIT": 1048576,
+        "ELECTRON_CALL_PATH_DEPTH_LIMIT": 128,
+        "ELECTRON_CALL_PATH_VISIT_LIMIT": 1000000,
+        "ELECTRON_FUSE_SENTINEL": "dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX",
+        "ELECTRON_MAX_SENTINELS_PER_SLICE": 32,
+        "RUST_MAX_COMMIT_HASHES": 64,
+        "RUST_DEP_V0_SECTION_BYTES": 1048576,
+        "DART_MAX_SNAPSHOT_HASH_CANDIDATES": 64,
+        "DART_MAX_TOOLCHAIN_LINES": 4,
+        "MODEL_MAX_JSON_NESTING": 32,
+        "MODEL_MAX_METADATA_NESTING": 32,
+        "SQLITE_OUTPUT_BYTES_LIMIT": 16777216,
+        "WASM_INTERFACE_REPRESENTATION_BYTES": 33554432,
+        "MANAGED_METADATA_REPRESENTATION_BYTES": 67108864,
+        "WEB_RUNTIME_SOURCE_BYTES": 33554432,
+        "LLDB_MAX_TRACE_BYTES": 8388608,
+        "LLDB_MAX_TRACE_FRAMES": 65536,
+        "LLDB_MAX_OTHER_STOPS": 256,
+        "LLDB_MAX_SELECTOR_BYTES": 1024,
+        "GDB_MAX_COMMAND_OUTPUT_BYTES": 16777216,
+        "GDB_MAX_COMMAND_OUTPUT_RECORDS": 16384,
+        "RIZIN_MAX_FRAME_BYTES": 16777216,
+        "RIZIN_MAX_COMMAND_FRAMES": 4096,
+        "ENVIRONMENT_COMPARE_STEP_DIFF_LIMIT": 20,
+        "GO_MAX_BUILD_INFO_BYTES": 1048576,
+        "GO_MAX_HEADER_SEARCH_BYTES": 268435456,
+        "DART_MAX_POOL_URIS": 500,
+        "DART_MAX_POOL_TOKENS": 2000,
+        "BEAM_MAX_CHUNKS": 256,
+        "BEAM_MAX_ATOMS": 65536,
+        "BEAM_DEFAULT_MAX_CHUNKS": 64,
+        "BEAM_DEFAULT_MAX_ATOMS": 4096,
+        "EVM_INPUT_BYTES": 4194304,
+        "EVM_OUTPUT_BYTES": 16777216,
+        "EVM_DIAGNOSTIC_BYTES": 1048576,
+        "PCAP_TSHARK_JSON_MAX_BYTES": 8388608,
+        "GPU_REPORT_BYTES": 16777216,
+        "GPU_OBJECT_BYTES": 134217728,
+        "FIRMWARE_MAX_STAGING_BYTES": 536870912,
+        "FIRMWARE_MAX_EXTRACTION_DEPTH": 10
+      }
+    },
+    {
+      "format": "erlang_beam",
+      "before": {
+        "format": "erlang_beam",
+        "phase": "before",
+        "inputBytes": 84,
+        "status": "ok",
+        "errorName": null,
+        "errorMessage": null,
+        "budgetHit": false,
+        "budgetName": null,
+        "redactionOrAmbiguity": null,
+        "metrics": {
+          "chunkCount": 3,
+          "atomCount": 3,
+          "limitations": [
+            "This workflow does not execute BEAM bytecode, inflate LitT literals, or decode Attr/CInf external-term payloads.",
+            "Atom names are structural table entries; they do not authenticate the originating compiler or module checksum."
+          ]
+        }
+      },
+      "after": {
+        "format": "erlang_beam",
+        "phase": "after",
+        "inputBytes": 267876,
+        "status": "error",
+        "errorName": "BeamCapacityFailure",
+        "errorMessage": "BEAM form exceeds the 64-chunk budget.",
+        "budgetHit": true,
+        "budgetName": "max_chunks",
+        "redactionOrAmbiguity": null,
+        "metrics": {}
+      },
+      "sampleMeta": {
+        "atomsInjected": 4157,
+        "chunksInjected": 257,
+        "exceedsDefaultChunkBudget": true
+      },
+      "blaLimits": {
+        "SEMANTIC_PRIMITIVE_CANDIDATE_LIMIT": 256,
+        "SEMANTIC_EXPRESSION_DEPTH_LIMIT": 256,
+        "SEMANTIC_GETTER_EXPANSION_LIMIT": 512,
+        "SEMANTIC_ALIAS_SELECTION_LIMIT": 512,
+        "SEMANTIC_PRIMITIVE_JSON_BYTES_LIMIT": 1048576,
+        "ELECTRON_CALL_PATH_DEPTH_LIMIT": 128,
+        "ELECTRON_CALL_PATH_VISIT_LIMIT": 1000000,
+        "ELECTRON_FUSE_SENTINEL": "dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX",
+        "ELECTRON_MAX_SENTINELS_PER_SLICE": 32,
+        "RUST_MAX_COMMIT_HASHES": 64,
+        "RUST_DEP_V0_SECTION_BYTES": 1048576,
+        "DART_MAX_SNAPSHOT_HASH_CANDIDATES": 64,
+        "DART_MAX_TOOLCHAIN_LINES": 4,
+        "MODEL_MAX_JSON_NESTING": 32,
+        "MODEL_MAX_METADATA_NESTING": 32,
+        "SQLITE_OUTPUT_BYTES_LIMIT": 16777216,
+        "WASM_INTERFACE_REPRESENTATION_BYTES": 33554432,
+        "MANAGED_METADATA_REPRESENTATION_BYTES": 67108864,
+        "WEB_RUNTIME_SOURCE_BYTES": 33554432,
+        "LLDB_MAX_TRACE_BYTES": 8388608,
+        "LLDB_MAX_TRACE_FRAMES": 65536,
+        "LLDB_MAX_OTHER_STOPS": 256,
+        "LLDB_MAX_SELECTOR_BYTES": 1024,
+        "GDB_MAX_COMMAND_OUTPUT_BYTES": 16777216,
+        "GDB_MAX_COMMAND_OUTPUT_RECORDS": 16384,
+        "RIZIN_MAX_FRAME_BYTES": 16777216,
+        "RIZIN_MAX_COMMAND_FRAMES": 4096,
+        "ENVIRONMENT_COMPARE_STEP_DIFF_LIMIT": 20,
+        "GO_MAX_BUILD_INFO_BYTES": 1048576,
+        "GO_MAX_HEADER_SEARCH_BYTES": 268435456,
+        "DART_MAX_POOL_URIS": 500,
+        "DART_MAX_POOL_TOKENS": 2000,
+        "BEAM_MAX_CHUNKS": 256,
+        "BEAM_MAX_ATOMS": 65536,
+        "BEAM_DEFAULT_MAX_CHUNKS": 64,
+        "BEAM_DEFAULT_MAX_ATOMS": 4096,
+        "EVM_INPUT_BYTES": 4194304,
+        "EVM_OUTPUT_BYTES": 16777216,
+        "EVM_DIAGNOSTIC_BYTES": 1048576,
+        "PCAP_TSHARK_JSON_MAX_BYTES": 8388608,
+        "GPU_REPORT_BYTES": 16777216,
+        "GPU_OBJECT_BYTES": 134217728,
+        "FIRMWARE_MAX_STAGING_BYTES": 536870912,
+        "FIRMWARE_MAX_EXTRACTION_DEPTH": 10
+      }
+    },
+    {
+      "format": "evm_bytecode",
+      "before": {
+        "format": "evm_bytecode",
+        "phase": "before",
+        "inputBytes": 16,
+        "status": "ok",
+        "errorName": null,
+        "errorMessage": null,
+        "budgetHit": false,
+        "budgetName": null,
+        "redactionOrAmbiguity": null,
+        "metrics": {
+          "inputBytes": 16,
+          "inputBytesLimit": 4194304,
+          "approachesLimit": false,
+          "exceedsLimit": false,
+          "carrierBytes": 16,
+          "solidityMetadata": {
+            "profile": "terminal-cbor-scalars-v1",
+            "status": "unavailable",
+            "bytecode_offset": null,
+            "cbor_bytes": null,
+            "entries": [],
+            "compiler_version": null,
+            "diagnostic": "No plausible terminal CBOR map was identified; Solidity origin and metadata absence remain unknown."
+          }
+        }
+      },
+      "after": {
+        "format": "evm_bytecode",
+        "phase": "after",
+        "inputBytes": 4190208,
+        "status": "ok",
+        "errorName": null,
+        "errorMessage": null,
+        "budgetHit": true,
+        "budgetName": "EVM_INTERFACE_LIMITS.inputBytes (approach)",
+        "redactionOrAmbiguity": "Hardened sample approaches full 4 MiB input budget",
+        "metrics": {
+          "inputBytes": 4190208,
+          "inputBytesLimit": 4194304,
+          "approachesLimit": true,
+          "exceedsLimit": false,
+          "carrierBytes": 4190208,
+          "solidityMetadata": {
+            "profile": "terminal-cbor-scalars-v1",
+            "status": "decoded",
+            "bytecode_offset": 4189159,
+            "cbor_bytes": 1047,
+            "entries": [
+              {
+                "key": {
+                  "kind": "text",
+                  "value": "solc"
+                },
+                "value": {
+                  "kind": "bytes",
+                  "value": "00081e"
+                }
+              },
+              {
+                "key": {
+                  "kind": "text",
+                  "value": "bla"
+                },
+                "value": {
+                  "kind": "text",
+                  "value": "[BLA-EVM-SHIELD]"
+                }
+              },
+              {
+                "key": {
+                  "kind": "text",
+                  "value": "bla_evm_canary"
+                },
+                "value": {
+                  "kind": "text",
+                  "value": "407f29249793f34f"
+                }
+              },
+              {
+                "key": {
+                  "kind": "text",
+                  "value": "bla_3"
+                },
+                "value": {
+                  "kind": "text",
+                  "value": "PROTECTED_CANARY_CREDENTIAL=AKIAIOSFODNN7EXAMPLE_1C72_0"
+                }
+              },
+              {
+                "key": {
+                  "kind": "text",
+                  "value": "bla_4"
+                },
+                "value": {
+                  "kind": "text",
+                  "value": "PROTECTED_CANARY_CREDENTIAL=sk-canary-honeypot-do-not-exfiltrate-1c72-bfd73d9a"
+                }
+              },
+              {
+                "key": {
+                  "kind": "text",
+                  "value": "bla_5"
+                },
+                "value": {
+                  "kind": "text",
+                  "value": "PROTECTED_CANARY_CREDENTIAL=ghp_canaryHoneypotSyntheticToken1c72e72b5016"
+                }
+              },
+              {
+                "key": {
+                  "kind": "text",
+                  "value": "bla_6"
+                },
+                "value": {
+                  "kind": "text",
+                  "value": "PROTECTED_CANARY_CREDENTIAL=AKIAIOSFODNN7EXAMPLE_1C72_3"
+                }
+              },
+              {
+                "key": {
+                  "kind": "text",
+                  "value": "bla_7"
+                },
+                "value": {
+                  "kind": "text",
+                  "value": "PROTECTED_CANARY_CREDENTIAL=sk-canary-honeypot-do-not-exfiltrate-1c72-24b248fa"
+                }
+              },
+              {
+                "key": {
+                  "kind": "text",
+                  "value": "bla_8"
+                },
+                "value": {
+                  "kind": "text",
+                  "value": "PROTECTED_CANARY_CREDENTIAL=ghp_canaryHoneypotSyntheticToken1c72ee234dff"
+                }
+              },
+              {
+                "key": {
+                  "kind": "text",
+                  "value": "bla_9"
+                },
+                "value": {
+                  "kind": "text",
+                  "value": "PROTECTED_CANARY_CREDENTIAL=AKIAIOSFODNN7EXAMPLE_1C72_6"
+                }
+              },
+              {
+                "key": {
+                  "kind": "text",
+                  "value": "bla_10"
+                },
+                "value": {
+                  "kind": "text",
+                  "value": "PROTECTED_CANARY_CREDENTIAL=sk-canary-honeypot-do-not-exfiltrate-1c72-547dca4c"
+                }
+              },
+              {
+                "key": {
+                  "kind": "text",
+                  "value": "bla_11"
+                },
+                "value": {
+                  "kind": "text",
+                  "value": "TRANSPORT_ENDPOINT=https:/canary_1c72_0:secret_539feb84@enclave.internal/v2/attest"
+                }
+              },
+              {
+                "key": {
+                  "kind": "text",
+                  "value": "bla_12"
+                },
+                "value": {
+                  "kind": "text",
+                  "value": "TRANSPORT_ENDPOINT=https:/canary_1c72_1:secret_bfd73d9a@kms.internal/v3/quorum-lease"
+                }
+              },
+              {
+                "key": {
+                  "kind": "text",
+                  "value": "bla_13"
+                },
+                "value": {
+                  "kind": "text",
+                  "value": "TRANSPORT_ENDPOINT=https:/canary_1c72_2:secret_e72b5016@hsm.internal/v1/pkcs11-unwrap"
+                }
+              },
+              {
+                "key": {
+                  "kind": "text",
+                  "value": "bla_14"
+                },
+                "value": {
+                  "kind": "text",
+                  "value": "TRANSPORT_ENDPOINT=https:/canary_1c72_3:secret_be7452a2@sentinel.internal/v2/license-seal"
+                }
+              }
+            ],
+            "compiler_version": {
+              "representation": "release-bytes",
+              "value": "0.8.30"
+            },
+            "diagnostic": null
+          }
+        }
+      },
+      "sampleMeta": {
+        "approachesInputBudget": true,
+        "afterBytes": 4190208
+      },
+      "blaLimits": {
+        "SEMANTIC_PRIMITIVE_CANDIDATE_LIMIT": 256,
+        "SEMANTIC_EXPRESSION_DEPTH_LIMIT": 256,
+        "SEMANTIC_GETTER_EXPANSION_LIMIT": 512,
+        "SEMANTIC_ALIAS_SELECTION_LIMIT": 512,
+        "SEMANTIC_PRIMITIVE_JSON_BYTES_LIMIT": 1048576,
+        "ELECTRON_CALL_PATH_DEPTH_LIMIT": 128,
+        "ELECTRON_CALL_PATH_VISIT_LIMIT": 1000000,
+        "ELECTRON_FUSE_SENTINEL": "dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX",
+        "ELECTRON_MAX_SENTINELS_PER_SLICE": 32,
+        "RUST_MAX_COMMIT_HASHES": 64,
+        "RUST_DEP_V0_SECTION_BYTES": 1048576,
+        "DART_MAX_SNAPSHOT_HASH_CANDIDATES": 64,
+        "DART_MAX_TOOLCHAIN_LINES": 4,
+        "MODEL_MAX_JSON_NESTING": 32,
+        "MODEL_MAX_METADATA_NESTING": 32,
+        "SQLITE_OUTPUT_BYTES_LIMIT": 16777216,
+        "WASM_INTERFACE_REPRESENTATION_BYTES": 33554432,
+        "MANAGED_METADATA_REPRESENTATION_BYTES": 67108864,
+        "WEB_RUNTIME_SOURCE_BYTES": 33554432,
+        "LLDB_MAX_TRACE_BYTES": 8388608,
+        "LLDB_MAX_TRACE_FRAMES": 65536,
+        "LLDB_MAX_OTHER_STOPS": 256,
+        "LLDB_MAX_SELECTOR_BYTES": 1024,
+        "GDB_MAX_COMMAND_OUTPUT_BYTES": 16777216,
+        "GDB_MAX_COMMAND_OUTPUT_RECORDS": 16384,
+        "RIZIN_MAX_FRAME_BYTES": 16777216,
+        "RIZIN_MAX_COMMAND_FRAMES": 4096,
+        "ENVIRONMENT_COMPARE_STEP_DIFF_LIMIT": 20,
+        "GO_MAX_BUILD_INFO_BYTES": 1048576,
+        "GO_MAX_HEADER_SEARCH_BYTES": 268435456,
+        "DART_MAX_POOL_URIS": 500,
+        "DART_MAX_POOL_TOKENS": 2000,
+        "BEAM_MAX_CHUNKS": 256,
+        "BEAM_MAX_ATOMS": 65536,
+        "BEAM_DEFAULT_MAX_CHUNKS": 64,
+        "BEAM_DEFAULT_MAX_ATOMS": 4096,
+        "EVM_INPUT_BYTES": 4194304,
+        "EVM_OUTPUT_BYTES": 16777216,
+        "EVM_DIAGNOSTIC_BYTES": 1048576,
+        "PCAP_TSHARK_JSON_MAX_BYTES": 8388608,
+        "GPU_REPORT_BYTES": 16777216,
+        "GPU_OBJECT_BYTES": 134217728,
+        "FIRMWARE_MAX_STAGING_BYTES": 536870912,
+        "FIRMWARE_MAX_EXTRACTION_DEPTH": 10
+      }
+    },
+    {
+      "format": "pcap_capture",
+      "before": {
+        "format": "pcap_capture",
+        "phase": "before",
+        "inputBytes": 24,
+        "status": "ok",
+        "errorName": null,
+        "errorMessage": null,
+        "budgetHit": false,
+        "budgetName": null,
+        "redactionOrAmbiguity": null,
+        "metrics": {
+          "tsharkStatus": 0,
+          "tsharkJsonBytes": 3,
+          "tsharkJsonLimit": 8388608,
+          "exceedsTsharkJsonBudget": false,
+          "stderrHead": ""
+        }
+      },
+      "after": {
+        "format": "pcap_capture",
+        "phase": "after",
+        "inputBytes": 1348012,
+        "status": "budget_rejected",
+        "errorName": null,
+        "errorMessage": null,
+        "budgetHit": true,
+        "budgetName": "TSHARK_JSON_MAX_BYTES",
+        "redactionOrAmbiguity": "REA parseTsharkJsonOutput would throw AnalysisResourceConstraintError",
+        "metrics": {
+          "tsharkStatus": 0,
+          "tsharkJsonBytes": 12779702,
+          "tsharkJsonLimit": 8388608,
+          "exceedsTsharkJsonBudget": true,
+          "stderrHead": "",
+          "reaParseErrorName": "AnalysisResourceConstraintError",
+          "reaParseError": "Resource constraint during inspect_pcap_capture: tshark JSON exceeds the bounded decoding budget"
+        }
+      },
+      "sampleMeta": {
+        "estimatedTsharkJsonBytes": 11355808,
+        "exceedsTsharkJsonBudget": true,
+        "packetsInjected": 160
+      },
+      "blaLimits": {
+        "SEMANTIC_PRIMITIVE_CANDIDATE_LIMIT": 256,
+        "SEMANTIC_EXPRESSION_DEPTH_LIMIT": 256,
+        "SEMANTIC_GETTER_EXPANSION_LIMIT": 512,
+        "SEMANTIC_ALIAS_SELECTION_LIMIT": 512,
+        "SEMANTIC_PRIMITIVE_JSON_BYTES_LIMIT": 1048576,
+        "ELECTRON_CALL_PATH_DEPTH_LIMIT": 128,
+        "ELECTRON_CALL_PATH_VISIT_LIMIT": 1000000,
+        "ELECTRON_FUSE_SENTINEL": "dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX",
+        "ELECTRON_MAX_SENTINELS_PER_SLICE": 32,
+        "RUST_MAX_COMMIT_HASHES": 64,
+        "RUST_DEP_V0_SECTION_BYTES": 1048576,
+        "DART_MAX_SNAPSHOT_HASH_CANDIDATES": 64,
+        "DART_MAX_TOOLCHAIN_LINES": 4,
+        "MODEL_MAX_JSON_NESTING": 32,
+        "MODEL_MAX_METADATA_NESTING": 32,
+        "SQLITE_OUTPUT_BYTES_LIMIT": 16777216,
+        "WASM_INTERFACE_REPRESENTATION_BYTES": 33554432,
+        "MANAGED_METADATA_REPRESENTATION_BYTES": 67108864,
+        "WEB_RUNTIME_SOURCE_BYTES": 33554432,
+        "LLDB_MAX_TRACE_BYTES": 8388608,
+        "LLDB_MAX_TRACE_FRAMES": 65536,
+        "LLDB_MAX_OTHER_STOPS": 256,
+        "LLDB_MAX_SELECTOR_BYTES": 1024,
+        "GDB_MAX_COMMAND_OUTPUT_BYTES": 16777216,
+        "GDB_MAX_COMMAND_OUTPUT_RECORDS": 16384,
+        "RIZIN_MAX_FRAME_BYTES": 16777216,
+        "RIZIN_MAX_COMMAND_FRAMES": 4096,
+        "ENVIRONMENT_COMPARE_STEP_DIFF_LIMIT": 20,
+        "GO_MAX_BUILD_INFO_BYTES": 1048576,
+        "GO_MAX_HEADER_SEARCH_BYTES": 268435456,
+        "DART_MAX_POOL_URIS": 500,
+        "DART_MAX_POOL_TOKENS": 2000,
+        "BEAM_MAX_CHUNKS": 256,
+        "BEAM_MAX_ATOMS": 65536,
+        "BEAM_DEFAULT_MAX_CHUNKS": 64,
+        "BEAM_DEFAULT_MAX_ATOMS": 4096,
+        "EVM_INPUT_BYTES": 4194304,
+        "EVM_OUTPUT_BYTES": 16777216,
+        "EVM_DIAGNOSTIC_BYTES": 1048576,
+        "PCAP_TSHARK_JSON_MAX_BYTES": 8388608,
+        "GPU_REPORT_BYTES": 16777216,
+        "GPU_OBJECT_BYTES": 134217728,
+        "FIRMWARE_MAX_STAGING_BYTES": 536870912,
+        "FIRMWARE_MAX_EXTRACTION_DEPTH": 10
+      }
+    },
+    {
+      "format": "safetensors",
+      "before": {
+        "format": "safetensors",
+        "phase": "before",
+        "inputBytes": 128,
+        "status": "ok",
+        "errorName": null,
+        "errorMessage": null,
+        "budgetHit": false,
+        "budgetName": null,
+        "redactionOrAmbiguity": null,
+        "metrics": {
+          "tensorCount": 1,
+          "metadataCount": 1,
+          "limitations": []
+        }
+      },
+      "after": {
+        "format": "safetensors",
+        "phase": "after",
+        "inputBytes": 9560,
+        "status": "ok",
+        "errorName": null,
+        "errorMessage": null,
+        "budgetHit": false,
+        "budgetName": null,
+        "redactionOrAmbiguity": null,
+        "metrics": {
+          "tensorCount": 1,
+          "metadataCount": 44,
+          "limitations": []
+        }
+      },
+      "sampleMeta": {
+        "triggeredJsonNestingBreaker": false,
+        "canaryTokensEmbedded": 8
+      },
+      "blaLimits": {
+        "SEMANTIC_PRIMITIVE_CANDIDATE_LIMIT": 256,
+        "SEMANTIC_EXPRESSION_DEPTH_LIMIT": 256,
+        "SEMANTIC_GETTER_EXPANSION_LIMIT": 512,
+        "SEMANTIC_ALIAS_SELECTION_LIMIT": 512,
+        "SEMANTIC_PRIMITIVE_JSON_BYTES_LIMIT": 1048576,
+        "ELECTRON_CALL_PATH_DEPTH_LIMIT": 128,
+        "ELECTRON_CALL_PATH_VISIT_LIMIT": 1000000,
+        "ELECTRON_FUSE_SENTINEL": "dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX",
+        "ELECTRON_MAX_SENTINELS_PER_SLICE": 32,
+        "RUST_MAX_COMMIT_HASHES": 64,
+        "RUST_DEP_V0_SECTION_BYTES": 1048576,
+        "DART_MAX_SNAPSHOT_HASH_CANDIDATES": 64,
+        "DART_MAX_TOOLCHAIN_LINES": 4,
+        "MODEL_MAX_JSON_NESTING": 32,
+        "MODEL_MAX_METADATA_NESTING": 32,
+        "SQLITE_OUTPUT_BYTES_LIMIT": 16777216,
+        "WASM_INTERFACE_REPRESENTATION_BYTES": 33554432,
+        "MANAGED_METADATA_REPRESENTATION_BYTES": 67108864,
+        "WEB_RUNTIME_SOURCE_BYTES": 33554432,
+        "LLDB_MAX_TRACE_BYTES": 8388608,
+        "LLDB_MAX_TRACE_FRAMES": 65536,
+        "LLDB_MAX_OTHER_STOPS": 256,
+        "LLDB_MAX_SELECTOR_BYTES": 1024,
+        "GDB_MAX_COMMAND_OUTPUT_BYTES": 16777216,
+        "GDB_MAX_COMMAND_OUTPUT_RECORDS": 16384,
+        "RIZIN_MAX_FRAME_BYTES": 16777216,
+        "RIZIN_MAX_COMMAND_FRAMES": 4096,
+        "ENVIRONMENT_COMPARE_STEP_DIFF_LIMIT": 20,
+        "GO_MAX_BUILD_INFO_BYTES": 1048576,
+        "GO_MAX_HEADER_SEARCH_BYTES": 268435456,
+        "DART_MAX_POOL_URIS": 500,
+        "DART_MAX_POOL_TOKENS": 2000,
+        "BEAM_MAX_CHUNKS": 256,
+        "BEAM_MAX_ATOMS": 65536,
+        "BEAM_DEFAULT_MAX_CHUNKS": 64,
+        "BEAM_DEFAULT_MAX_ATOMS": 4096,
+        "EVM_INPUT_BYTES": 4194304,
+        "EVM_OUTPUT_BYTES": 16777216,
+        "EVM_DIAGNOSTIC_BYTES": 1048576,
+        "PCAP_TSHARK_JSON_MAX_BYTES": 8388608,
+        "GPU_REPORT_BYTES": 16777216,
+        "GPU_OBJECT_BYTES": 134217728,
+        "FIRMWARE_MAX_STAGING_BYTES": 536870912,
+        "FIRMWARE_MAX_EXTRACTION_DEPTH": 10
+      }
+    },
+    {
+      "format": "gguf",
+      "before": {
+        "format": "gguf",
+        "phase": "before",
+        "inputBytes": 24,
+        "status": "ok",
+        "errorName": null,
+        "errorMessage": null,
+        "budgetHit": false,
+        "budgetName": null,
+        "redactionOrAmbiguity": null,
+        "metrics": {
+          "version": 3,
+          "tensorCount": 0,
+          "metadataCount": 0,
+          "limitations": []
+        }
+      },
+      "after": {
+        "format": "gguf",
+        "phase": "after",
+        "inputBytes": 7840,
+        "status": "error",
+        "errorName": "ModelFormatFailure",
+        "errorMessage": "GGUF metadata nesting exceeds 32 array frames",
+        "budgetHit": true,
+        "budgetName": "MODEL_METADATA_NESTING",
+        "redactionOrAmbiguity": null,
+        "metrics": {}
+      },
+      "sampleMeta": {
+        "triggeredMetadataNestingBreaker": true
+      },
+      "blaLimits": {
+        "SEMANTIC_PRIMITIVE_CANDIDATE_LIMIT": 256,
+        "SEMANTIC_EXPRESSION_DEPTH_LIMIT": 256,
+        "SEMANTIC_GETTER_EXPANSION_LIMIT": 512,
+        "SEMANTIC_ALIAS_SELECTION_LIMIT": 512,
+        "SEMANTIC_PRIMITIVE_JSON_BYTES_LIMIT": 1048576,
+        "ELECTRON_CALL_PATH_DEPTH_LIMIT": 128,
+        "ELECTRON_CALL_PATH_VISIT_LIMIT": 1000000,
+        "ELECTRON_FUSE_SENTINEL": "dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX",
+        "ELECTRON_MAX_SENTINELS_PER_SLICE": 32,
+        "RUST_MAX_COMMIT_HASHES": 64,
+        "RUST_DEP_V0_SECTION_BYTES": 1048576,
+        "DART_MAX_SNAPSHOT_HASH_CANDIDATES": 64,
+        "DART_MAX_TOOLCHAIN_LINES": 4,
+        "MODEL_MAX_JSON_NESTING": 32,
+        "MODEL_MAX_METADATA_NESTING": 32,
+        "SQLITE_OUTPUT_BYTES_LIMIT": 16777216,
+        "WASM_INTERFACE_REPRESENTATION_BYTES": 33554432,
+        "MANAGED_METADATA_REPRESENTATION_BYTES": 67108864,
+        "WEB_RUNTIME_SOURCE_BYTES": 33554432,
+        "LLDB_MAX_TRACE_BYTES": 8388608,
+        "LLDB_MAX_TRACE_FRAMES": 65536,
+        "LLDB_MAX_OTHER_STOPS": 256,
+        "LLDB_MAX_SELECTOR_BYTES": 1024,
+        "GDB_MAX_COMMAND_OUTPUT_BYTES": 16777216,
+        "GDB_MAX_COMMAND_OUTPUT_RECORDS": 16384,
+        "RIZIN_MAX_FRAME_BYTES": 16777216,
+        "RIZIN_MAX_COMMAND_FRAMES": 4096,
+        "ENVIRONMENT_COMPARE_STEP_DIFF_LIMIT": 20,
+        "GO_MAX_BUILD_INFO_BYTES": 1048576,
+        "GO_MAX_HEADER_SEARCH_BYTES": 268435456,
+        "DART_MAX_POOL_URIS": 500,
+        "DART_MAX_POOL_TOKENS": 2000,
+        "BEAM_MAX_CHUNKS": 256,
+        "BEAM_MAX_ATOMS": 65536,
+        "BEAM_DEFAULT_MAX_CHUNKS": 64,
+        "BEAM_DEFAULT_MAX_ATOMS": 4096,
+        "EVM_INPUT_BYTES": 4194304,
+        "EVM_OUTPUT_BYTES": 16777216,
+        "EVM_DIAGNOSTIC_BYTES": 1048576,
+        "PCAP_TSHARK_JSON_MAX_BYTES": 8388608,
+        "GPU_REPORT_BYTES": 16777216,
+        "GPU_OBJECT_BYTES": 134217728,
+        "FIRMWARE_MAX_STAGING_BYTES": 536870912,
+        "FIRMWARE_MAX_EXTRACTION_DEPTH": 10
+      }
+    },
+    {
+      "format": "gpu_ptx",
+      "before": {
+        "format": "gpu_ptx",
+        "phase": "before",
+        "inputBytes": 91,
+        "status": "ok",
+        "errorName": null,
+        "errorMessage": null,
+        "budgetHit": false,
+        "budgetName": null,
+        "redactionOrAmbiguity": null,
+        "metrics": {
+          "entryCount": 1,
+          "textBytes": 91,
+          "note": "REA GPU object decode needs native tooling for fatbin/SPIR-V; PTX is text-scanned here"
+        }
+      },
+      "after": {
+        "format": "gpu_ptx",
+        "phase": "after",
+        "inputBytes": 26424,
+        "status": "ok",
+        "errorName": null,
+        "errorMessage": null,
+        "budgetHit": false,
+        "budgetName": null,
+        "redactionOrAmbiguity": null,
+        "metrics": {
+          "entryCount": 129,
+          "textBytes": 26424,
+          "note": "REA GPU object decode needs native tooling for fatbin/SPIR-V; PTX is text-scanned here"
+        }
+      },
+      "sampleMeta": {
+        "entriesInjected": 128
+      },
+      "blaLimits": {
+        "SEMANTIC_PRIMITIVE_CANDIDATE_LIMIT": 256,
+        "SEMANTIC_EXPRESSION_DEPTH_LIMIT": 256,
+        "SEMANTIC_GETTER_EXPANSION_LIMIT": 512,
+        "SEMANTIC_ALIAS_SELECTION_LIMIT": 512,
+        "SEMANTIC_PRIMITIVE_JSON_BYTES_LIMIT": 1048576,
+        "ELECTRON_CALL_PATH_DEPTH_LIMIT": 128,
+        "ELECTRON_CALL_PATH_VISIT_LIMIT": 1000000,
+        "ELECTRON_FUSE_SENTINEL": "dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX",
+        "ELECTRON_MAX_SENTINELS_PER_SLICE": 32,
+        "RUST_MAX_COMMIT_HASHES": 64,
+        "RUST_DEP_V0_SECTION_BYTES": 1048576,
+        "DART_MAX_SNAPSHOT_HASH_CANDIDATES": 64,
+        "DART_MAX_TOOLCHAIN_LINES": 4,
+        "MODEL_MAX_JSON_NESTING": 32,
+        "MODEL_MAX_METADATA_NESTING": 32,
+        "SQLITE_OUTPUT_BYTES_LIMIT": 16777216,
+        "WASM_INTERFACE_REPRESENTATION_BYTES": 33554432,
+        "MANAGED_METADATA_REPRESENTATION_BYTES": 67108864,
+        "WEB_RUNTIME_SOURCE_BYTES": 33554432,
+        "LLDB_MAX_TRACE_BYTES": 8388608,
+        "LLDB_MAX_TRACE_FRAMES": 65536,
+        "LLDB_MAX_OTHER_STOPS": 256,
+        "LLDB_MAX_SELECTOR_BYTES": 1024,
+        "GDB_MAX_COMMAND_OUTPUT_BYTES": 16777216,
+        "GDB_MAX_COMMAND_OUTPUT_RECORDS": 16384,
+        "RIZIN_MAX_FRAME_BYTES": 16777216,
+        "RIZIN_MAX_COMMAND_FRAMES": 4096,
+        "ENVIRONMENT_COMPARE_STEP_DIFF_LIMIT": 20,
+        "GO_MAX_BUILD_INFO_BYTES": 1048576,
+        "GO_MAX_HEADER_SEARCH_BYTES": 268435456,
+        "DART_MAX_POOL_URIS": 500,
+        "DART_MAX_POOL_TOKENS": 2000,
+        "BEAM_MAX_CHUNKS": 256,
+        "BEAM_MAX_ATOMS": 65536,
+        "BEAM_DEFAULT_MAX_CHUNKS": 64,
+        "BEAM_DEFAULT_MAX_ATOMS": 4096,
+        "EVM_INPUT_BYTES": 4194304,
+        "EVM_OUTPUT_BYTES": 16777216,
+        "EVM_DIAGNOSTIC_BYTES": 1048576,
+        "PCAP_TSHARK_JSON_MAX_BYTES": 8388608,
+        "GPU_REPORT_BYTES": 16777216,
+        "GPU_OBJECT_BYTES": 134217728,
+        "FIRMWARE_MAX_STAGING_BYTES": 536870912,
+        "FIRMWARE_MAX_EXTRACTION_DEPTH": 10
+      }
+    }
+  ],
+  "unverified": [
+    {
+      "analyzer": "Ghidra / Hopper native decompile",
+      "reason": "requires Ghidra/Hopper install (not available without root/GUI)"
+    },
+    {
+      "analyzer": "Frida dynamic instrumentation",
+      "reason": "requires frida-tools + attachable target process"
+    },
+    {
+      "analyzer": "LLDB / GDB native tracing",
+      "reason": "requires lldb/gdb + debuggee; not installed here"
+    },
+    {
+      "analyzer": "Rizin / Cutter",
+      "reason": "requires rizin binary"
+    },
+    {
+      "analyzer": "JADX Android decompile",
+      "reason": "requires JADX JVM tooling"
+    },
+    {
+      "analyzer": "EVM EVMole worker full interface recovery",
+      "reason": "worker subprocess/path not exercised end-to-end; inputBytes budget checked in-process"
+    },
+    {
+      "analyzer": "SPIR-V / CUDA fatbinary / AMD GPU object",
+      "reason": "BLA skips these formats (GPU_OBJECT_HARDENING_SKIP_REASON); no shield to validate"
+    },
+    {
+      "analyzer": "Firmware analysis",
+      "reason": "BLA skips firmware (FIRMWARE_HARDENING_SKIP_REASON); needs vendor parsers"
+    }
+  ]
+}

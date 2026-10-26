@@ -1,0 +1,195 @@
+#!/usr/bin/env node
+/**
+ * Empirical red-team harness: unhardened vs BLA-hardened samples against
+ * real in-process REA parsers. Writes docs/redteam/empirical-rea-validation.{md,json}.
+ */
+import { spawnSync } from "node:child_process";
+import {
+  BLA_ROOT,
+  REA_ROOT,
+  resolveTsharkEnv,
+  reaDistReady,
+} from "./lib/paths.mjs";
+import { buildSampleMatrix } from "./lib/samples.mjs";
+import {
+  loadReaProbes,
+  probeGo,
+  probeFlutterPool,
+  probeBeam,
+  probeEvm,
+  probePcap,
+  probeSafetensors,
+  probeGguf,
+  probePtx,
+  unverifiedAnalyzers,
+} from "./lib/probes.mjs";
+import { writeReports } from "./lib/report.mjs";
+
+function tsharkVersion(env) {
+  if (!env.available) return null;
+  const r = spawnSync(env.bin, ["-v"], { encoding: "utf8", env: env.env });
+  const line = (r.stdout || r.stderr || "").split("\n")[0] || "";
+  return line.trim() || "tshark (version unknown)";
+}
+
+async function main() {
+  if (!reaDistReady()) {
+    console.error(
+      "REA dist not ready. From /workspace/bla-dev/rea under Node 22.23.4+:\n  npm install --ignore-scripts && npx tsc -p tsconfig.build.json",
+    );
+    process.exit(2);
+  }
+  const tshark = resolveTsharkEnv();
+  const { bla, intensity, seed, samples } = await buildSampleMatrix();
+  const rea = await loadReaProbes();
+  const limits = bla.REA_INTERNAL_LIMITS;
+
+  const pairs = [];
+
+  // Shared ELF: Go build-info + Flutter isolate pool
+  {
+    const s = samples.go_flutter_elf;
+    const goBefore = await probeGo(rea, s.before, "before");
+    const goAfter = await probeGo(rea, s.after, "after");
+    pairs.push({
+      format: "go_buildinfo",
+      before: goBefore,
+      after: goAfter,
+      sampleMeta: s.meta,
+      blaLimits: limits,
+    });
+    const flBefore = await probeFlutterPool(bla, s.before, "before", limits);
+    const flAfter = await probeFlutterPool(bla, s.after, "after", limits);
+    pairs.push({
+      format: "flutter_pool",
+      before: flBefore,
+      after: flAfter,
+      sampleMeta: s.meta,
+      blaLimits: limits,
+    });
+  }
+
+  {
+    const s = samples.erlang_beam;
+    pairs.push({
+      format: "erlang_beam",
+      before: await probeBeam(rea, s.before, "before"),
+      after: await probeBeam(rea, s.after, "after"),
+      sampleMeta: s.meta,
+      blaLimits: limits,
+    });
+  }
+
+  {
+    const s = samples.evm_bytecode;
+    pairs.push({
+      format: "evm_bytecode",
+      before: await probeEvm(rea, s.before, "before"),
+      after: await probeEvm(rea, s.after, "after"),
+      sampleMeta: s.meta,
+      blaLimits: limits,
+    });
+  }
+
+  {
+    const s = samples.pcap_capture;
+    pairs.push({
+      format: "pcap_capture",
+      before: await probePcap(rea, s.before, "before"),
+      after: await probePcap(rea, s.after, "after"),
+      sampleMeta: s.meta,
+      blaLimits: limits,
+    });
+  }
+
+  {
+    const s = samples.safetensors;
+    pairs.push({
+      format: "safetensors",
+      before: await probeSafetensors(rea, s.before, "before"),
+      after: await probeSafetensors(rea, s.after, "after"),
+      sampleMeta: s.meta,
+      blaLimits: limits,
+    });
+  }
+
+  {
+    const s = samples.gguf;
+    pairs.push({
+      format: "gguf",
+      before: await probeGguf(rea, s.before, "before"),
+      after: await probeGguf(rea, s.after, "after"),
+      sampleMeta: s.meta,
+      blaLimits: limits,
+    });
+  }
+
+  {
+    const s = samples.gpu_ptx;
+    pairs.push({
+      format: "gpu_ptx",
+      before: await probePtx(rea, s.before, "before"),
+      after: await probePtx(rea, s.after, "after"),
+      sampleMeta: s.meta,
+      blaLimits: limits,
+    });
+  }
+
+  const run = {
+    generatedAt: new Date().toLocaleString("en-CA", {
+      timeZone: "Asia/Shanghai",
+      hour12: false,
+    }),
+    blaRoot: BLA_ROOT,
+    reaRoot: REA_ROOT,
+    intensity,
+    seed,
+    nodeVersion: process.version,
+    tshark: {
+      available: tshark.available,
+      version: tsharkVersion(tshark),
+    },
+    pairs,
+    unverified: unverifiedAnalyzers(),
+  };
+
+  const { mdPath, jsonPath } = writeReports(run);
+
+  // Console summary for CI / gates
+  console.log("Empirical REA red-team complete");
+  console.log(`  report: ${mdPath}`);
+  console.log(`  json:   ${jsonPath}`);
+  for (const pair of pairs) {
+    const tag = pair.after.budgetHit
+      ? `BUDGET ${pair.after.budgetName}`
+      : pair.after.status;
+    console.log(
+      `  ${pair.format.padEnd(16)} before=${pair.before.status.padEnd(12)} after=${tag}  (${pair.before.inputBytes} → ${pair.after.inputBytes} B)`,
+    );
+  }
+  const diverges = pairs.filter((p) => {
+    // soft check: after should hit for go/flutter/beam/evm/pcap/gguf
+    const must = new Set([
+      "go_buildinfo",
+      "flutter_pool",
+      "erlang_beam",
+      "evm_bytecode",
+      "pcap_capture",
+      "gguf",
+    ]);
+    if (!must.has(p.format)) return false;
+    if (p.format === "pcap_capture" && p.after.status === "skipped") return false;
+    return !p.after.budgetHit;
+  });
+  if (diverges.length) {
+    console.error(
+      `WARNING: ${diverges.length} format(s) did not trip REA budgets: ${diverges.map((d) => d.format).join(", ")}`,
+    );
+    process.exitCode = 1;
+  }
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
