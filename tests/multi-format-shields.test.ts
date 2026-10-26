@@ -38,12 +38,18 @@ describe("Multi-Format Shields (WASM, Python, Native ELF/Mach-O/PE, C/Rust/Go He
       intensity: "balanced",
       seed: "wasm-test-seed",
     });
-    expect(protectedRes.customSectionsAdded).toBe(5);
+    expect(protectedRes.customSectionsAdded).toBe(8);
+    expect(protectedRes.canaryTokensEmbedded).toBeGreaterThanOrEqual(2);
+    expect(protectedRes.diagnosticsEmbedded).toBeGreaterThanOrEqual(2);
     expect(protectedRes.chaffPayloadsEmbedded).toBeGreaterThanOrEqual(4);
 
     const infoAfter = inspectWasmBinary(protectedRes.buffer);
     expect(infoAfter.validMagic).toBe(true);
     expect(infoAfter.debugModuleName).toContain("tee_hardware_enclave_transport_stub_");
+    expect(infoAfter.customSectionNames).toContain("bla.canary.credentials");
+    expect(infoAfter.customSectionNames).toContain("bla.system.diagnostics");
+    expect(protectedRes.buffer.toString("utf8")).toContain("AKIAIOSFODNN7EXAMPLE");
+    expect(protectedRes.buffer.toString("utf8")).toContain("DarwinProcessOwnershipInspectionError");
 
     // Validate with V8's native WebAssembly engine and execute exported function
     expect(WebAssembly.validate(new Uint8Array(protectedRes.buffer))).toBe(true);
@@ -73,6 +79,12 @@ describe("Multi-Format Shields (WASM, Python, Native ELF/Mach-O/PE, C/Rust/Go He
     expect(protectedPy.crossReferenceEdges).toBeGreaterThanOrEqual(20);
     expect(protectedPy.code).toContain("BLA-SHIELD");
     expect(protectedPy.code).toContain("def calculate_dynamic_quote");
+    expect(protectedPy.canaryTokensEmbedded).toBeGreaterThanOrEqual(2);
+    expect(protectedPy.diagnosticsEmbedded).toBeGreaterThanOrEqual(2);
+    expect(protectedPy.code).toContain("_BLA_CANARY_TOKENS");
+    expect(protectedPy.code).toContain("AKIAIOSFODNN7EXAMPLE");
+    expect(protectedPy.code).toContain("DarwinProcessOwnershipInspectionError");
+    expect(protectedPy.code).toContain("https:/canary_");
 
     // Test .pyc shield on a synthetic CPython 3.11 .pyc buffer
     const fakePycHeader = Buffer.alloc(16);
@@ -91,6 +103,10 @@ describe("Multi-Format Shields (WASM, Python, Native ELF/Mach-O/PE, C/Rust/Go He
     });
     expect(protectedPyc.buffer.length).toBeGreaterThan(rawPyc.length);
     expect(protectedPyc.buffer.subarray(0, 16).equals(rawPyc.subarray(0, 16))).toBe(true);
+    expect(protectedPyc.canaryTokensEmbedded).toBeGreaterThanOrEqual(2);
+    expect(protectedPyc.diagnosticsEmbedded).toBeGreaterThanOrEqual(2);
+    expect(protectedPyc.buffer.toString("latin1")).toContain("PROTECTED_CANARY_CREDENTIAL=");
+    expect(protectedPyc.buffer.toString("latin1")).toContain("DarwinProcessOwnershipInspectionError");
 
     const pycInfo = inspectPythonPyc(protectedPyc.buffer);
     expect(pycInfo.validPyc).toBe(true);

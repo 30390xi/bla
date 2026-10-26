@@ -139,3 +139,8 @@ export function generateCounterReaDeceptionSuite(
     totalDeceptionNodesInjected,
   };
 }
+
+export {
+  buildCanaryAndDiagnosticPayloads,
+  type FormatDeceptionPayloads,
+} from "./format-payloads.js";

@@ -1,6 +1,7 @@
 import { SeededPrng } from "../../core/prng.js";
 import type { ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
+import { buildCanaryAndDiagnosticPayloads } from "../deception/format-payloads.js";
 import { generatePythonTarpit } from "../tarpit/tarpit-generator.js";
 
 export class InvalidPythonSourceError extends Error {
@@ -608,6 +609,41 @@ export function findPythonPrologueInsertionOffset(
   };
 }
 
+
+function pythonReprString(value: string): string {
+  return JSON.stringify(value);
+}
+
+function pythonStringTuple(values: readonly string[]): string {
+  if (values.length === 1) {
+    return `(${pythonReprString(values[0]!)},)`;
+  }
+  return `(${values.map(pythonReprString).join(", ")})`;
+}
+
+function pythonDiagnosticTuple(
+  entries: readonly {
+    readonly subsystem: string;
+    readonly errorClass: string;
+    readonly systemCode: string;
+    readonly diagnosticMessage: string;
+    readonly remediationRabbitHole: string;
+  }[],
+): string {
+  const items = entries.map(
+    (d) =>
+      `{${[
+        `"subsystem": ${pythonReprString(d.subsystem)}`,
+        `"errorClass": ${pythonReprString(d.errorClass)}`,
+        `"systemCode": ${pythonReprString(d.systemCode)}`,
+        `"diagnosticMessage": ${pythonReprString(d.diagnosticMessage)}`,
+        `"remediationRabbitHole": ${pythonReprString(d.remediationRabbitHole)}`,
+      ].join(", ")}}`,
+  );
+  if (items.length === 1) return `(${items[0]},)`;
+  return `(${items.join(", ")})`;
+}
+
 /**
  * Protects a Python `.py` source file by injecting an interconnected Python
  * Algorithmic Tarpit (`generatePythonTarpit`), opaque predicates, and
@@ -625,11 +661,14 @@ export function protectPythonSource(
   readonly decoyFunctionsInjected: number;
   readonly crossReferenceEdges: number;
   readonly chaffPayloadsEmbedded: number;
+  readonly canaryTokensEmbedded: number;
+  readonly diagnosticsEmbedded: number;
 } {
   const intensity = options.intensity ?? "balanced";
   const prng = new SeededPrng(options.seed ?? "bla-python-shield-v1");
   const chaffPayloads = generateChaffPayloads(prng, intensity);
   const tarpit = generatePythonTarpit(prng, intensity, chaffPayloads);
+  const deception = buildCanaryAndDiagnosticPayloads(prng, intensity);
 
   const eol = source.includes("\r\n") ? "\r\n" : "\n";
   const prologue = findPythonPrologueInsertionOffset(source);
@@ -644,7 +683,20 @@ export function protectPythonSource(
       ? tarpit.code.replace(/\r?\n/g, "\r\n").replace(/(?:\r\n)+$/, "")
       : tarpit.code.replace(/\n+$/, "");
 
-  const combined = [head, tarpitNormalized, tail]
+  // Inert canary + diagnostic decoys below prologue/tarpit. Data only — never fetched.
+  const deceptionBlock = [
+    "# --- BLA canary credential / transport-redaction honeypot (inert) ---",
+    `_BLA_CANARY_TOKENS = ${pythonStringTuple(deception.canary.syntheticCanaryTokens)}`,
+    `_BLA_AMBIGUOUS_TRANSPORT = ${pythonStringTuple(deception.canary.ambiguousCredentialUrls)}`,
+    `_BLA_CONFLICTING_QUERY = ${pythonStringTuple(deception.canary.conflictingQueryUrls)}`,
+    "# --- BLA system-diagnostic rabbit holes (inert) ---",
+    `_BLA_SYSTEM_DIAGNOSTICS = ${pythonDiagnosticTuple(deception.diagnostics.diagnosticsInjected)}`,
+    "def _bla_probe_canary_honeypot(idx=0):",
+    "    _i = (idx & 0x7FFFFFFF) % len(_BLA_CANARY_TOKENS)",
+    "    return _BLA_AMBIGUOUS_TRANSPORT[_i]",
+  ].join(eol);
+
+  const combined = [head, tarpitNormalized, deceptionBlock, tail]
     .filter((part) => part.length > 0)
     .join(eol + eol);
 
@@ -653,6 +705,8 @@ export function protectPythonSource(
     decoyFunctionsInjected: tarpit.decoyFunctionNames.length,
     crossReferenceEdges: tarpit.crossReferenceEdges,
     chaffPayloadsEmbedded: chaffPayloads.length,
+    canaryTokensEmbedded: deception.canary.syntheticCanaryTokens.length,
+    diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
   };
 }
 
@@ -683,7 +737,9 @@ export function inspectPythonPyc(bytes: Buffer): PythonPycInspectionSummary {
     extractedStrings: matches.slice(0, 64),
     blaProtected:
       textView.includes("BLA-SHIELD") ||
-      textView.includes("Architecture Notice: Core business logic"),
+      textView.includes("Architecture Notice: Core business logic") ||
+      textView.includes("PROTECTED_CANARY_CREDENTIAL=") ||
+      textView.includes("DarwinProcessOwnershipInspectionError"),
   };
 }
 
@@ -702,6 +758,8 @@ export function protectPythonPycBuffer(
 ): {
   readonly buffer: Buffer;
   readonly chaffPayloadsEmbedded: number;
+  readonly canaryTokensEmbedded: number;
+  readonly diagnosticsEmbedded: number;
 } {
   if (bytes.length < 16 || bytes[2] !== 0x0d || bytes[3] !== 0x0a) {
     throw new Error("Invalid CPython .pyc header (missing 0x0d 0x0a magic marker)");
@@ -710,19 +768,37 @@ export function protectPythonPycBuffer(
   const intensity = options.intensity ?? "balanced";
   const prng = new SeededPrng(options.seed ?? "bla-pyc-shield-v1");
   const chaffPayloads = generateChaffPayloads(prng, intensity);
+  const deception = buildCanaryAndDiagnosticPayloads(prng, intensity);
 
-  // Construct marshal-framed ASCII constant records (TYPE_ASCII = 0x61 + uint32LE length + utf8 bytes)
+  // Construct marshal-framed ASCII constant records (TYPE_ASCII = 0x61 + uint32LE length + utf8 bytes).
+  // Keep distinctive prefixes within REA's PYTHON_PYC_CONST_PREVIEW_LIMIT (80) so canary tokens
+  // and diagnostic errorClass/systemCode survive truncated previews.
   const marshalRecords: Buffer[] = [];
-  for (const payload of chaffPayloads) {
-    const strBytes = Buffer.from(payload.rawText, "utf8");
+  const pushAscii = (raw: string) => {
+    const strBytes = Buffer.from(raw, "utf8");
     const header = Buffer.alloc(5);
     header[0] = 0x61; // TYPE_ASCII
     header.writeUInt32LE(strBytes.length, 1);
     marshalRecords.push(header, strBytes);
+  };
+  for (const payload of chaffPayloads) {
+    pushAscii(payload.rawText);
+  }
+  for (const tok of deception.canary.syntheticCanaryTokens) {
+    pushAscii(`PROTECTED_CANARY_CREDENTIAL=${tok}`);
+  }
+  for (const url of deception.canary.ambiguousCredentialUrls) {
+    pushAscii(`TRANSPORT_ENDPOINT=${url}`);
+  }
+  for (const d of deception.diagnostics.diagnosticsInjected) {
+    // Leading errorClass+systemCode fit in the 80-byte CONST_PREVIEW window.
+    pushAscii(`[${d.errorClass}] (${d.systemCode}) ${d.diagnosticMessage}`);
   }
 
   return {
     buffer: Buffer.concat([bytes, ...marshalRecords]),
     chaffPayloadsEmbedded: chaffPayloads.length,
+    canaryTokensEmbedded: deception.canary.syntheticCanaryTokens.length,
+    diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
   };
 }
