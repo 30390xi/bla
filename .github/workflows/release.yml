@@ -9,6 +9,11 @@ on:
       - "v*"
   workflow_dispatch:
     inputs:
+      version:
+        description: "Expected release version (must match package.json after optional bump)"
+        required: false
+        default: ""
+        type: string
       bump:
         description: "Optional version bump before publishing (none | patch | minor | major)"
         required: false
@@ -60,15 +65,66 @@ jobs:
           git commit -m "chore(release): bump bla-agents to v${VERSION}"
           git push origin HEAD:main
 
-      - name: Check if current package.json version is already on npm
+      - name: Verify version, trigger tag, and target tag commit consistency
         id: check_npm
+        env:
+          DISPATCH_VERSION: ${{ inputs.version }}
+          TRIGGER_REF: ${{ github.ref }}
         run: |
+          set -euo pipefail
           LOCAL_VERSION=$(node -p "require('./package.json').version")
-          NPM_VERSION=$(npm view bla-agents version 2>/dev/null || echo "none")
-          echo "local_version=$LOCAL_VERSION" >> "$GITHUB_OUTPUT"
-          echo "npm_version=$NPM_VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=bla-agents-$LOCAL_VERSION" >> "$GITHUB_OUTPUT"
-          if [ "$LOCAL_VERSION" != "$NPM_VERSION" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ] || [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          HEAD_SHA=$(git rev-parse HEAD)
+          TAG="bla-agents-${LOCAL_VERSION}"
+
+          # 1. Verify workflow_dispatch version input matches manifest if provided
+          if [ -n "${DISPATCH_VERSION}" ]; then
+            NORM_DISPATCH="${DISPATCH_VERSION#v}"
+            NORM_DISPATCH="${NORM_DISPATCH#bla-agents-}"
+            if [ "${NORM_DISPATCH}" != "${LOCAL_VERSION}" ]; then
+              echo "::error::workflow_dispatch version '${DISPATCH_VERSION}' does not match package.json version '${LOCAL_VERSION}'"
+              exit 1
+            fi
+          fi
+
+          # 2. Verify trigger tag matches manifest if triggered by refs/tags/*
+          if [[ "${TRIGGER_REF}" == refs/tags/* ]]; then
+            RAW_TAG="${TRIGGER_REF#refs/tags/}"
+            if [[ "${RAW_TAG}" == bla-agents-* ]]; then
+              TAG_VER="${RAW_TAG#bla-agents-}"
+            elif [[ "${RAW_TAG}" == v* ]]; then
+              TAG_VER="${RAW_TAG#v}"
+            else
+              echo "::error::Unsupported release tag format '${RAW_TAG}'"
+              exit 1
+            fi
+            if [ "${TAG_VER}" != "${LOCAL_VERSION}" ]; then
+              echo "::error::Trigger tag '${RAW_TAG}' does not match package.json version '${LOCAL_VERSION}'"
+              exit 1
+            fi
+          fi
+
+          # 3. Verify existing remote/local tag points to current HEAD_SHA
+          EXISTING_TAG_SHA=""
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            git fetch origin "refs/tags/${TAG}:refs/tags/${TAG}" --force
+            EXISTING_TAG_SHA=$(git rev-list -n 1 "${TAG}")
+          elif git rev-parse "${TAG}" >/dev/null 2>&1; then
+            EXISTING_TAG_SHA=$(git rev-list -n 1 "${TAG}")
+          fi
+
+          if [ -n "${EXISTING_TAG_SHA}" ] && [ "${EXISTING_TAG_SHA}" != "${HEAD_SHA}" ]; then
+            echo "::error::Existing tag '${TAG}' points to ${EXISTING_TAG_SHA}, which differs from checkout commit ${HEAD_SHA}. Refusing cross-commit release."
+            exit 1
+          fi
+
+          PRIMARY_NPM_VERSION=$(npm view "bla-agents@${LOCAL_VERSION}" version 2>/dev/null || echo "none")
+          ALIAS_NPM_VERSION=$(npm view "bla-shield@${LOCAL_VERSION}" version 2>/dev/null || echo "none")
+          echo "local_version=${LOCAL_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+          echo "existing_tag_sha=${EXISTING_TAG_SHA}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+          if [ "${LOCAL_VERSION}" != "${PRIMARY_NPM_VERSION}" ] || [ "${LOCAL_VERSION}" != "${ALIAS_NPM_VERSION}" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ] || [[ "${TRIGGER_REF}" == refs/tags/* ]]; then
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_publish=false" >> "$GITHUB_OUTPUT"
@@ -82,44 +138,90 @@ jobs:
           npm test
           npm run benchmark
 
-      - name: Package bla-agents release artifact
+      - name: Pack primary and alias release tarballs & verify consistency
         if: steps.check_npm.outputs.should_publish == 'true'
+        env:
+          DISPATCH_VERSION: ${{ inputs.version }}
+          TRIGGER_REF: ${{ github.ref }}
+          HEAD_SHA: ${{ steps.check_npm.outputs.head_sha }}
+          EXISTING_TAG_SHA: ${{ steps.check_npm.outputs.existing_tag_sha }}
         run: |
-          mkdir -p release-assets
-          npm pack --pack-destination release-assets
-          cd release-assets
-          shasum -a 256 *.tgz > SHA256SUMS.txt
-          cat SHA256SUMS.txt
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            import { BLA_IDENTITY } from "./dist/identity.js";
+            import { packDualReleaseTarballs, verifyReleaseConsistency } from "./dist/core/release-plan.js";
+            const pkg = JSON.parse(readFileSync("./package.json", "utf8"));
+            const packed = packDualReleaseTarballs(process.cwd(), "./release-assets");
+            const plan = verifyReleaseConsistency({
+              packageVersion: pkg.version,
+              identityVersion: BLA_IDENTITY.version,
+              dispatchVersion: process.env.DISPATCH_VERSION || null,
+              triggerRef: process.env.TRIGGER_REF || null,
+              headSha: process.env.HEAD_SHA,
+              existingTagSha: process.env.EXISTING_TAG_SHA || null,
+              tarballSha256: packed.primary.sha256,
+              aliasTarballSha256: packed.alias.sha256,
+            });
+            console.log("Release plan verified:", JSON.stringify(plan, null, 2));
+          '
+          cat release-assets/SHA256SUMS.txt
 
-      - name: Create or update GitHub Release
+      - name: Publish bla-agents and bla-shield tarballs to npm
+        if: steps.check_npm.outputs.should_publish == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ steps.check_npm.outputs.local_version }}
+        run: |
+          set -euo pipefail
+          PRIMARY_TGZ="./release-assets/bla-agents-${VERSION}.tgz"
+          ALIAS_TGZ="./release-assets/bla-shield-${VERSION}.tgz"
+
+          if npm view "bla-agents@${VERSION}" version >/dev/null 2>&1; then
+            echo "bla-agents@${VERSION} is already published on npm; skipping primary publish."
+          else
+            npm publish "${PRIMARY_TGZ}" --provenance --access public \
+              || npm publish "${PRIMARY_TGZ}" --access public
+          fi
+
+          if npm view "bla-shield@${VERSION}" version >/dev/null 2>&1; then
+            echo "bla-shield@${VERSION} is already published on npm; skipping alias publish."
+          else
+            npm publish "${ALIAS_TGZ}" --provenance --access public \
+              || npm publish "${ALIAS_TGZ}" --access public
+          fi
+
+      - name: Create or idempotently verify GitHub Release (no cross-commit clobber)
         if: steps.check_npm.outputs.should_publish == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.check_npm.outputs.tag }}
           VERSION: ${{ steps.check_npm.outputs.local_version }}
+          HEAD_SHA: ${{ steps.check_npm.outputs.head_sha }}
         run: |
+          set -euo pipefail
           if ! git rev-parse "$TAG" >/dev/null 2>&1; then
-            git tag "$TAG"
-            git push origin "$TAG" || true
-          fi
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" release-assets/* --clobber
+            git tag "$TAG" "$HEAD_SHA"
+            git push origin "$TAG"
           else
-            gh release create "$TAG" release-assets/* \
-              --title "bla-agents: v${VERSION}" \
-              --generate-notes
+            TAG_SHA=$(git rev-list -n 1 "$TAG")
+            if [ "$TAG_SHA" != "$HEAD_SHA" ]; then
+              echo "::error::Tag $TAG points to $TAG_SHA instead of $HEAD_SHA"
+              exit 1
+            fi
+            git push origin "$TAG"
           fi
 
-      - name: Publish bla-agents to npm (Trusted Publishing OIDC or NPM_TOKEN)
-        if: steps.check_npm.outputs.should_publish == 'true'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          LOCAL_VERSION="${{ steps.check_npm.outputs.local_version }}"
-          if npm view "bla-agents@${LOCAL_VERSION}" version >/dev/null 2>&1; then
-            echo "bla-agents@${LOCAL_VERSION} is already published on npm."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            mkdir -p existing-release-assets
+            gh release download "$TAG" --dir existing-release-assets --pattern "SHA256SUMS.txt"
+            if ! cmp -s release-assets/SHA256SUMS.txt existing-release-assets/SHA256SUMS.txt; then
+              echo "::error::Existing GitHub Release '$TAG' has different SHA256SUMS.txt; refusing to clobber release assets."
+              exit 1
+            fi
+            echo "GitHub Release '$TAG' already exists with identical SHA-256 digests."
           else
-            npm publish --provenance --access public \
-              || npm publish --access public \
-              || (rm -f "${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}" && unset NODE_AUTH_TOKEN && npm publish --provenance --access public)
+            gh release create "$TAG" release-assets/* \
+              --verify-tag \
+              --title "bla-agents: v${VERSION}" \
+              --generate-notes
           fi

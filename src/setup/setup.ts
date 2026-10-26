@@ -1,38 +1,239 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmdirSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BLA_IDENTITY } from "../identity.js";
 import {
+  getClientConfigAdapter,
+  normalizeClientId,
   resolveSupportedAgentClients,
   type AgentClientDefinition,
+  type ClientConfigFormat,
+  type McpServerRegistration,
   type SupportedAgentClientId,
 } from "./clients.js";
+
+export type ClientSelectionSource = "explicit" | "auto-discovered" | "default-all";
+export type SetupSelectionMode = "explicit" | "discovered" | "all-default";
 
 export interface PlannedSetupAction {
   readonly clientId: SupportedAgentClientId;
   readonly displayName: string;
+  readonly format: ClientConfigFormat;
   readonly configPath: string;
   readonly backupPath: string | null;
   readonly skillPath: string;
   readonly mcpCommand: string;
   readonly mcpArgs: readonly string[];
+  readonly clientDetected: boolean;
+  readonly selectionSource: ClientSelectionSource;
+  readonly status: "planned" | "applied" | "error" | "conflict";
+  readonly applied: boolean;
+  readonly error?: string;
 }
+
+export type ClientSetupResult = PlannedSetupAction;
 
 export interface SetupRunOptions {
-  readonly clientIds?: readonly SupportedAgentClientId[];
+  readonly clientIds?: readonly (SupportedAgentClientId | string)[];
+  readonly clients?: readonly (SupportedAgentClientId | string)[];
   readonly allDetected?: boolean;
+  readonly onlyDetected?: boolean;
+  readonly includeUndetected?: boolean;
   readonly dryRun?: boolean;
   readonly yes?: boolean;
+  readonly force?: boolean;
   readonly homeDir?: string;
+  readonly platform?: NodeJS.Platform;
+  readonly env?: NodeJS.ProcessEnv;
+  readonly mcpCommand?: string;
+  readonly mcpArgs?: readonly string[];
 }
 
+export type SetupOptions = SetupRunOptions;
+
 export interface SetupRunResult {
-  readonly status: "planned" | "applied";
+  readonly status: "planned" | "applied" | "error" | "conflict" | "partial";
   readonly actions: readonly PlannedSetupAction[];
+  readonly results: readonly PlannedSetupAction[];
+  readonly discoveredClients: readonly SupportedAgentClientId[];
+  readonly explicitClients: readonly SupportedAgentClientId[];
+  readonly selectionMode: SetupSelectionMode;
+  readonly manifestPath: string | null;
   readonly message: string;
 }
 
-function resolveBundledSkillContent(): string {
+export type SetupReport = SetupRunResult;
+
+export interface InstalledClientRecord {
+  readonly clientId: SupportedAgentClientId;
+  readonly configPath: string;
+  readonly format: ClientConfigFormat;
+  readonly configExistedBefore: boolean;
+  readonly backupPath: string | null;
+  readonly backupSha256: string | null;
+  readonly writtenConfigSha256: string;
+  readonly writtenEntry: McpServerRegistration;
+  readonly writtenEntryHash: string;
+  readonly skillPath: string;
+  readonly skillDirectory: string;
+  readonly skillExistedBefore: boolean;
+  readonly skillDirectoryExistedBefore: boolean;
+  readonly writtenSkillSha256: string;
+  readonly installedAt: string;
+}
+
+export interface BlaInstallManifest {
+  readonly version: 1;
+  readonly updatedAt: string;
+  readonly clients: Record<string, InstalledClientRecord>;
+}
+
+export interface ClientUninstallResult {
+  readonly clientId: SupportedAgentClientId;
+  readonly configPath: string;
+  readonly skillPath: string;
+  readonly mcpRemoved: boolean;
+  readonly skillRemoved: boolean;
+  readonly status: "removed" | "noop" | "conflict" | "error";
+  readonly conflictReason?: string;
+  readonly error?: string;
+}
+
+export interface UninstallRunOptions {
+  readonly homeDir?: string;
+  readonly platform?: NodeJS.Platform;
+  readonly env?: NodeJS.ProcessEnv;
+  readonly clientIds?: readonly (SupportedAgentClientId | string)[];
+  readonly clients?: readonly (SupportedAgentClientId | string)[];
+  readonly force?: boolean;
+}
+
+export interface UninstallRunResult {
+  readonly removedClients: readonly string[];
+  readonly results: readonly ClientUninstallResult[];
+  readonly conflicts: readonly ClientUninstallResult[];
+}
+
+function sha256Hex(content: string | Buffer): string {
+  return createHash("sha256").update(content).digest("hex");
+}
+
+function hashMcpEntry(entry: McpServerRegistration): string {
+  return sha256Hex(
+    JSON.stringify({
+      command: entry.command,
+      args: [...entry.args],
+    }),
+  );
+}
+
+function isBlaOwnedMcpEntry(entry: McpServerRegistration): boolean {
+  const cmd = entry.command.trim();
+  const joinedArgs = entry.args.join(" ");
+  if (
+    cmd === "bla" ||
+    cmd === "bla-agents" ||
+    cmd === "bla-shield" ||
+    cmd.endsWith("/bla") ||
+    cmd.endsWith("\\bla") ||
+    cmd.endsWith("/bla-agents") ||
+    cmd.endsWith("\\bla-agents") ||
+    cmd.endsWith("/bla-shield") ||
+    cmd.endsWith("\\bla-shield")
+  ) {
+    return true;
+  }
+  if (
+    joinedArgs.includes(BLA_IDENTITY.packageName) ||
+    joinedArgs.includes(BLA_IDENTITY.packageAlias) ||
+    joinedArgs.includes("dist/cli.js") ||
+    joinedArgs.includes("src/cli.ts")
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function writeFileAtomicSync(targetPath: string, content: string | Buffer): void {
+  const dir = dirname(targetPath);
+  mkdirSync(dir, { recursive: true });
+  const tmpPath = `${targetPath}.bla-tmp-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  try {
+    writeFileSync(tmpPath, content);
+    renameSync(tmpPath, targetPath);
+  } catch (err) {
+    try {
+      if (existsSync(tmpPath)) {
+        unlinkSync(tmpPath);
+      }
+    } catch {
+      // Ignore cleanup failure
+    }
+    throw err;
+  }
+}
+
+export function getInstallManifestPath(home: string = homedir()): string {
+  return join(home, ".bla", "install-manifest.json");
+}
+
+export function readInstallManifest(home: string = homedir()): BlaInstallManifest {
+  const manifestPath = getInstallManifestPath(home);
+  if (!existsSync(manifestPath)) {
+    return {
+      version: 1,
+      updatedAt: new Date(0).toISOString(),
+      clients: {},
+    };
+  }
+  try {
+    const parsed = JSON.parse(readFileSync(manifestPath, "utf8")) as Partial<BlaInstallManifest>;
+    if (
+      parsed &&
+      parsed.version === 1 &&
+      typeof parsed.clients === "object" &&
+      parsed.clients !== null &&
+      !Array.isArray(parsed.clients)
+    ) {
+      return {
+        version: 1,
+        updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : new Date().toISOString(),
+        clients: { ...parsed.clients } as Record<string, InstalledClientRecord>,
+      };
+    }
+  } catch {
+    // Corrupted manifest falls back to empty state
+  }
+  return {
+    version: 1,
+    updatedAt: new Date(0).toISOString(),
+    clients: {},
+  };
+}
+
+function writeInstallManifest(home: string, manifest: BlaInstallManifest): string {
+  const manifestPath = getInstallManifestPath(home);
+  const updated: BlaInstallManifest = {
+    version: 1,
+    updatedAt: new Date().toISOString(),
+    clients: manifest.clients,
+  };
+  writeFileAtomicSync(manifestPath, JSON.stringify(updated, null, 2) + "\n");
+  return manifestPath;
+}
+
+export function resolveBundledSkillContent(): string {
   try {
     const thisDir = dirname(fileURLToPath(import.meta.url));
     const candidate = resolve(thisDir, "../../.agents/skills/blind-llm-agents/SKILL.md");
@@ -57,109 +258,564 @@ function resolveBundledSkillContent(): string {
   ].join("\n");
 }
 
-export function runSetup(options: SetupRunOptions = {}): SetupRunResult {
-  const allClients = resolveSupportedAgentClients(options.homeDir);
-  let selected: AgentClientDefinition[];
+export const generateBlaSkillMarkdown = resolveBundledSkillContent;
 
-  if (options.clientIds && options.clientIds.length > 0) {
-    const set = new Set(options.clientIds);
-    selected = allClients.filter((c) => set.has(c.id));
-  } else if (options.allDetected) {
-    selected = allClients.filter((c) => c.detected);
-  } else {
-    selected = allClients.filter((c) => c.detected);
-    if (selected.length === 0) {
-      selected = allClients.filter((c) => c.id === "claude_code" || c.id === "cursor");
+export function runSetup(options: SetupRunOptions = {}): SetupRunResult {
+  const home = options.homeDir ?? homedir();
+  const allClients = resolveSupportedAgentClients(home, options.platform, options.env);
+  const discoveredClients = allClients.filter((c) => c.detected).map((c) => c.id);
+
+  const requestedList = options.clientIds ?? options.clients;
+  const explicitClients: SupportedAgentClientId[] = [];
+  if (requestedList && requestedList.length > 0) {
+    for (const rawId of requestedList) {
+      const norm = normalizeClientId(String(rawId));
+      if (norm && !explicitClients.includes(norm)) {
+        explicitClients.push(norm);
+      }
     }
   }
 
-  const actions: PlannedSetupAction[] = selected.map((c) => ({
-    clientId: c.id,
-    displayName: c.displayName,
-    configPath: c.configPath,
-    backupPath: existsSync(c.configPath) ? `${c.configPath}.bla-backup` : null,
-    skillPath: join(c.skillDirectory, "SKILL.md"),
-    mcpCommand: "npx",
-    mcpArgs: ["-y", `${BLA_IDENTITY.packageName}@latest`, "mcp"],
-  }));
+  let selected: AgentClientDefinition[];
+  let selectionMode: SetupSelectionMode;
+  let selectionSource: ClientSelectionSource;
 
-  if (options.dryRun || !options.yes) {
+  if (requestedList && requestedList.length > 0) {
+    const set = new Set(explicitClients);
+    selected = allClients.filter((c) => set.has(c.id));
+    selectionMode = "explicit";
+    selectionSource = "explicit";
+  } else if (options.includeUndetected) {
+    selected = [...allClients];
+    selectionMode = "all-default";
+    selectionSource = "default-all";
+  } else {
+    selected = allClients.filter((c) => c.detected);
+    selectionMode = "discovered";
+    selectionSource = "auto-discovered";
+  }
+
+  const mcpCommand = options.mcpCommand ?? "npx";
+  const mcpArgs = options.mcpArgs ? [...options.mcpArgs] : ["-y", `${BLA_IDENTITY.packageName}@latest`, "mcp"];
+
+  const isDryRunOrPlanOnly = options.dryRun === true || options.yes === false;
+  if (isDryRunOrPlanOnly) {
+    const plannedActions: PlannedSetupAction[] = selected.map((c) => ({
+      clientId: c.id,
+      displayName: c.displayName,
+      format: c.format,
+      configPath: c.configPath,
+      backupPath: existsSync(c.configPath) ? `${c.configPath}.bla-backup` : null,
+      skillPath: join(c.skillDirectory, "SKILL.md"),
+      mcpCommand,
+      mcpArgs,
+      clientDetected: c.detected,
+      selectionSource,
+      status: "planned",
+      applied: false,
+    }));
+
     return {
       status: "planned",
-      actions,
+      actions: plannedActions,
+      results: plannedActions,
+      discoveredClients,
+      explicitClients,
+      selectionMode,
+      manifestPath: null,
       message: options.dryRun
-        ? `Dry-run complete: ${actions.length} agent client(s) planned. Run with --yes to apply.`
-        : `Planned setup for ${actions.length} detected agent client(s). Pass --yes to write MCP registrations and skills.`,
+        ? `Dry-run complete: ${plannedActions.length} agent client(s) planned. Run with --yes to apply.`
+        : `Planned setup for ${plannedActions.length} agent client(s). Pass --yes to write MCP registrations and skills.`,
     };
   }
 
   const skillContent = resolveBundledSkillContent();
+  const expectedSkillSha256 = sha256Hex(skillContent);
+  const manifest = readInstallManifest(home);
+  const updatedManifestClients: Record<string, InstalledClientRecord> = { ...manifest.clients };
+  const completedActions: PlannedSetupAction[] = [];
+  let anyApplied = false;
+  let anyError = false;
+  let anyConflict = false;
 
-  for (const action of actions) {
-    mkdirSync(dirname(action.configPath), { recursive: true });
-    let existingConfig: Record<string, unknown> = {};
-    if (existsSync(action.configPath)) {
-      if (action.backupPath) {
-        copyFileSync(action.configPath, action.backupPath);
-      }
+  for (const client of selected) {
+    const adapter = getClientConfigAdapter(client.format);
+    const skillPath = join(client.skillDirectory, "SKILL.md");
+    const backupPathCandidate = `${client.configPath}.bla-backup`;
+    const configExistedBefore = existsSync(client.configPath);
+    const skillDirectoryExistedBefore = existsSync(client.skillDirectory);
+    const skillExistedBefore = existsSync(skillPath);
+
+    let existingRawContent: string | null = null;
+    if (configExistedBefore) {
       try {
-        existingConfig = JSON.parse(readFileSync(action.configPath, "utf8")) as Record<string, unknown>;
-      } catch {
-        existingConfig = {};
+        existingRawContent = readFileSync(client.configPath, "utf8");
+      } catch (err) {
+        anyError = true;
+        completedActions.push({
+          clientId: client.id,
+          displayName: client.displayName,
+          format: client.format,
+          configPath: client.configPath,
+          backupPath: null,
+          skillPath,
+          mcpCommand,
+          mcpArgs,
+          clientDetected: client.detected,
+          selectionSource,
+          status: "error",
+          applied: false,
+          error: `Permission or I/O error reading '${client.configPath}': ${err instanceof Error ? err.message : String(err)}`,
+        });
+        continue;
+      }
+
+      const readRes = adapter.readServer(existingRawContent, BLA_IDENTITY.mcpServerName);
+      if (readRes.status === "malformed") {
+        anyError = true;
+        completedActions.push({
+          clientId: client.id,
+          displayName: client.displayName,
+          format: client.format,
+          configPath: client.configPath,
+          backupPath: null,
+          skillPath,
+          mcpCommand,
+          mcpArgs,
+          clientDetected: client.detected,
+          selectionSource,
+          status: "error",
+          applied: false,
+          error: readRes.error ?? `Malformed configuration file: '${client.configPath}'`,
+        });
+        continue;
+      }
+
+      if (readRes.status === "invalid_entry" && !options.force) {
+        const prevManifestRecord = updatedManifestClients[client.id];
+        if (!prevManifestRecord) {
+          anyError = true;
+          completedActions.push({
+            clientId: client.id,
+            displayName: client.displayName,
+            format: client.format,
+            configPath: client.configPath,
+            backupPath: null,
+            skillPath,
+            mcpCommand,
+            mcpArgs,
+            clientDetected: client.detected,
+            selectionSource,
+            status: "error",
+            applied: false,
+            error:
+              readRes.error ??
+              `Invalid existing '${BLA_IDENTITY.mcpServerName}' MCP entry in '${client.configPath}'`,
+          });
+          continue;
+        }
+      }
+
+      if (readRes.status === "valid" && readRes.entry && !options.force) {
+        const prevManifestRecord = updatedManifestClients[client.id];
+        const entryHash = hashMcpEntry(readRes.entry);
+        const ownedByManifest = prevManifestRecord?.writtenEntryHash === entryHash;
+        const ownedBySignature = isBlaOwnedMcpEntry(readRes.entry);
+        const matchesRequested =
+          readRes.entry.command === mcpCommand &&
+          JSON.stringify(readRes.entry.args) === JSON.stringify(mcpArgs);
+        if (!ownedByManifest && !ownedBySignature && !matchesRequested) {
+          anyConflict = true;
+          completedActions.push({
+            clientId: client.id,
+            displayName: client.displayName,
+            format: client.format,
+            configPath: client.configPath,
+            backupPath: null,
+            skillPath,
+            mcpCommand,
+            mcpArgs,
+            clientDetected: client.detected,
+            selectionSource,
+            status: "conflict",
+            applied: false,
+            error: `Existing non-BLA MCP server '${BLA_IDENTITY.mcpServerName}' in '${client.configPath}'; refusing to overwrite without force`,
+          });
+          continue;
+        }
       }
     }
 
-    const mcpServers =
-      typeof existingConfig.mcpServers === "object" && existingConfig.mcpServers !== null
-        ? { ...(existingConfig.mcpServers as Record<string, unknown>) }
-        : {};
+    // Check skillPath ownership BEFORE writing config or skill
+    if (skillExistedBefore && !options.force) {
+      let existingSkillContent: Buffer;
+      try {
+        existingSkillContent = readFileSync(skillPath);
+      } catch (err) {
+        anyError = true;
+        completedActions.push({
+          clientId: client.id,
+          displayName: client.displayName,
+          format: client.format,
+          configPath: client.configPath,
+          backupPath: null,
+          skillPath,
+          mcpCommand,
+          mcpArgs,
+          clientDetected: client.detected,
+          selectionSource,
+          status: "error",
+          applied: false,
+          error: `Failed to read existing skill file '${skillPath}': ${err instanceof Error ? err.message : String(err)}`,
+        });
+        continue;
+      }
 
-    mcpServers[BLA_IDENTITY.mcpServerName] = {
-      command: action.mcpCommand,
-      args: [...action.mcpArgs],
+      const currentSkillHash = sha256Hex(existingSkillContent);
+      const ownedByAnyManifestClient = Object.values(updatedManifestClients).some(
+        (rec) => rec.skillPath === skillPath && rec.writtenSkillSha256 === currentSkillHash,
+      );
+      if (currentSkillHash !== expectedSkillSha256 && !ownedByAnyManifestClient) {
+        anyConflict = true;
+        completedActions.push({
+          clientId: client.id,
+          displayName: client.displayName,
+          format: client.format,
+          configPath: client.configPath,
+          backupPath: null,
+          skillPath,
+          mcpCommand,
+          mcpArgs,
+          clientDetected: client.detected,
+          selectionSource,
+          status: "conflict",
+          applied: false,
+          error: `Existing custom or user-modified SKILL.md at '${skillPath}'; refusing to overwrite without force`,
+        });
+        continue;
+      }
+    }
+
+    // Prepare new config content via client adapter before touching disk
+    const registration: McpServerRegistration = {
+      command: mcpCommand,
+      args: mcpArgs,
     };
 
-    existingConfig.mcpServers = mcpServers;
-    writeFileSync(action.configPath, JSON.stringify(existingConfig, null, 2) + "\n", "utf8");
+    let nextConfigContent: string;
+    try {
+      nextConfigContent = adapter.upsertServer(
+        existingRawContent,
+        BLA_IDENTITY.mcpServerName,
+        registration,
+      );
+    } catch (err) {
+      anyError = true;
+      completedActions.push({
+        clientId: client.id,
+        displayName: client.displayName,
+        format: client.format,
+        configPath: client.configPath,
+        backupPath: null,
+        skillPath,
+        mcpCommand,
+        mcpArgs,
+        clientDetected: client.detected,
+        selectionSource,
+        status: "error",
+        applied: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      continue;
+    }
 
-    mkdirSync(dirname(action.skillPath), { recursive: true });
-    writeFileSync(action.skillPath, skillContent, "utf8");
+    // Non-clobbering backup: ONLY create `${configPath}.bla-backup` if it does not already exist!
+    let recordedBackupPath: string | null = null;
+    let recordedBackupSha256: string | null = null;
+    try {
+      if (configExistedBefore && existingRawContent !== null) {
+        recordedBackupPath = backupPathCandidate;
+        if (!existsSync(backupPathCandidate)) {
+          writeFileAtomicSync(backupPathCandidate, existingRawContent);
+          recordedBackupSha256 = sha256Hex(existingRawContent);
+        } else {
+          recordedBackupSha256 = sha256Hex(readFileSync(backupPathCandidate));
+        }
+      }
+
+      writeFileAtomicSync(client.configPath, nextConfigContent);
+      writeFileAtomicSync(skillPath, skillContent);
+    } catch (err) {
+      anyError = true;
+      completedActions.push({
+        clientId: client.id,
+        displayName: client.displayName,
+        format: client.format,
+        configPath: client.configPath,
+        backupPath: recordedBackupPath,
+        skillPath,
+        mcpCommand,
+        mcpArgs,
+        clientDetected: client.detected,
+        selectionSource,
+        status: "error",
+        applied: false,
+        error: `Failed to write configuration or skill for '${client.id}': ${err instanceof Error ? err.message : String(err)}`,
+      });
+      continue;
+    }
+
+    const prevRecord = updatedManifestClients[client.id];
+    updatedManifestClients[client.id] = {
+      clientId: client.id,
+      configPath: client.configPath,
+      format: client.format,
+      configExistedBefore: prevRecord ? prevRecord.configExistedBefore : configExistedBefore,
+      backupPath: recordedBackupPath ?? prevRecord?.backupPath ?? null,
+      backupSha256: recordedBackupSha256 ?? prevRecord?.backupSha256 ?? null,
+      writtenConfigSha256: sha256Hex(nextConfigContent),
+      writtenEntry: registration,
+      writtenEntryHash: hashMcpEntry(registration),
+      skillPath,
+      skillDirectory: client.skillDirectory,
+      skillExistedBefore: prevRecord ? prevRecord.skillExistedBefore : skillExistedBefore,
+      skillDirectoryExistedBefore: prevRecord
+        ? prevRecord.skillDirectoryExistedBefore
+        : skillDirectoryExistedBefore,
+      writtenSkillSha256: expectedSkillSha256,
+      installedAt: new Date().toISOString(),
+    };
+
+    anyApplied = true;
+    completedActions.push({
+      clientId: client.id,
+      displayName: client.displayName,
+      format: client.format,
+      configPath: client.configPath,
+      backupPath: recordedBackupPath,
+      skillPath,
+      mcpCommand,
+      mcpArgs,
+      clientDetected: client.detected,
+      selectionSource,
+      status: "applied",
+      applied: true,
+    });
   }
 
+  let manifestPath: string | null = null;
+  if (anyApplied) {
+    manifestPath = writeInstallManifest(home, {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      clients: updatedManifestClients,
+    });
+  }
+
+  let overallStatus: SetupRunResult["status"] = "applied";
+  if (anyError || anyConflict) {
+    if (anyApplied) {
+      overallStatus = "partial";
+    } else if (anyConflict && !anyError) {
+      overallStatus = "conflict";
+    } else {
+      overallStatus = "error";
+    }
+  }
+
+  const appliedCount = completedActions.filter((a) => a.applied).length;
   return {
-    status: "applied",
-    actions,
-    message: `Configured BLA MCP server and skill for ${actions.length} agent client(s). Restart your agent to load BLA tools.`,
+    status: overallStatus,
+    actions: completedActions,
+    results: completedActions,
+    discoveredClients,
+    explicitClients,
+    selectionMode,
+    manifestPath,
+    message:
+      overallStatus === "applied"
+        ? `Configured BLA MCP server and skill for ${appliedCount} agent client(s). Restart your agent to load BLA tools.`
+        : `Completed setup with status '${overallStatus}' (${appliedCount}/${completedActions.length} applied).`,
   };
 }
 
-export function runUninstall(options: { readonly homeDir?: string } = {}): {
-  readonly removedClients: readonly string[];
-} {
-  const allClients = resolveSupportedAgentClients(options.homeDir);
-  const removed: string[] = [];
+export function runUninstall(options: UninstallRunOptions = {}): UninstallRunResult {
+  const home = options.homeDir ?? homedir();
+  const allClients = resolveSupportedAgentClients(home, options.platform, options.env);
+  const requestedList = options.clientIds ?? options.clients;
 
-  for (const client of allClients) {
+  let targetClients: readonly AgentClientDefinition[] = allClients;
+  if (requestedList && requestedList.length > 0) {
+    const normalizedSet = new Set<SupportedAgentClientId>();
+    for (const rawId of requestedList) {
+      const norm = normalizeClientId(String(rawId));
+      if (norm) normalizedSet.add(norm);
+    }
+    targetClients = allClients.filter((c) => normalizedSet.has(c.id));
+  }
+
+  const manifest = readInstallManifest(home);
+  const remainingManifestClients: Record<string, InstalledClientRecord> = { ...manifest.clients };
+  const bundledSkillHash = sha256Hex(resolveBundledSkillContent());
+
+  const removedClients: string[] = [];
+  const results: ClientUninstallResult[] = [];
+  const conflicts: ClientUninstallResult[] = [];
+
+  for (const client of targetClients) {
+    const adapter = getClientConfigAdapter(client.format);
+    const skillPath = join(client.skillDirectory, "SKILL.md");
+    const manifestRecord = remainingManifestClients[client.id];
+
+    let mcpRemoved = false;
+    let skillRemoved = false;
+    let conflictReason: string | undefined;
+    let errorMsg: string | undefined;
+
+    // 1. Check and remove MCP registration if owned by BLA
     if (existsSync(client.configPath)) {
+      let rawConfig: string | null = null;
       try {
-        const parsed = JSON.parse(readFileSync(client.configPath, "utf8")) as Record<string, unknown>;
-        if (
-          typeof parsed.mcpServers === "object" &&
-          parsed.mcpServers !== null &&
-          BLA_IDENTITY.mcpServerName in (parsed.mcpServers as Record<string, unknown>)
-        ) {
-          delete (parsed.mcpServers as Record<string, unknown>)[BLA_IDENTITY.mcpServerName];
-          writeFileSync(client.configPath, JSON.stringify(parsed, null, 2) + "\n", "utf8");
-          removed.push(client.id);
+        rawConfig = readFileSync(client.configPath, "utf8");
+      } catch (err) {
+        errorMsg = `Failed to read '${client.configPath}': ${err instanceof Error ? err.message : String(err)}`;
+      }
+
+      if (rawConfig !== null) {
+        const readRes = adapter.readServer(rawConfig, BLA_IDENTITY.mcpServerName);
+        if (readRes.status === "malformed") {
+          conflictReason =
+            readRes.error ?? `Malformed configuration at '${client.configPath}'; refusing to modify`;
+        } else if (readRes.status === "invalid_entry") {
+          if (manifestRecord || options.force) {
+            try {
+              const rem = adapter.removeServer(rawConfig, BLA_IDENTITY.mcpServerName);
+              if (rem.removed) {
+                writeFileAtomicSync(client.configPath, rem.content);
+                mcpRemoved = true;
+              }
+            } catch (err) {
+              errorMsg = err instanceof Error ? err.message : String(err);
+            }
+          } else {
+            conflictReason =
+              readRes.error ??
+              `Invalid non-BLA entry '${BLA_IDENTITY.mcpServerName}' in '${client.configPath}'; refusing to remove`;
+          }
+        } else if (readRes.status === "valid" && readRes.entry) {
+          const entryHash = hashMcpEntry(readRes.entry);
+          const ownedByManifest = manifestRecord?.writtenEntryHash === entryHash;
+          const ownedBySignature = isBlaOwnedMcpEntry(readRes.entry);
+          if (!ownedByManifest && !ownedBySignature && !options.force) {
+            conflictReason = `MCP entry '${BLA_IDENTITY.mcpServerName}' in '${client.configPath}' was not installed by BLA; preserving custom entry`;
+          } else {
+            try {
+              const rem = adapter.removeServer(rawConfig, BLA_IDENTITY.mcpServerName);
+              if (rem.removed) {
+                writeFileAtomicSync(client.configPath, rem.content);
+                mcpRemoved = true;
+              }
+            } catch (err) {
+              errorMsg = err instanceof Error ? err.message : String(err);
+            }
+          }
         }
-      } catch {
-        // Ignore malformed
       }
     }
-    if (existsSync(client.skillDirectory)) {
-      rmSync(client.skillDirectory, { recursive: true, force: true });
+
+    // If MCP removal succeeded (or config had no conflicting BLA entry), check skill removal
+    const canRemoveManifestRecord = !conflictReason && !errorMsg;
+    if (canRemoveManifestRecord && manifestRecord) {
+      delete remainingManifestClients[client.id];
+    }
+
+    // Check if another still-installed client in manifest (or another client not targeted in this uninstall) shares `skillPath`
+    const targetIdsSet = new Set(targetClients.map((c) => c.id));
+    const sharedByOtherRemainingManifestClient = Object.values(remainingManifestClients).some(
+      (rec) => rec.clientId !== client.id && rec.skillPath === skillPath && !targetIdsSet.has(rec.clientId),
+    );
+
+    if (!sharedByOtherRemainingManifestClient && existsSync(skillPath)) {
+      try {
+        const currentSkillSha = sha256Hex(readFileSync(skillPath));
+        const ownedByThisManifest =
+          manifestRecord !== undefined && manifestRecord.writtenSkillSha256 === currentSkillSha;
+        const ownedByAnyManifest = Object.values(manifest.clients).some(
+          (rec) => rec.skillPath === skillPath && rec.writtenSkillSha256 === currentSkillSha,
+        );
+        const ownedByFallbackUnmodified =
+          manifestRecord === undefined && mcpRemoved && currentSkillSha === bundledSkillHash;
+
+        if (ownedByThisManifest || ownedByAnyManifest || ownedByFallbackUnmodified || options.force) {
+          unlinkSync(skillPath);
+          skillRemoved = true;
+          // Only remove `client.skillDirectory` if it is now completely empty!
+          if (existsSync(client.skillDirectory)) {
+            const remainingFiles = readdirSync(client.skillDirectory);
+            if (remainingFiles.length === 0) {
+              rmdirSync(client.skillDirectory);
+            }
+          }
+        } else if (manifestRecord !== undefined || mcpRemoved) {
+          conflictReason =
+            conflictReason ??
+            `Skill file '${skillPath}' was modified after installation; preserving user changes`;
+        } else {
+          conflictReason =
+            conflictReason ??
+            `Skill file '${skillPath}' is not owned by BLA; preserving custom skill`;
+        }
+      } catch (err) {
+        errorMsg =
+          errorMsg ??
+          `Failed to inspect or remove skill '${skillPath}': ${err instanceof Error ? err.message : String(err)}`;
+      }
+    }
+
+    if (mcpRemoved) {
+      removedClients.push(client.id);
+    }
+
+    const itemStatus: ClientUninstallResult["status"] = errorMsg
+      ? "error"
+      : conflictReason
+        ? "conflict"
+        : mcpRemoved || skillRemoved
+          ? "removed"
+          : "noop";
+
+    const itemResult: ClientUninstallResult = {
+      clientId: client.id,
+      configPath: client.configPath,
+      skillPath,
+      mcpRemoved,
+      skillRemoved,
+      status: itemStatus,
+      ...(conflictReason ? { conflictReason } : {}),
+      ...(errorMsg ? { error: errorMsg } : {}),
+    };
+
+    results.push(itemResult);
+    if (itemStatus === "conflict" || itemStatus === "error") {
+      conflicts.push(itemResult);
     }
   }
 
-  return { removedClients: removed };
+  // Persist updated manifest if it existed or has remaining records
+  const manifestPath = getInstallManifestPath(home);
+  if (existsSync(manifestPath) || Object.keys(remainingManifestClients).length > 0) {
+    writeInstallManifest(home, {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      clients: remainingManifestClients,
+    });
+  }
+
+  return {
+    removedClients,
+    results,
+    conflicts,
+  };
 }
+
+export const uninstallSetup = runUninstall;

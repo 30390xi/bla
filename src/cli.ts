@@ -218,7 +218,7 @@ export async function runCli(argv: readonly string[] = process.argv.slice(2)): P
         const doc = runDoctor();
         if (parsed.json) console.log(JSON.stringify(doc, null, 2));
         else console.log(formatDoctorReport(doc));
-        return 0;
+        return doc.healthy ? 0 : 1;
       }
 
       case "update": {
