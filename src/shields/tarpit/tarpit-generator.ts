@@ -151,13 +151,14 @@ export function generateJsTarpitAndBudgetBreaker(
 
   // Master dispatcher anchored to global/module scope so tree-shakers & static analyzers keep all decoy nodes alive
   const anchorName = `_bla_shield_anchor_${prng.hex(4)}`;
-  lines.push(`export function ${anchorName}(_seed = 0) {`);
+  lines.push(`function ${anchorName}(_seed = 0) {`);
   lines.push(`  if (${generateJsOpaqueFalseExpression(prng, stateVar)}) {`);
   const calls = decoyNames.slice(0, Math.min(8, decoyNames.length)).map((n, idx) => `${n}(_seed + ${idx}, 3)`).join(" ^ ");
   lines.push(`    return (${calls}) ^ ${aliasFn}(false, null) ^ ${budgetFn}(false, "slot");`);
   lines.push(`  }`);
   lines.push(`  return ${chaffTableVar}.length ^ _seed;`);
   lines.push(`}`);
+  lines.push(`void ${anchorName};`);
 
   return {
     code: lines.join("\n"),
