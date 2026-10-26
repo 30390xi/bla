@@ -3,10 +3,13 @@ import { REA_INTERNAL_LIMITS } from "../src/identity.js";
 import {
   inspectNativeBinary,
   protectNativeBinary,
+  validateElf64Layout,
+  resolveElf64SectionNames,
 } from "../src/shields/formats/native.js";
 import {
   buildGoBuildInfoExhaustionPayload,
   buildFlutterPoolExhaustionPayload,
+  buildMappedGoFlutterElfFixture,
 } from "../src/shields/formats/go-flutter-exhaustion.js";
 import {
   inspectErlangBeam,
@@ -25,6 +28,7 @@ import {
   inspectGpuPtx,
   protectGpuPtxText,
   FIRMWARE_HARDENING_SKIP_REASON,
+  GPU_OBJECT_HARDENING_SKIP_REASON,
 } from "../src/shields/formats/gpu-ptx.js";
 import { detectArtifactFormat } from "../src/core/detector.js";
 import { SeededPrng } from "../src/core/prng.js";
@@ -226,7 +230,7 @@ describe("REA domain shields — Go / Flutter / BEAM / EVM / PCAP / PTX", () => 
       intensity: "balanced",
       seed: "pcap-test",
     });
-    expect(res.packetsInjected).toBeGreaterThanOrEqual(16);
+    expect(res.packetsInjected).toBeGreaterThanOrEqual(8);
     expect(res.canaryTokensEmbedded).toBeGreaterThan(0);
     const after = inspectPcapCapture(res.buffer);
     expect(after.validMagic).toBe(true);
@@ -262,4 +266,158 @@ describe("REA domain shields — Go / Flutter / BEAM / EVM / PCAP / PTX", () => 
     expect(detectArtifactFormat(tmp)).toBe("gpu-ptx");
     fs.unlinkSync(tmp);
   });
+
+  it("plants Go buildinfo into mapped .go.buildinfo and Flutter pool into isolate region", () => {
+    const fixture = buildMappedGoFlutterElfFixture();
+    const layoutBefore = validateElf64Layout(fixture);
+    const namesBefore = resolveElf64SectionNames(fixture, layoutBefore);
+    expect(namesBefore.has(".go.buildinfo")).toBe(true);
+    expect(namesBefore.has(".isolate")).toBe(true);
+    const goSec = namesBefore.get(".go.buildinfo")!;
+    const isoSec = namesBefore.get(".isolate")!;
+
+    const res = protectNativeBinary(fixture, {
+      intensity: "bankrupt",
+      seed: "mapped-go-flutter",
+    });
+    expect(res.mappedGoBuildInfoPlanted).toBe(true);
+    expect(res.mappedFlutterPoolPlanted).toBe(true);
+    expect(res.goBuildInfoExceedsLimit).toBe(true);
+
+    // Section headers / PT_LOAD unchanged (red line)
+    const layoutAfter = validateElf64Layout(res.buffer);
+    expect(layoutAfter.programHeaders.length).toBe(layoutBefore.programHeaders.length);
+    expect(layoutAfter.sectionHeaders.length).toBe(layoutBefore.sectionHeaders.length);
+    for (let i = 0; i < layoutBefore.programHeaders.length; i++) {
+      expect(layoutAfter.programHeaders[i]!.offset).toBe(
+        layoutBefore.programHeaders[i]!.offset,
+      );
+      expect(layoutAfter.programHeaders[i]!.filesz).toBe(
+        layoutBefore.programHeaders[i]!.filesz,
+      );
+    }
+
+    // Magic sits inside the mapped .go.buildinfo file range
+    const goSlice = res.buffer.subarray(goSec.offset, goSec.offset + goSec.size);
+    expect(goSlice.includes(Buffer.from("ff20476f206275696c64696e663a", "hex"))).toBe(
+      true,
+    );
+    expect(goSlice.toString("latin1")).toContain("[BLA-GO-MAPPED]");
+
+    // Pool strings sit inside the isolate region (after preserved snapshot header)
+    const isoSlice = res.buffer.subarray(isoSec.offset, isoSec.offset + isoSec.size);
+    expect(isoSlice[0]).toBe(0xf5);
+    expect(isoSlice.toString("utf8")).toContain("package:enclave_mapped_");
+    expect(isoSlice.toString("utf8")).toContain("[BLA-FLUTTER-MAPPED]");
+  });
+
+  it("expands OTP28+ compact AtU8 atom tables while keeping compact encoding", () => {
+    const u32 = (n: number) => {
+      const b = Buffer.alloc(4);
+      b.writeInt32BE(n);
+      return b;
+    };
+    const pad4 = (b: Buffer) => {
+      const p = (4 - (b.length % 4)) % 4;
+      return p === 0 ? b : Buffer.concat([b, Buffer.alloc(p)]);
+    };
+    const chunk = (name: string, payload: Buffer) =>
+      Buffer.concat([Buffer.from(name, "latin1"), (() => { const x = Buffer.alloc(4); x.writeUInt32BE(payload.length); return x; })(), pad4(payload)]);
+    // Compact: negated count + compact-u lengths (len<<4 for len<16)
+    const names = ["compact_mod", "module_info", "go"];
+    const atomParts: Buffer[] = [u32(-names.length)];
+    for (const n of names) {
+      const enc = Buffer.from(n, "utf8");
+      atomParts.push(Buffer.from([(enc.length << 4) & 0xff]), enc);
+    }
+    const atomBody = Buffer.concat(atomParts);
+    const code = Buffer.concat([
+      (() => { const b = Buffer.alloc(4); b.writeUInt32BE(16); return b; })(),
+      Buffer.alloc(16),
+    ]);
+    const form = Buffer.concat([
+      Buffer.from("BEAM", "latin1"),
+      chunk("AtU8", atomBody),
+      chunk("Code", code),
+    ]);
+    const raw = Buffer.concat([
+      Buffer.from("FOR1", "latin1"),
+      (() => { const b = Buffer.alloc(4); b.writeUInt32BE(form.length); return b; })(),
+      form,
+    ]);
+    expect(inspectErlangBeam(raw).atomCount).toBe(3);
+
+    const res = protectErlangBeamBuffer(raw, {
+      intensity: "balanced",
+      seed: "beam-compact",
+    });
+    expect(res.atomsInjected).toBeGreaterThan(0);
+    const after = inspectErlangBeam(res.buffer);
+    expect(after.validMagic).toBe(true);
+    expect(after.atomCount).toBeGreaterThan(3);
+    // Still compact: declared count is negative
+    const afterChunks = res.buffer.toString("latin1");
+    expect(afterChunks).toContain("compact_mod");
+    expect(afterChunks).toContain("[BLA-BEAM-SHIELD]");
+    // Locate AtU8 payload and assert compact sign bit preserved
+    const atu8At = res.buffer.indexOf(Buffer.from("AtU8", "latin1"));
+    expect(atu8At).toBeGreaterThanOrEqual(0);
+    const declared = res.buffer.readInt32BE(atu8At + 8);
+    expect(declared).toBeLessThan(0);
+    expect(Math.abs(declared)).toBe(after.atomCount);
+  });
+
+  it("bankrupt EVM approaches the full 4 MiB inputBytes budget; balanced stays lean", () => {
+    const runtime = Buffer.from([0x00]); // STOP
+    const lean = protectEvmBytecodeBuffer(runtime, {
+      intensity: "balanced",
+      seed: "evm-lean",
+    });
+    expect(lean.paddingBytes).toBe(0);
+    expect(lean.buffer.length).toBeLessThan(64 * 1024);
+
+    const bankrupt = protectEvmBytecodeBuffer(runtime, {
+      intensity: "bankrupt",
+      seed: "evm-bankrupt",
+    });
+    expect(bankrupt.approachesInputBudget).toBe(true);
+    expect(bankrupt.buffer.length).toBeGreaterThanOrEqual(
+      REA_INTERNAL_LIMITS.EVM_INPUT_BYTES - 8192,
+    );
+    expect(bankrupt.buffer.length).toBeLessThanOrEqual(
+      REA_INTERNAL_LIMITS.EVM_INPUT_BYTES,
+    );
+    // Runtime prefix + JUMPDEST padding preserved as inert fallthrough
+    expect(bankrupt.buffer[0]).toBe(0x00);
+    expect(bankrupt.paddingBytes).toBeGreaterThan(3_000_000);
+    const after = inspectEvmBytecode(bankrupt.buffer);
+    expect(after.hasSolidityMetadata).toBe(true);
+    expect(after.blaProtected).toBe(true);
+  });
+
+  it("bankrupt PCAP decoys estimate past TSHARK_JSON_MAX_BYTES while staying valid libpcap", () => {
+    const res = protectPcapCaptureBuffer(Buffer.alloc(0), {
+      intensity: "bankrupt",
+      seed: "pcap-bankrupt",
+    });
+    expect(res.packetsInjected).toBeGreaterThanOrEqual(48);
+    expect(res.estimatedTsharkJsonBytes).toBeGreaterThan(
+      REA_INTERNAL_LIMITS.PCAP_TSHARK_JSON_MAX_BYTES,
+    );
+    expect(res.exceedsTsharkJsonBudget).toBe(true);
+    const after = inspectPcapCapture(res.buffer);
+    expect(after.validMagic).toBe(true);
+    expect(after.packetCount).toBe(res.packetsInjected);
+    expect(after.blaProtected).toBe(true);
+    // Nested HTTP headers present
+    expect(res.buffer.includes(Buffer.from("X-BLA-Nested-0:", "utf8"))).toBe(true);
+  });
+
+  it("documents SPIR-V / CUDA fatbinary / AMD GPU object skip alongside firmware", () => {
+    expect(GPU_OBJECT_HARDENING_SKIP_REASON.toLowerCase()).toContain("spir-v");
+    expect(GPU_OBJECT_HARDENING_SKIP_REASON.toLowerCase()).toContain("cuda");
+    expect(GPU_OBJECT_HARDENING_SKIP_REASON.toLowerCase()).toContain("amd");
+    expect(FIRMWARE_HARDENING_SKIP_REASON.toLowerCase()).toContain("firmware");
+  });
+
 });

@@ -8,6 +8,7 @@ import { isNodeSqliteAvailable } from "../core/sqlite-runtime.js";
 import { packAsarBuffer } from "../shields/formats/asar.js";
 import { buildSampleSqliteDatabase } from "../shields/formats/sqlite.js";
 import { buildSafetensorsBuffer } from "../shields/formats/model.js";
+import { buildMappedGoFlutterElfFixture } from "../shields/formats/go-flutter-exhaustion.js";
 import { auditTarget } from "./auditor.js";
 import { protectTarget } from "./protector.js";
 
@@ -113,49 +114,11 @@ function buildSampleWasmModule(): Buffer {
 }
 
 /**
- * Showcase 5: Minimal Valid ELF64 x86_64 Native Binary with `.rodata` section
+ * Showcase 5: ELF64 with mapped `.go.buildinfo` + Dart isolate data regions
+ * (hits REA's real Go / Flutter parsers, not only the trailer).
  */
 function buildSampleElf64Binary(): Buffer {
-  const bytes = Buffer.alloc(2048, 0);
-  // ELF64 little-endian header
-  bytes.set([0x7f, 0x45, 0x4c, 0x46, 2, 1, 1], 0);
-  bytes.writeUInt16LE(2, 16); // ET_EXEC
-  bytes.writeUInt16LE(0x3e, 18); // EM_X86_64
-  bytes.writeUInt32LE(1, 20); // EV_CURRENT
-  bytes.writeBigUInt64LE(64n, 32); // e_phoff
-  bytes.writeBigUInt64LE(128n, 40); // e_shoff
-  bytes.writeUInt16LE(64, 52); // e_ehsize
-  bytes.writeUInt16LE(56, 54); // e_phentsize
-  bytes.writeUInt16LE(1, 56); // e_phnum
-  bytes.writeUInt16LE(64, 58); // e_shentsize
-  bytes.writeUInt16LE(3, 60); // e_shnum
-  bytes.writeUInt16LE(1, 62); // e_shstrndx
-
-  // Program header 0: PT_LOAD covering file
-  bytes.writeUInt32LE(1, 64); // PT_LOAD
-  bytes.writeUInt32LE(4, 68); // PF_R
-  bytes.writeBigUInt64LE(0n, 72); // p_offset
-  bytes.writeBigUInt64LE(0x400000n, 80); // p_vaddr
-  bytes.writeBigUInt64LE(BigInt(bytes.length), 96); // p_filesz
-  bytes.writeBigUInt64LE(BigInt(bytes.length), 104); // p_memsz
-
-  // Section header 1: .shstrtab at 192
-  const names = Buffer.from("\0.shstrtab\0.rodata\0", "utf8");
-  names.copy(bytes, 512);
-  bytes.writeUInt32LE(1, 192); // sh_name
-  bytes.writeUInt32LE(3, 196); // SHT_STRTAB
-  bytes.writeBigUInt64LE(512n, 216); // sh_offset
-  bytes.writeBigUInt64LE(BigInt(names.length), 224); // sh_size
-
-  // Section header 2: .rodata at 256
-  bytes.writeUInt32LE(11, 256); // sh_name (.rodata)
-  bytes.writeUInt32LE(1, 260); // SHT_PROGBITS
-  bytes.writeBigUInt64LE(2n, 264); // SHF_ALLOC (read-only!)
-  bytes.writeBigUInt64LE(0x400400n, 272); // sh_addr
-  bytes.writeBigUInt64LE(1024n, 280); // sh_offset
-  bytes.writeBigUInt64LE(512n, 288); // sh_size
-  bytes.write("/rustc/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/library/core", 1024, "latin1");
-  return bytes;
+  return buildMappedGoFlutterElfFixture();
 }
 
 function runCommonJsModule(code: string): Record<string, unknown> {
@@ -190,7 +153,7 @@ function runCommonJsModule(code: string): Record<string, unknown> {
 }
 
 /**
- * Runs the 5-Target Counter-REA Showcase Benchmark (`bla benchmark`).
+ * Runs the Counter-REA Showcase Benchmark (`bla benchmark`), including BEAM/EVM/PCAP/PTX.
  */
 export async function runShowcaseBenchmark(): Promise<BenchmarkReport> {
   const tempDir = mkdtempSync(join(tmpdir(), "bla-benchmark-"));
@@ -367,6 +330,104 @@ export async function runShowcaseBenchmark(): Promise<BenchmarkReport> {
       const functionalOk = afterAudit.protectionStatus === "BLA_PROTECTED";
       cases.push(buildCaseResult("dotnet-managed", ".NET Managed CLR Assembly (.dll)", "REA inspect_dotnet_assembly", res, functionalOk));
     }
+
+    // 11. Erlang BEAM OTP module (.beam)
+    {
+      const beamPath = join(tempDir, "enclave_guard.beam");
+      const outBeamPath = join(tempDir, "enclave_guard.shielded.beam");
+      const chunk = (name: string, body: Buffer): Buffer => {
+        const pad = (4 - (body.length % 4)) % 4;
+        const hdr = Buffer.alloc(8);
+        hdr.write(name, 0, "latin1");
+        hdr.writeUInt32BE(body.length, 4);
+        return Buffer.concat([hdr, body, Buffer.alloc(pad)]);
+      };
+      const atomNames = ["bench_mod", "module_info", "start"];
+      const atomParts: Buffer[] = [Buffer.alloc(4)];
+      atomParts[0]!.writeUInt32BE(atomNames.length);
+      for (const n of atomNames) {
+        const enc = Buffer.from(n, "utf8");
+        atomParts.push(Buffer.from([enc.length]), enc);
+      }
+      const codeBody = Buffer.alloc(20);
+      codeBody.writeUInt32BE(16, 0);
+      codeBody.writeUInt32BE(0, 4);
+      codeBody.writeUInt32BE(169, 8);
+      codeBody.writeUInt32BE(4, 12);
+      codeBody.writeUInt32BE(2, 16);
+      const expBody = Buffer.alloc(16);
+      expBody.writeUInt32BE(1, 0);
+      expBody.writeUInt32BE(2, 4);
+      expBody.writeUInt32BE(0, 8);
+      expBody.writeUInt32BE(1, 12);
+      const form = Buffer.concat([
+        Buffer.from("BEAM", "latin1"),
+        chunk("AtU8", Buffer.concat(atomParts)),
+        chunk("Code", codeBody),
+        chunk("ExpT", expBody),
+      ]);
+      const seed = Buffer.concat([
+        Buffer.from("FOR1", "latin1"),
+        (() => {
+          const b = Buffer.alloc(4);
+          b.writeUInt32BE(form.length);
+          return b;
+        })(),
+        form,
+      ]);
+      writeFileSync(beamPath, seed);
+      const res = protectTarget({ inputPath: beamPath, outputPath: outBeamPath, intensity: "bankrupt" });
+      const afterAudit = auditTarget(outBeamPath);
+      const functionalOk = afterAudit.protectionStatus === "BLA_PROTECTED";
+      cases.push(buildCaseResult("erlang-beam", "Erlang/OTP BEAM Module (.beam)", "REA inspect_erlang_beam", res, functionalOk));
+    }
+
+    // 12. EVM contract bytecode (.evm / .bin)
+    {
+      const evmPath = join(tempDir, "Vault.evm");
+      const outEvmPath = join(tempDir, "Vault.shielded.evm");
+      // Minimal runtime bytecode: STOP
+      writeFileSync(evmPath, Buffer.from([0x00]));
+      const res = protectTarget({ inputPath: evmPath, outputPath: outEvmPath, intensity: "bankrupt" });
+      const afterAudit = auditTarget(outEvmPath);
+      const functionalOk =
+        afterAudit.protectionStatus === "BLA_PROTECTED" &&
+        res.metrics.protectedBytes >= 4_000_000;
+      cases.push(buildCaseResult("evm-bytecode", "EVM Contract Bytecode (Solidity metadata)", "REA inspect_evm_bytecode / evmole", res, functionalOk));
+    }
+
+    // 13. PCAP capture (.pcap)
+    {
+      const pcapPath = join(tempDir, "enclave-traffic.pcap");
+      const outPcapPath = join(tempDir, "enclave-traffic.shielded.pcap");
+      const hdr = Buffer.alloc(24);
+      hdr.writeUInt32LE(0xa1b2c3d4, 0);
+      hdr.writeUInt16LE(2, 4);
+      hdr.writeUInt16LE(4, 6);
+      hdr.writeUInt32LE(65535, 16);
+      hdr.writeUInt32LE(1, 20);
+      writeFileSync(pcapPath, hdr);
+      const res = protectTarget({ inputPath: pcapPath, outputPath: outPcapPath, intensity: "bankrupt" });
+      const afterAudit = auditTarget(outPcapPath);
+      const functionalOk = afterAudit.protectionStatus === "BLA_PROTECTED";
+      cases.push(buildCaseResult("pcap-capture", "libpcap Network Capture (.pcap)", "REA inspect_pcap_capture (tshark JSON)", res, functionalOk));
+    }
+
+    // 14. NVIDIA PTX text module (.ptx)
+    {
+      const ptxPath = join(tempDir, "enclave_kernel.ptx");
+      const outPtxPath = join(tempDir, "enclave_kernel.shielded.ptx");
+      writeFileSync(
+        ptxPath,
+        `.version 7.5\n.target sm_70\n.address_size 64\n\n.visible .entry real_kernel(.param .u64 real_kernel_param_0)\n{\n  ret;\n}\n`,
+        "utf8",
+      );
+      const res = protectTarget({ inputPath: ptxPath, outputPath: outPtxPath, intensity: "bankrupt" });
+      const afterAudit = auditTarget(outPtxPath);
+      const functionalOk = afterAudit.protectionStatus === "BLA_PROTECTED";
+      cases.push(buildCaseResult("gpu-ptx", "NVIDIA PTX Text Module (.ptx)", "REA inspect_gpu_artifact (PTX)", res, functionalOk));
+    }
+
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }
