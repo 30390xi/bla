@@ -1,3 +1,4 @@
+import { REA_INTERNAL_LIMITS } from "../../identity.js";
 import { SeededPrng } from "../../core/prng.js";
 import type { ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";

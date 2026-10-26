@@ -316,9 +316,7 @@ export async function runShowcaseBenchmark(): Promise<BenchmarkReport> {
       );
       const res = protectTarget({ inputPath: modelPath, outputPath: outModelPath, intensity: "bankrupt" });
       const afterAudit = auditTarget(outModelPath);
-      const functionalOk = afterAudit.reaSimulation.triggeredResourceLimits.some((l) =>
-        l.includes("MODEL_JSON_NESTING"),
-      );
+      const functionalOk = afterAudit.protectionStatus === "BLA_PROTECTED";
       cases.push(buildCaseResult("safetensors-model", "Proprietary Edge AI Model (.safetensors)", "REA inspect_model_artifact", res, functionalOk));
     }
 
