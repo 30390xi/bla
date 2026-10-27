@@ -230,6 +230,10 @@ npm run redteam:rea                        # authoritative (real REA)
 # npm run verify:rea                       # drift harness only — NOT protection proof
 ```
 
+## Community / 友情社区
+
+- [LINUX DO (`linux.do`)](https://linux.do/) — 新的理想型社区
+
 ## License
 
 [MIT](LICENSE)

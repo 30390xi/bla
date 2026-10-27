@@ -284,6 +284,10 @@ BLA 是一款防御性软件保护工具，仅用于加固你拥有合法权利�
 
 欢迎在 [qybaihe/bla](https://github.com/qybaihe/bla) 提交 Issue 或 Pull Request。提交代码前请运行 `npm run build && npm test && node dist/cli.js benchmark`。
 
+## 友情社区
+
+- [LINUX DO (`linux.do`)](https://linux.do/) — 新的理想型社区
+
 ## 开源协议
 
 [MIT](../../LICENSE)
