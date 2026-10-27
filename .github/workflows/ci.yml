@@ -70,7 +70,12 @@ jobs:
       - name: Verify REA constant alignment (skip if REA absent)
         env:
           REA_ROOT: ${{ steps.rea.outputs.root }}
-        run: npm run verify:rea
+        run: |
+          if [ "${{ steps.rea.outputs.present }}" != "true" ]; then
+            echo "SKIP: npm run verify:rea (sibling REA not checked out alongside BLA)"
+            exit 0
+          fi
+          npm run verify:rea
 
       - name: Empirical REA red-team (skip if REA absent)
         env:

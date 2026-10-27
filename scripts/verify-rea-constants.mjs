@@ -24,9 +24,11 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BLA_ROOT = resolve(__dirname, "..");
-const REA_ROOT = resolve(
-  process.env.REA_ROOT ?? join(BLA_ROOT, "..", "rea"),
-);
+// Treat an empty/whitespace REA_ROOT as unset. CI passes `REA_ROOT=""` when the
+// sibling checkout is absent; `??` would keep "" and resolve("") === cwd, which
+// silently pointed this harness at BLA's OWN tree and produced bogus failures.
+const REA_ROOT_ENV = (process.env.REA_ROOT ?? "").trim();
+const REA_ROOT = resolve(REA_ROOT_ENV || join(BLA_ROOT, "..", "rea"));
 
 /** Evaluate a simple numeric TS/Python initializer (`64 * 1024`, `1_048_576`, `65_536`). */
 function evalNumericExpr(expr) {
@@ -248,7 +250,11 @@ function main() {
   console.log(`  BLA_ROOT = ${BLA_ROOT}`);
   console.log(`  REA_ROOT = ${REA_ROOT}`);
 
-  if (!existsSync(REA_ROOT) || !existsSync(join(REA_ROOT, "src"))) {
+  if (
+    REA_ROOT === BLA_ROOT ||
+    !existsSync(REA_ROOT) ||
+    !existsSync(join(REA_ROOT, "src"))
+  ) {
     console.log(
       `SKIP: sibling REA checkout not found at ${REA_ROOT}. ` +
         "verify:rea requires a local REA tree; CI skips when absent.",

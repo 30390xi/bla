@@ -4,6 +4,27 @@ All notable changes to **bla-agents** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] — 2026-10-27
+
+Patch: stop CI from treating an absent sibling REA checkout as "REA = this
+repo". When REA is not present, GitHub Actions sets `REA_ROOT=""`; the old
+`??` fallback kept the empty string, so `resolve("")` became the BLA workspace
+and `verify:rea` walked BLA's own source looking for REA constants (bogus
+parse failures). Local vitest stayed green because this box has a real sibling
+REA.
+
+### Fixed
+
+- **`verify:rea` empty `REA_ROOT`** — treat empty/whitespace as unset; also
+  soft-skip when `REA_ROOT === BLA_ROOT`.
+- **CI workflow** — `verify:rea` now guards on `steps.rea.outputs.present`
+  the same way `redteam:rea` already did.
+- **redteam paths** — same empty-`REA_ROOT` treatment in
+  `scripts/redteam/lib/paths.mjs`.
+
+Verified locally: typecheck + 202/202 tests; empty/`BLA_ROOT` REA_ROOT soft-skip;
+real sibling still 42/42 PASS.
+
 ## [1.4.1] — 2026-10-27
 
 Patch: green the CI pipeline. The v1.4.0 anti-strip work added `hardenProject`

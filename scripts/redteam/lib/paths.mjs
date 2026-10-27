@@ -4,9 +4,9 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const BLA_ROOT = resolve(__dirname, "../../..");
-export const REA_ROOT = resolve(
-  process.env.REA_ROOT ?? join(BLA_ROOT, "..", "rea"),
-);
+// Empty/whitespace REA_ROOT is unset (CI passes "" when sibling REA is absent).
+const REA_ROOT_ENV = (process.env.REA_ROOT ?? "").trim();
+export const REA_ROOT = resolve(REA_ROOT_ENV || join(BLA_ROOT, "..", "rea"));
 export const REDTEAM_OUT_DIR = join(BLA_ROOT, "docs/redteam");
 export const REDTEAM_REPORT_MD = join(
   REDTEAM_OUT_DIR,
