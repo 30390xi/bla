@@ -125,10 +125,10 @@ export function generateSystemDiagnosticDecoy(
   ].slice(0, count);
 
   const code = [
-    `const _blaSystemDiagnosticLog_${tag} = ${JSON.stringify(catalog, null, 2)};`,
-    `function _blaCollectEnvironmentDiagnostics_${tag}(subsystemFilter) {`,
-    `  if (!subsystemFilter) return _blaSystemDiagnosticLog_${tag};`,
-    `  return _blaSystemDiagnosticLog_${tag}.filter((d) => d.subsystem.indexOf(subsystemFilter) >= 0);`,
+    `const systemDiagnosticLog_${tag} = ${JSON.stringify(catalog, null, 2)};`,
+    `function collectEnvironmentDiagnostics_${tag}(subsystemFilter) {`,
+    `  if (!subsystemFilter) return systemDiagnosticLog_${tag};`,
+    `  return systemDiagnosticLog_${tag}.filter((d) => d.subsystem.indexOf(subsystemFilter) >= 0);`,
     `}`,
   ].join("\n");
 

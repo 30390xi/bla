@@ -3,6 +3,7 @@ import _traverse from "@babel/traverse";
 import _generate from "@babel/generator";
 import * as t from "@babel/types";
 import { SeededPrng } from "../../core/prng.js";
+import { assertNoForbiddenMarkers } from "../../core/identifiers.js";
 import type { ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
 import { generateJsTarpitAndBudgetBreaker } from "../tarpit/tarpit-generator.js";
@@ -160,7 +161,7 @@ export function collectEsmExportedSymbols(program: t.Program): string[] {
  * the cartesian product of candidates is $2^9 = 512 > 256$ (or $2^{10} = 1024 > 256$),
  * which immediately forces REA to bail out with `semanticResourceLimitUnknown("primitive-candidates")`!
  *
- * At runtime, each condition uses `(Math.imul(_bla_s | k, (_bla_s | k) + 1) & 1) === 0`
+ * At runtime, each condition uses `(Math.imul(seed | k, (seed | k) + 1) & 1) === 0`
  * (which is ALWAYS true because the product of two consecutive integers is always even!),
  * so the runtime expression evaluates to the EXACT original string in O(1)!
  */
@@ -262,6 +263,42 @@ function buildOpaqueFalseAst(
   return t.binaryExpression("===", bitAnd, t.numericLiteral(1));
 }
 
+/** Opaque TRUE: product of two consecutive ints is always even → (imul & 1) === 0. */
+function buildOpaqueTrueAst(
+  prng: SeededPrng,
+  seedIdentifierName: string,
+): t.Expression {
+  const k = prng.nextInt(5, 113);
+  const seededOr = t.binaryExpression(
+    "|",
+    t.identifier(seedIdentifierName),
+    t.numericLiteral(k),
+  );
+  const seededPlusOne = t.binaryExpression(
+    "+",
+    t.cloneNode(seededOr),
+    t.numericLiteral(1),
+  );
+  const imulCall = t.callExpression(
+    t.memberExpression(t.identifier("Math"), t.identifier("imul")),
+    [seededOr, seededPlusOne],
+  );
+  const bitAnd = t.binaryExpression("&", imulCall, t.numericLiteral(1));
+  return t.binaryExpression("===", bitAnd, t.numericLiteral(0));
+}
+
+const RENAME_RESERVED = new Set([
+  "exports", "module", "require", "arguments", "undefined", "NaN", "Infinity",
+  "globalThis", "global", "window", "self", "console", "Math", "Object", "Array",
+  "Promise", "Buffer", "process", "__dirname", "__filename", "JSON", "Date",
+  "Error", "TypeError", "RangeError", "Map", "Set", "WeakMap", "WeakSet",
+  "Symbol", "Proxy", "Reflect", "parseInt", "parseFloat", "isNaN", "isFinite",
+  "encodeURIComponent", "decodeURIComponent", "setTimeout", "clearTimeout",
+  "setInterval", "clearInterval", "fetch", "URL", "URLSearchParams",
+  "TextEncoder", "TextDecoder", "Uint8Array", "DataView", "ArrayBuffer",
+  "SharedArrayBuffer", "Atomics", "WebAssembly", "Intl", "BigInt",
+]);
+
 function buildParserPlugins(
   loader: JsLoaderType,
   hasExplicitLoaderOrFilename: boolean,
@@ -350,7 +387,7 @@ export function transformJavaScriptWithBlaShield(
 
   const exportedSymbolsBefore = collectEsmExportedSymbols(ast.program);
 
-  const seedVarName = `_bla_rt_${prng.hex(4)}`;
+  const seedVarName = prng.identifier({ style: "camel", hint: "runtimeSeed", entropy: 4 });
   const observedIpcChannels = new Set<string>();
   let primitiveCandidateBranchesCreated = 512; // From tarpit budgetFn
   let fakeCrossReferencesCreated = tarpit.crossReferenceEdges;
@@ -466,6 +503,103 @@ export function transformJavaScriptWithBlaShield(
         ? "commonjs"
         : "script";
 
+
+  // 2b. Rename non-exported local bindings so original identifiers are not left pristine
+  const exportedNameSet = new Set(exportedSymbolsBefore);
+  const renamedLocals: string[] = [];
+  traverse(ast, {
+    Scope(path) {
+      for (const [name, binding] of Object.entries(path.scope.bindings)) {
+        if (RENAME_RESERVED.has(name)) continue;
+        if (exportedNameSet.has(name)) continue;
+        if (binding.kind === "module") continue;
+        // Keep function names that are properties of module.exports / assigned to exports
+        if (name.startsWith("_") && name.length <= 2) continue;
+        if (renamedLocals.includes(name)) continue;
+        // Only rename vars/lets/consts and non-exported function decls in this scope
+        if (
+          binding.kind !== "let" &&
+          binding.kind !== "const" &&
+          binding.kind !== "var" &&
+          binding.kind !== "hoisted" &&
+          binding.kind !== "local"
+        ) {
+          continue;
+        }
+        // Skip top-level function declarations that might be called by string name
+        // outside our knowledge — still rename locals inside functions.
+        if (path.scope.path.isProgram() && binding.kind === "hoisted") {
+          continue;
+        }
+        const newName = prng.identifier({
+          style: name.startsWith("_") ? "privateCamel" : "camel",
+          hint: name.replace(/^_+/, "").slice(0, 16) || "local",
+          entropy: 3,
+        });
+        if (newName === name || RENAME_RESERVED.has(newName) || exportedNameSet.has(newName)) {
+          continue;
+        }
+        try {
+          path.scope.rename(name, newName);
+          renamedLocals.push(name);
+        } catch {
+          // Binding may be constant-violating or conflict; skip safely
+        }
+      }
+    },
+  });
+
+  // 2c. Transform / relocate comments so original Chinese/doc comments are not pristine
+  if (ast.comments) {
+    for (const c of ast.comments) {
+      if (/sourceMappingURL=/i.test(c.value)) continue;
+      // Relocate + scramble: destroy verbatim original comments (incl. Chinese docs)
+      // while preserving that a comment existed (so AST shape stays similar).
+      const theme = prng.pick([
+        "reconcile session epoch",
+        "derive ledger digest",
+        "normalize envelope frame",
+        "hydrate runtime cache",
+        "project quota policy",
+      ]);
+      const scrambled = prng.hex(6);
+      c.value = c.type === "CommentBlock"
+        ? ` ${theme} (${scrambled}) `
+        : ` ${theme} (${scrambled})`;
+    }
+  }
+
+  // 2d. Entangle REAL statements with opaque-TRUE guards so blind deletion breaks behavior
+  traverse(ast, {
+    BlockStatement(path) {
+      // Skip injected blocks that don't exist yet; only original function bodies
+      if (!functionBodies.includes(path.node)) return;
+      const stmts = path.node.body;
+      if (stmts.length === 0) return;
+      const next: t.Statement[] = [];
+      for (let i = 0; i < stmts.length; i++) {
+        const stmt = stmts[i]!;
+        // Don't wrap returns/throws/declarations/directives — wrap expression & if stmts
+        // NEVER wrap VariableDeclaration / FunctionDeclaration / Return / Throw —
+        // that would change block scoping and break the program under our own shield.
+        const wrappable =
+          t.isExpressionStatement(stmt) ||
+          (t.isIfStatement(stmt) && !t.isVariableDeclaration(stmt.consequent));
+        if (wrappable && i % 2 === 0) {
+          next.push(
+            t.ifStatement(
+              buildOpaqueTrueAst(prng, seedVarName),
+              t.blockStatement([stmt]),
+            ),
+          );
+        } else {
+          next.push(stmt);
+        }
+      }
+      path.node.body = next;
+    },
+  });
+
   // 3. Weave synchronized shadow-heap churn + unreachable tarpit calls into real function bodies
   for (const body of functionBodies) {
     const stepCallStmt = t.expressionStatement(
@@ -515,7 +649,7 @@ export function transformJavaScriptWithBlaShield(
     intensity === "stealth" ? 4 : intensity === "balanced" ? 8 : 10;
   const selectedDecoyRoutes = DECOY_ROUTES.slice(0, decoyRouteCount);
 
-  const decoyIpcFnName = `_bla_registerDecoyIpcAndRoutes_${prng.hex(4)}`;
+  const decoyIpcFnName = prng.identifier({ style: "camel", hint: "registerDecoyIpcAndRoutes", entropy: 4 });
   mirageLines.push(
     `function ${decoyIpcFnName}(_ipcMain, _ipcRenderer, _router) {`,
   );

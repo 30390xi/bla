@@ -104,7 +104,7 @@ function planWasmExportNameDecoys(
   for (let i = 0; i < count; i++) {
     const pad = "e".repeat(namePad);
     out.push({
-      name: `bla_enclave_export_${tag}_${i}_${pad}`,
+      name: `enclave_export_${tag}_${i}_${pad}`,
       funcIndex,
     });
   }

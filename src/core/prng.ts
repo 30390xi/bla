@@ -1,4 +1,9 @@
 import { createHash } from "node:crypto";
+import {
+  realisticIdentifier,
+  type IdentifierStyle,
+  type RealisticIdentifierOptions,
+} from "./identifiers.js";
 
 /**
  * Deterministic seeded PRNG (SplitMix32 / Mulberry32) so BLA builds can be
@@ -60,7 +65,34 @@ export class SeededPrng {
     return out;
   }
 
-  identifier(prefix = "_bla"): string {
-    return `${prefix}_${this.hex(6)}`;
+  /**
+   * Emit a realistic identifier. The legacy `prefix` argument is IGNORED for
+   * emitted output — every call draws from the realistic vocabulary so that
+   * hardened artifacts contain no greppable `_bla` / `$00_AAA` markers.
+   *
+   * Pass `style` / `hint` via the second argument (or as RealisticIdentifierOptions)
+   * when a specific casing convention is needed.
+   */
+  identifier(
+    prefixOrOptions: string | RealisticIdentifierOptions = "camel",
+    maybeOptions?: RealisticIdentifierOptions,
+  ): string {
+    let options: RealisticIdentifierOptions;
+    if (typeof prefixOrOptions === "string") {
+      // Legacy callers passed a prefix like "_bla". Map common prefixes to styles;
+      // never emit the prefix literally.
+      const style: IdentifierStyle =
+        prefixOrOptions.startsWith("__")
+          ? "privateCamel"
+          : prefixOrOptions.startsWith("$")
+            ? "earlySort"
+            : prefixOrOptions.startsWith("_")
+              ? "privateCamel"
+              : maybeOptions?.style ?? "camel";
+      options = { style, ...(maybeOptions ?? {}) };
+    } else {
+      options = prefixOrOptions;
+    }
+    return realisticIdentifier(this, options);
   }
 }

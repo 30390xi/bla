@@ -11,8 +11,9 @@ export interface PromptCompletionPoisonResult {
  * and obligation projections (`src/application/ReconstructionObligationLedgerProjection.ts:24`
  * and `src/contracts/promptContracts.ts:67`: `.sort(([left], [right]) => (left < right ? -1 : 1))`).
  *
- * By prefixing decoy high-salience procedures with `$00_AAA_enclave_` (ASCII `0x24`, `0x30`, `0x41`,
- * which sort BEFORE all standard `[A-Za-z_]` identifiers in Unicode code-point order!),
+ * By prefixing decoy high-salience procedures with a `$RR` early-sort prefix (ASCII `$` = 0x24
+ * sorts BEFORE all standard `[A-Za-z_]` identifiers). Each symbol gets a UNIQUE rank hex so
+ * there is no shared greppable literal like the old `$00_AAA` marker.
  * BLA guarantees that its decoy procedures occupy the very first slots of REA's
  * paginated procedure lists and MCP prompt completions!
  */
@@ -44,7 +45,9 @@ export function generatePromptCompletionPoison(
   ];
 
   for (let i = 0; i < count; i++) {
-    const sym = `$00_AAA_enclave_${i}_${suffixes[i % suffixes.length]}_${tag}`;
+    // Unique early-sort prefix per symbol — no shared greppable substring across the set.
+    const rank = prng.hex(2);
+    const sym = `$${rank}${suffixes[i % suffixes.length]}_${tag}${i}`;
     prioritySortedSymbols.push(sym);
     lines.push(
       `function ${sym}(token = "") {`,

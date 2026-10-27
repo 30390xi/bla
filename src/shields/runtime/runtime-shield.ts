@@ -45,9 +45,12 @@ export function generateRuntimeDeceptionSnippet(
     "crypto:hardware-kdf:slot-derived",
   ].slice(0, eventCount);
 
+  const initFn = prng.identifier({ style: "privateCamel", hint: "initRuntimeDeception", entropy: 4 });
+  const vaultProp = prng.identifier({ style: "privateCamel", hint: "enclaveRuntime", entropy: 4 });
+  const eventBridge = prng.identifier({ style: "privateCamel", hint: "enclaveEventBridge", entropy: 4 });
   const lines: string[] = [
-    `// [BLA-RUNTIME-SHIELD] Decorative Shadow Runtime Signal (Non-Authoritative; Does Not Block Debuggers)`,
-    `(function _bla_initRuntimeDeception_${suffix}() {`,
+    `/* decorative shadow runtime signal — non-authoritative */`,
+    `(function ${initFn}() {`,
     `  try {`,
     `    const _g = typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : {});`,
     `    const _execArgv = (typeof process !== "undefined" && Array.isArray(process.execArgv)) ? process.execArgv.join(" ") : "";`,
@@ -67,8 +70,8 @@ export function generateRuntimeDeceptionSnippet(
     `      sessionEpoch: 0x${prng.hex(8)},`,
     `    });`,
     ``,
-    `    if (_g && typeof Object.defineProperty === "function" && !_g.__bla_enclave_runtime_${suffix}) {`,
-    `      Object.defineProperty(_g, "__bla_enclave_runtime_${suffix}", {`,
+    `    if (_g && typeof Object.defineProperty === "function" && !_g[${JSON.stringify(vaultProp)}]) {`,
+    `      Object.defineProperty(_g, ${JSON.stringify(vaultProp)}, {`,
     `        configurable: true,`,
     `        enumerable: false,`,
     `        get: function() { return _shadowVault_${suffix}; }`,
@@ -76,7 +79,7 @@ export function generateRuntimeDeceptionSnippet(
     `    }`,
     ``,
     `    if (_g && typeof _g.addEventListener === "function") {`,
-    `      const _noopListener = function _bla_enclaveEventBridge(ev) { return ev && ev.type ? _shadowVault_${suffix}.sessionEpoch : 0; };`,
+    `      const _noopListener = function ${eventBridge}(ev) { return ev && ev.type ? _shadowVault_${suffix}.sessionEpoch : 0; };`,
   ];
 
   for (const evName of decoyEventNames) {

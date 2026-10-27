@@ -58,7 +58,7 @@ function analyzeJsSourceForAudit(
   if (source.includes("a22?.require") || /const a\d+ = _flag \? a\d+\?\.x : a\d+\?\.y/.test(source)) {
     triggeredLimits.add("alias-selections");
   }
-  if (source.includes("_bla_verifySemanticEnvelope_") || /(\([_a-zA-Z0-9]+ \? "[^"]*" : "[^"]*"\) \+ ){6,}/.test(source)) {
+  if (source.includes("_verifySemanticEnvelope") || /(\([_a-zA-Z0-9]+ \? "[^"]*" : "[^"]*"\) \+ ){6,}/.test(source)) {
     triggeredLimits.add("primitive-candidates");
   }
   if (/const s\d+ = s\d+ \+ s\d+;/.test(source)) {
@@ -104,8 +104,9 @@ function analyzeJsSourceForAudit(
         totalFunctions++;
         const fnName = path.node.id?.name ?? "anonymous";
         if (
-          fnName.startsWith("_bla_") ||
-          /^_(verifyEnclave|deriveHardware|reconcileQuorum|validateZeroKnowledge|dispatchSealed|computeMerkle|synchronizeHsm|decodeRingBuffer|authenticateTpm|evaluateLicense|negotiateVsock|projectShadow|resolveCryptographic|auditMonotonic|unsealProtected|verifySchnorr)/.test(
+          fnName.includes("enclave") || fnName.includes("Shadow") || fnName.includes("tarpit") ||
+          /_[a-f0-9]{4}$/i.test(fnName) ||
+          /^(?:_)?(?:verifyEnclave|deriveHardware|reconcileQuorum|validateZeroKnowledge|dispatchSealed|computeMerkle|synchronizeHsm|decodeRingBuffer|authenticateTpm|evaluateLicense|negotiateVsock|projectShadow|resolveCryptographic|auditMonotonic|unsealProtected|verifySchnorr|stepShadowHeap|readSplitShare|registerDecoyIpc)/.test(
             fnName,
           )
         ) {
@@ -512,12 +513,29 @@ export function auditTarget(targetPath: string): AuditReport {
       vulnerableVectors.add("python-pyc-marshal");
       if (format === "python-source") {
         const text = rawBytes.toString("utf8");
-        const isProtected = text.includes("[BLA-SHIELD]") || text.includes("_BLA_ENCLAVE_MANIFESTS");
+        const isProtected =
+          text.includes("runtime attestation boundary") ||
+          text.includes("BLA-SHIELD") ||
+          text.includes("CANARY_TOKENS") ||
+          /def\s+\w+_([a-f0-9]{4})\s*\(/i.test(text);
         const fnMatches = [...text.matchAll(/def\s+([A-Za-z0-9_]+)\s*\(/g)];
+        // Decoys are realistic snake_case names ending in hex entropy, or the classic tarpit (seed, depth) signature.
+        const decoyNameRe = /_[a-f0-9]{4}$/i;
+        const tarpitSigRe = new RegExp(
+          String.raw`def\s+([A-Za-z0-9_]+)\s*\(\s*seed\s*:\s*int\s*=\s*0\s*,\s*depth\s*:\s*int\s*=\s*0\s*\)`,
+          "g",
+        );
+        const tarpitSigNames = new Set(
+          [...text.matchAll(tarpitSigRe)].map((m) => m[1]!),
+        );
         let decoyCount = 0;
         for (const m of fnMatches) {
           const fnName = m[1]!;
-          if (fnName.startsWith("_bla_")) {
+          const isDecoy =
+            tarpitSigNames.has(fnName) ||
+            decoyNameRe.test(fnName) ||
+            /enclave|tarpit|attest|canary_honeypot/i.test(fnName);
+          if (isDecoy) {
             decoyCount++;
           } else {
             exposedItems.push({

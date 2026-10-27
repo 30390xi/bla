@@ -167,7 +167,7 @@ export function inspectModelBuffer(bytes: Buffer): ModelInspectionSummary {
       const meta = Object.keys((parsed.__metadata__ ?? {}) as Record<string, string>);
       const exceedsReaNestingLimit = Object.entries(parsed).some(([name, desc]) => {
         if (name === "__metadata__" || !isRecord(desc)) return false;
-        return Object.hasOwn(desc, "bla_enclave_topology");
+        return Object.hasOwn(desc, "enclave_topology_seal");
       });
       return {
         validModel: true,
@@ -198,11 +198,11 @@ export function inspectModelBuffer(bytes: Buffer): ModelInspectionSummary {
  * Protect a Safetensors artifact without changing tensor bytes or required
  * descriptor fields (`dtype` / `shape` / `data_offsets`).
  *
- * Counter-REA: attaches a deep nested `bla_enclave_topology` object as an
+ * Counter-REA: attaches a deep nested `enclave_topology_seal` object as an
  * *extra* key on the first tensor descriptor. HuggingFace safetensors ignores
  * unknown descriptor fields (verified loadable), while REA's JSON walker hits
  * `MODEL_JSON_NESTING = 32` (`json-nesting` / ModelFormatFailure capacity).
- * Invalid top-level nesting payloads (e.g. `_bla_nesting_breaker` arrays) remain
+ * Invalid top-level nesting payloads (e.g. deep `nesting_breaker` arrays) remain
  * rejected by validateSafetensorsBuffer.
  */
 export function protectSafetensorsBuffer(
@@ -267,7 +267,7 @@ export function protectSafetensorsBuffer(
   const firstTensorName = Object.keys(headerObj).find((k) => k !== "__metadata__");
   if (firstTensorName !== undefined && isRecord(headerObj[firstTensorName])) {
     const tensor = { ...(headerObj[firstTensorName] as Record<string, unknown>) };
-    if (!Object.hasOwn(tensor, "bla_enclave_topology")) {
+    if (!Object.hasOwn(tensor, "enclave_topology_seal")) {
       let node: Record<string, unknown> = {
         kind: "enclave_topology",
         seed: prng.hex(8),
@@ -276,7 +276,7 @@ export function protectSafetensorsBuffer(
       for (let d = 0; d < nestingDepth; d++) {
         node = { layer: d, next: node };
       }
-      tensor.bla_enclave_topology = node;
+      tensor.enclave_topology_seal = node;
       headerObj[firstTensorName] = tensor;
       triggeredJsonNestingBreaker = true;
     } else {

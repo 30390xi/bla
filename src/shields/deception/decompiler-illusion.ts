@@ -29,7 +29,7 @@ export function generateDecompilerPseudocodeIllusion(
   const blocks: string[] = [];
 
   for (let i = 0; i < count; i++) {
-    const fnName = `_blaAliasedBufferIllusion_${tag}_${i}`;
+    const fnName = `aliasedBufferIllusion_${tag}_${i}`;
     const c1 = 100 + prng.nextInt(1, 50);
     const c2 = 200 + prng.nextInt(1, 50);
     blocks.push(

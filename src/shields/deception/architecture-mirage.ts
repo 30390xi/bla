@@ -42,7 +42,7 @@ export function generateArchitectureMirage(
   const selectedMethods = allMethods.slice(0, methodCount);
 
   const code = [
-    `const _blaGrpcServiceMirage_${tag} = Object.freeze({`,
+    `const grpcServiceMirage_${tag} = Object.freeze({`,
     `  protoPackage: "${decoyProtoPackage}",`,
     `  transport: "vsock://16:9443/grpc+tls13",`,
     `  methods: Object.freeze(${JSON.stringify(selectedMethods)}),`,

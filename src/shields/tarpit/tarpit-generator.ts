@@ -36,10 +36,15 @@ const DECOY_DOMAIN_PREFIXES: readonly string[] = [
  * Generates an interconnected JavaScript Algorithmic Tarpit & REA Semantic Budget Breaker block.
  *
  * Specifically engineered against `morluto/rea`:
- * 1. Triggers `alias-selections` (`SEMANTIC_ALIAS_SELECTION_LIMIT = 512`) via a 22-step inert optional-chaining selector pyramid
- * 2. Triggers `primitive-candidates` (`SEMANTIC_PRIMITIVE_CANDIDATE_LIMIT = 256`) via a 12-term conditional string product ($2^{12} = 4096 > 256$)
- * 3. Triggers `primitive-bytes` (`SEMANTIC_PRIMITIVE_JSON_BYTES_LIMIT = 1_048_576`) via an 18-step inert string doubling chain ($2^{18} = 262,144$ chars)
- * 4. Triggers `getter-expansion` (`SEMANTIC_GETTER_EXPANSION_LIMIT = 512`) via a recursive getter class in an inert helper
+ * 1. Triggers `alias-selections` (REA default 512) via a 28-step inert optional-chaining selector pyramid
+ *    (~2^28 path states — orders of magnitude past any plausible bumped limit short of removing the guardrail)
+ * 2. Triggers `primitive-candidates` (REA default 256) via a 16-term conditional string product ($2^{16} = 65536$)
+ * 3. Triggers `primitive-bytes` (REA default 1 MiB) via a 20-step inert string doubling chain ($2^{20}$ chars >> 1 MiB)
+ * 4. Triggers `getter-expansion` (REA default 512) via a recursive getter class with 16 self-ref fields
+ *
+ * DEFENSE PROPERTY: payloads scale ORDERS OF MAGNITUDE past published defaults across orthogonal
+ * dimensions. Bumping a single REA const with `sed` does not restore analysis; the attacker must
+ * remove the safety limit entirely (defeating their own guardrails).
  * 5. Triggers `returned-reference-widening` via a cyclic cursor reference walker
  * 6. Builds a dense call-graph labyrinth of realistic decoy functions with mutual cross-references (Fake XRefs)
  */
@@ -60,49 +65,49 @@ export function generateJsTarpitAndBudgetBreaker(
   const decoyNames: string[] = [];
   for (let i = 0; i < decoyCount; i++) {
     const base = DECOY_DOMAIN_PREFIXES[i % DECOY_DOMAIN_PREFIXES.length]!;
-    decoyNames.push(`_${base}_${prng.hex(4)}`);
+    decoyNames.push(prng.identifier({ style: "privateCamel", hint: base, entropy: 4 }));
   }
 
   const lines: string[] = [];
-  const stateVar = `_bla_state_${prng.hex(4)}`;
-  lines.push(`// [BLA-SHIELD] Adversarial Defense & Enclave Attestation Boundary`);
+  const stateVar = prng.identifier({ style: "privateCamel", hint: "runtimeState", entropy: 4 });
+  lines.push(`/* runtime attestation boundary */`);
   lines.push(`const ${stateVar} = (typeof process !== "undefined" && process.pid ? (process.pid & 0xff) : 42) | 1;`);
 
   // 1. REA Semantic Budget Breaker #1: `alias-selections` + `returned-reference-widening`
   // Directly modeled on REA's `javascriptAliasSelectionBudget.ts` and `javascriptReturnedReferenceCoverage.test.ts`!
-  const aliasFn = `_bla_resolveEnclaveBinding_${prng.hex(4)}`;
+  const aliasFn = prng.identifier({ style: "privateCamel", hint: "resolveEnclaveBinding", entropy: 4 });
   lines.push(`function ${aliasFn}(_flag, _patch) {`);
   lines.push(`  const a0 = {};`);
-  for (let i = 1; i <= 22; i++) {
+  for (let i = 1; i <= 28; i++) {
     lines.push(`  const a${i} = _flag ? a${i - 1}?.x : a${i - 1}?.y;`);
   }
   lines.push(`  if (${generateJsOpaqueFalseExpression(prng, stateVar)}) {`);
-  lines.push(`    a22?.require("./enclave-hardware-bridge.cjs");`);
+  lines.push(`    a28?.require("./enclave-hardware-bridge.cjs");`);
   lines.push(`  }`);
   lines.push(`  function _exposeProto() { return Map.prototype; }`);
   lines.push(`  let _cursor = { target: _exposeProto, next: null };`);
   lines.push(`  while (_flag && ${generateJsOpaqueFalseExpression(prng, stateVar)}) { _cursor = _cursor.next; }`);
   lines.push(`  if (_patch && ${generateJsOpaqueFalseExpression(prng, stateVar)}) { _patch(_cursor.target()); }`);
-  lines.push(`  return a22 ?? 0;`);
+  lines.push(`  return a28 ?? 0;`);
   lines.push(`}`);
 
   // 2. REA Semantic Budget Breaker #2: `primitive-candidates` (>256) & `primitive-bytes` (>1MiB) & `getter-expansion` (>512)
-  const budgetFn = `_bla_verifySemanticEnvelope_${prng.hex(4)}`;
+  const budgetFn = prng.identifier({ style: "privateCamel", hint: "verifySemanticEnvelope", entropy: 4 });
   const cTerms = Array.from(
-    { length: 12 },
+    { length: 16 },
     (_, idx) => `(_c ? "${prng.hex(2)}" : "${idx.toString(16)}")`,
   ).join(" + ");
   lines.push(`function ${budgetFn}(_c, _k) {`);
   lines.push(`  const _cand = ${cTerms};`);
   lines.push(`  if (${generateJsOpaqueFalseExpression(prng, stateVar)}) {`);
   lines.push(`    const s0 = "enclave_frame_";`);
-  for (let i = 1; i <= 16; i++) {
+  for (let i = 1; i <= 20; i++) {
     lines.push(`    const s${i} = s${i - 1} + s${i - 1};`);
   }
-  lines.push(`    const _shared = { x: s16 };`);
+  lines.push(`    const _shared = { x: s20 };`);
   lines.push(`    class _EnclaveRequest {`);
   lines.push(`      slot = _shared;`);
-  for (let g = 0; g < 10; g++) {
+  for (let g = 0; g < 16; g++) {
     lines.push(`      get field${g}() { return this[_k].field${g}; }`);
   }
   lines.push(`      get grow() { return this.grow.more; }`);
@@ -114,7 +119,7 @@ export function generateJsTarpitAndBudgetBreaker(
   lines.push(`}`);
 
   // 3. Embed Architectural Chaff & Honey-Context Constants
-  const chaffTableVar = `_bla_enclave_manifests_${prng.hex(4)}`;
+  const chaffTableVar = prng.identifier({ style: "privateCamel", hint: "enclaveManifests", entropy: 4 });
   lines.push(`const ${chaffTableVar} = Object.freeze([`);
   for (const payload of chaffPayloads) {
     lines.push(`  ${JSON.stringify(payload.rawText)},`);
@@ -150,7 +155,7 @@ export function generateJsTarpitAndBudgetBreaker(
   }
 
   // Master dispatcher anchored to global/module scope so tree-shakers & static analyzers keep all decoy nodes alive
-  const anchorName = `_bla_shield_anchor_${prng.hex(4)}`;
+  const anchorName = prng.identifier({ style: "privateCamel", hint: "shieldAnchor", entropy: 4 });
   lines.push(`function ${anchorName}(_seed = 0) {`);
   lines.push(`  if (${generateJsOpaqueFalseExpression(prng, stateVar)}) {`);
   const calls = decoyNames.slice(0, Math.min(8, decoyNames.length)).map((n, idx) => `${n}(_seed + ${idx}, 3)`).join(" ^ ");
@@ -188,14 +193,15 @@ export function generatePythonTarpit(
   const decoyNames: string[] = [];
   for (let i = 0; i < decoyCount; i++) {
     const base = DECOY_DOMAIN_PREFIXES[i % DECOY_DOMAIN_PREFIXES.length]!;
-    decoyNames.push(`_bla_${base}_${prng.hex(4)}`);
+    decoyNames.push(prng.identifier({ style: "snake", hint: base, entropy: 4 }));
   }
 
   const lines: string[] = [];
-  const stateVar = `_BLA_ENCLAVE_STATE_${prng.hex(4).toUpperCase()}`;
-  lines.push(`# [BLA-SHIELD] Adversarial Defense & Enclave Attestation Boundary`);
+  const stateVar = prng.identifier({ style: "snake", hint: "enclaveState", entropy: 4 }).toUpperCase();
+  lines.push(`# BLA-SHIELD runtime attestation boundary`);
   lines.push(`${stateVar} = 0x${prng.hex(6)} | 1`);
-  lines.push(`_BLA_ENCLAVE_MANIFESTS = (`);
+  const manifestsVar = prng.identifier({ style: "snake", hint: "enclaveManifests", entropy: 4 }).toUpperCase();
+  lines.push(`${manifestsVar} = (`);
   for (const payload of chaffPayloads) {
     lines.push(`    ${JSON.stringify(payload.rawText)},`);
   }

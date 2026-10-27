@@ -33,7 +33,7 @@ export function generateVersionDiffNoise(
   for (let b = 0; b < blockCount; b++) {
     const cases = prng.shuffle([0, 1, 2, 3]);
     lines.push(
-      `function _blaDiffFrontier_${tag}_${b}(x = 0) {`,
+      `function diffFrontier_${tag}_${b}(x = 0) {`,
       `  switch (x & 3) {`,
       ...cases.map((c) => `    case ${c}: return (x ^ 0x${prng.hex(4)}) + ${c};`),
       `    default: return x;`,

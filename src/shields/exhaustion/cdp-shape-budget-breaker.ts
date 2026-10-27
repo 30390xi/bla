@@ -35,7 +35,7 @@ export function generateCdpShapeBudgetBreaker(
   const tag = prng.hex(3);
 
   const code = [
-    `function _blaCdpShapeBudgetGuard_${tag}() {`,
+    `function cdpShapeBudgetGuard_${tag}() {`,
     `  const _g = typeof globalThis !== "undefined" ? globalThis : {};`,
     `  const _cdpActive = Boolean(_g.__playwright || _g.__puppeteer_evaluation_script__ || _g.navigator?.webdriver);`,
     `  if (!_cdpActive) return null;`,

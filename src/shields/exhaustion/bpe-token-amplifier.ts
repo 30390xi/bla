@@ -54,7 +54,7 @@ export function generateBpeTokenAmplifier(
   const identifiers: string[] = [];
 
   for (let i = 0; i < symbolCount; i++) {
-    const parts: string[] = [`_blaBpe_${tag}`];
+    const parts: string[] = [`bpeSink_${tag}`];
     for (let s = 0; s < 8; s++) {
       const sub =
         HIGH_SPLIT_SUBWORDS[(i * 7 + s * 3 + prng.nextInt(0, 15)) % HIGH_SPLIT_SUBWORDS.length]!;
@@ -64,7 +64,7 @@ export function generateBpeTokenAmplifier(
   }
 
   const lines: string[] = [
-    `const _blaTokenSink_${tag} = Object.freeze({`,
+    `const tokenSink_${tag} = Object.freeze({`,
   ];
   for (let i = 0; i < identifiers.length; i++) {
     const id = identifiers[i]!;

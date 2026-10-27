@@ -69,7 +69,7 @@ export function generateObligationLedgerFlood(
   let mandatoryVerificationCasesInduced = 0;
 
   stmts.push(
-    `function _blaObligationFlood_${tag}(_seed = 0) {`,
+    `function obligationFlood_${tag}(_seed = 0) {`,
     `  const _never = ((_seed * (_seed + 1)) & 1) === 1;`,
     `  if (!_never) return _seed ^ 0x${prng.hex(4)};`,
     `  const _g = typeof globalThis !== "undefined" ? globalThis : {};`,
@@ -124,12 +124,12 @@ export function generateObligationLedgerFlood(
         break;
       case "native-export":
         stmts.push(
-          `  _g._blaNativeBridge_${id}?.enclave_unseal_slot_${id}?.(0x${prng.hex(4)});`,
+          `  _g.nativeBridge_${id}?.enclave_unseal_slot_${id}?.(0x${prng.hex(4)});`,
         );
         break;
       case "child-process":
         stmts.push(
-          `  _g._blaChildProc?.spawn?.("tpm2-quote-verifier-${id}", ["--pcr0", "0x${prng.hex(8)}"]);`,
+          `  _g.childProcBridge?.spawn?.("tpm2-quote-verifier-${id}", ["--pcr0", "0x${prng.hex(8)}"]);`,
         );
         break;
       case "stdio":
@@ -139,7 +139,7 @@ export function generateObligationLedgerFlood(
         break;
       case "signal":
         stmts.push(
-          `  _g.process?.on?.("SIGUSR2", () => _g._blaSignalHandler_${id}?.());`,
+          `  _g.process?.on?.("SIGUSR2", () => _g.signalHandler_${id}?.());`,
         );
         break;
       case "config-source":
@@ -164,7 +164,7 @@ export function generateObligationLedgerFlood(
         break;
       case "resource":
         stmts.push(
-          `  _g._blaResourcePool?.acquireLease?.("enclave-hsm-${id}")?.release?.();`,
+          `  _g.resourcePoolBridge?.acquireLease?.("enclave-hsm-${id}")?.release?.();`,
         );
         break;
       case "event":
@@ -189,12 +189,12 @@ export function generateObligationLedgerFlood(
         break;
       case "package":
         stmts.push(
-          `  _g._blaPackageManifest_${id} = { name: "@enclave/runtime-${id}", version: "3.1.0-tee" };`,
+          `  _g.packageManifest_${id} = { name: "@enclave/runtime-${id}", version: "3.1.0-tee" };`,
         );
         break;
       case "installer":
         stmts.push(
-          `  _g._blaInstallerHook_${id}?.runPostInstall?.({ product: "enclave-runtime-${id}", channel: "stable-tee" });`,
+          `  _g.installerHook_${id}?.runPostInstall?.({ product: "enclave-runtime-${id}", channel: "stable-tee" });`,
         );
         break;
       case "managed-pinvoke-import":
@@ -204,7 +204,7 @@ export function generateObligationLedgerFlood(
         break;
       case "managed-native-implementation":
         stmts.push(
-          `  _g._blaManagedNative_${id}?.InvokeEnclaveExport?.("seal_payload_${id}", new Uint8Array(0));`,
+          `  _g.managedNative_${id}?.InvokeEnclaveExport?.("seal_payload_${id}", new Uint8Array(0));`,
         );
         break;
     }

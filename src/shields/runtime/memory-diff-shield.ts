@@ -31,7 +31,7 @@ export interface SplitShareEncodedString {
  *    `licenseLeaseLedger`, `enclavePcrDigest`, `sessionTicketRing`) plus >= 26 top-level
  *    mutable state keys (exceeding REA's `STEP_DIFFERENCE_LIMIT = 20` in
  *    `src/application/environment/environmentCompareDiff.ts`).
- * 2. Exposes an $O(1)$ deterministic stepper (`_blaStepShadowHeap_<tag>(delta)`) woven
+ * 2. Exposes an $O(1)$ deterministic stepper (`stepShadowHeap_<tag>(delta)`) woven
  *    into real function prologues so every business function execution synchronously
  *    mutates dozens of decoy memory words in-place.
  * 3. Exceeds CPU hardware debug watchpoint registers (`DR0`-`DR3` = 4 watchpoints on x86_64/ARM64)
@@ -55,8 +55,8 @@ export function generateShadowHeapChurnShield(
     REA_INTERNAL_LIMITS.ENVIRONMENT_COMPARE_STEP_DIFF_LIMIT +
     (intensity === "stealth" ? 4 : intensity === "balanced" ? 8 : 12);
 
-  const stepperFunctionName = `_blaStepShadowHeap_${tag}`;
-  const heapObjectName = `_blaShadowHeap_${tag}`;
+  const stepperFunctionName = prng.identifier({ style: "camel", hint: "stepShadowHeap", entropy: 4 });
+  const heapObjectName = prng.identifier({ style: "camel", hint: "shadowHeap", entropy: 4 });
 
   const initialSlots: string[] = [];
   for (let i = 0; i < mutableSlotsCount; i++) {
@@ -166,7 +166,7 @@ export function generateShadowHeapChurnShield(
  * Encodes a string into two separate XOR-masked numeric shares (`shareA` and `shareB`)
  * where `charCodeAt(i) = shareA[i] ^ shareB[i] ^ ((i * 0x5d) & 0xffff)`.
  *
- * At runtime, `_blaReadSplitShare_<tag>(shareA, shareB)` decodes the string AND
+ * At runtime, the generated split-share reader decodes the string AND
  * immediately mutates both `shareA[i]` and `shareB[i]` in-place by XORing both with
  * the same rolling byte `r`. Because `(a ^ r) ^ (b ^ r) === a ^ b`, all subsequent
  * calls decode the exact same string while every read mutates both memory buffers!
@@ -193,7 +193,7 @@ export function encodeSplitShareString(
 }
 
 /**
- * Generates the runtime helper `_blaReadSplitShare_<tag>(shareA, shareB, stepFn)`
+ * Generates the runtime split-share reader helper
  * that reconstructs a split-share string at the point of use while rolling both
  * shares in-place in heap memory.
  */
@@ -204,7 +204,7 @@ export function generateSplitShareRuntimeHelper(
   readonly helperFunctionName: string;
   readonly code: string;
 } {
-  const helperFunctionName = `_blaReadSplitShare_${tag}`;
+  const helperFunctionName = `readSplitShare_${tag}`;
   const stepCall = stepperFunctionName
     ? `  ${stepperFunctionName}(_a.length);\n`
     : "";

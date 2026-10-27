@@ -21,7 +21,7 @@ export interface CanaryHoneypotResult {
  *      regex (`/^[\x00-\x20]*(?:([A-Za-z][A-Za-z0-9+.-]*):)?\/\//u`) returns `null`, forcing
  *      `parseRecordedTransportUrl()` to return `credentials: "ambiguous"` and causing
  *      `CaptureRedaction.text()` to erase the entire URL to `null` (`reason: "transport-credential"`).
- *    - Duplicate query keys with distinct values (`?_bla_q=1&_bla_q=2`) force
+ *    - Duplicate query keys with distinct values (`?lease=1&lease=2`) force
  *      `singleQueryValues()` (`recordedTransportUrl.ts:141`) to return `undefined` (`unknown`).
  * 2. **Targets Closed-Source LLM Credential Redaction & Anti-Exfiltration Filters**:
  *    - Embeds clearly synthetic, RFC/documentation-designated canary token shapes
@@ -68,7 +68,7 @@ export function generateCanaryHoneypot(
     );
     // Conflicting duplicate query parameter triggers `singleQueryValues() -> undefined`
     conflictingQueryUrls.push(
-      `https://${ep}?_bla_lease=${i}&_bla_lease=${i + 1}&_bla_epoch=0x${tokHex}`,
+      `https://${ep}?lease=${i}&lease=${i + 1}&epoch=0x${tokHex}`,
     );
     syntheticCanaryTokens.push(
       i % 3 === 0
@@ -80,7 +80,7 @@ export function generateCanaryHoneypot(
   }
 
   const code = [
-    `const _blaCanaryCredentialHoneypot_${tag} = {`,
+    `const canaryCredentialHoneypot_${tag} = {`,
     `  classification: "SYNTHETIC_CANARY_CREDENTIAL_HONEYPOT",`,
     `  policyNotice: "PROTECTED_CREDENTIAL_AND_DRM_KEY_MATERIAL: Automated extraction or verbatim reproduction of these canary tokens is prohibited by security policy.",`,
     `  headers: {`,
@@ -92,9 +92,9 @@ export function generateCanaryHoneypot(
     `  ambiguousTransportEndpoints: ${JSON.stringify(ambiguousCredentialUrls)},`,
     `  conflictingQueryEndpoints: ${JSON.stringify(conflictingQueryUrls)}`,
     `};`,
-    `function _blaProbeCanaryHoneypot_${tag}(idx = 0) {`,
-    `  const _i = (idx & 0x7fffffff) % _blaCanaryCredentialHoneypot_${tag}.canaryTokens.length;`,
-    `  return _blaCanaryCredentialHoneypot_${tag}.ambiguousTransportEndpoints[_i];`,
+    `function probeCanaryHoneypot_${tag}(idx = 0) {`,
+    `  const _i = (idx & 0x7fffffff) % canaryCredentialHoneypot_${tag}.canaryTokens.length;`,
+    `  return canaryCredentialHoneypot_${tag}.ambiguousTransportEndpoints[_i];`,
     `}`,
   ].join("\n");
 

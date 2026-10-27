@@ -5,7 +5,7 @@ import { SeededPrng } from "../../core/prng.js";
  * that always evaluate to `false` or `true` at runtime in O(1), but cannot be
  * constant-folded by static AST analyzers (`indexJavaScriptBindingsWithReceiversSteps`).
  */
-export function generateJsOpaqueFalseExpression(prng: SeededPrng, seedVar = "_bla_k"): string {
+export function generateJsOpaqueFalseExpression(prng: SeededPrng, seedVar = "k"): string {
   const k = prng.nextInt(3, 97);
   const variant = prng.nextInt(0, 3);
   switch (variant) {
@@ -24,7 +24,7 @@ export function generateJsOpaqueFalseExpression(prng: SeededPrng, seedVar = "_bl
   }
 }
 
-export function generateJsOpaqueTrueExpression(prng: SeededPrng, seedVar = "_bla_k"): string {
+export function generateJsOpaqueTrueExpression(prng: SeededPrng, seedVar = "k"): string {
   const k = prng.nextInt(5, 89);
   const variant = prng.nextInt(0, 2);
   switch (variant) {
@@ -37,7 +37,7 @@ export function generateJsOpaqueTrueExpression(prng: SeededPrng, seedVar = "_bla
   }
 }
 
-export function generatePythonOpaqueFalseExpression(prng: SeededPrng, seedVar = "_bla_k"): string {
+export function generatePythonOpaqueFalseExpression(prng: SeededPrng, seedVar = "k"): string {
   const k = prng.nextInt(3, 97);
   return `(((7 * ((${seedVar} | ${k}) ** 2) - 1) & 0xFFFFFFFF) == (((${seedVar} ^ ${k + 3}) ** 2) & 0xFFFFFFFF) and ((${seedVar} * (${seedVar} + 1)) & 1) == 1)`;
 }

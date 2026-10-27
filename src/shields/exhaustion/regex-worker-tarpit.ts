@@ -47,7 +47,8 @@ export function generateRegexWorkerTarpit(
     entries.push(`${p}_${tag}_${i}_0x${prng.hex(8)}`);
   }
 
-  const code = `const _blaRegexSearchMagnet_${tag} = Object.freeze(${JSON.stringify(entries)});`;
+  const magnetName = `regexSearchMagnet_${tag}`;
+  const code = `const ${magnetName} = Object.freeze(${JSON.stringify(entries)});`;
   return {
     code,
     nearMissCandidatesGenerated: entries.length,

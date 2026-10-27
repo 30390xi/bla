@@ -7,6 +7,7 @@ import { getDatabaseSyncClass } from "../../core/sqlite-runtime.js";
 import type { ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
 import { buildCanaryAndDiagnosticPayloads } from "../deception/format-payloads.js";
+import { SQLITE_HONEY_TABLES, SQLITE_HONEY_TABLE_NAME_SET } from "../../core/identifiers.js";
 
 /**
  * Thrown when a SQLite database input cannot be proven complete or consistent
@@ -103,7 +104,7 @@ function quoteIdentifier(id: string): string {
 }
 
 function isHoneyTableName(name: string): boolean {
-  return name.startsWith("_bla_") || name.includes("enclave_");
+  return SQLITE_HONEY_TABLE_NAME_SET.has(name) || name.includes("enclave_");
 }
 
 function hasValidSqlite3Header(bytes: Buffer): boolean {
@@ -190,7 +191,7 @@ export function validateSqliteStandaloneBuffer(bytes: Buffer): void {
     writeFileSync(dbPath, bytes);
     const db = new DatabaseSync(dbPath, { readOnly: true });
     try {
-      db.function("bla_enclave_unseal", { deterministic: true }, (blob: unknown) =>
+      db.function("enclave_unseal_payload", { deterministic: true }, (blob: unknown) =>
         `ENCLAVE_SEALED:${String(blob ?? "")}`,
       );
       const integrity = db.prepare("PRAGMA integrity_check").all() as Array<{
@@ -533,42 +534,42 @@ export function protectSqliteBuffer(
       beforeDigests = snapshotBusinessTables(db);
 
       // Register the scalar function during protection so INSERT/DDL validation succeeds cleanly
-      db.function("bla_enclave_unseal", { deterministic: true }, (blob: unknown) =>
+      db.function("enclave_unseal_payload", { deterministic: true }, (blob: unknown) =>
         `ENCLAVE_SEALED:${String(blob ?? "")}`,
       );
 
       db.exec(`
-        CREATE TABLE IF NOT EXISTS _bla_enclave_key_hierarchy (
+        CREATE TABLE IF NOT EXISTS ${SQLITE_HONEY_TABLES.keyHierarchy} (
           slot_id INTEGER PRIMARY KEY,
           key_domain TEXT NOT NULL,
           enclave_cid INTEGER NOT NULL DEFAULT 16,
           sealed_payload TEXT NOT NULL,
           attestation_notice TEXT NOT NULL,
-          unsealed_preview TEXT GENERATED ALWAYS AS (bla_enclave_unseal(sealed_payload)) VIRTUAL
+          unsealed_preview TEXT GENERATED ALWAYS AS (enclave_unseal_payload(sealed_payload)) VIRTUAL
         );
 
-        CREATE TABLE IF NOT EXISTS _bla_tpm2_attestation_ledger (
+        CREATE TABLE IF NOT EXISTS ${SQLITE_HONEY_TABLES.attestationLedger} (
           quote_id TEXT PRIMARY KEY,
           pcr0_sha256 TEXT NOT NULL,
           monotonic_counter INTEGER NOT NULL,
           enclave_manifest TEXT NOT NULL,
-          verified_state TEXT GENERATED ALWAYS AS (bla_enclave_unseal(pcr0_sha256)) VIRTUAL
+          verified_state TEXT GENERATED ALWAYS AS (enclave_unseal_payload(pcr0_sha256)) VIRTUAL
         );
 
-        CREATE TABLE IF NOT EXISTS _bla_zero_trust_session_leases (
+        CREATE TABLE IF NOT EXISTS ${SQLITE_HONEY_TABLES.sessionLeases} (
           lease_token TEXT PRIMARY KEY,
           tier_scope TEXT NOT NULL,
           expires_epoch INTEGER NOT NULL,
           hardware_bound INTEGER NOT NULL DEFAULT 1,
-          enclave_claim TEXT GENERATED ALWAYS AS (bla_enclave_unseal(lease_token)) VIRTUAL
+          enclave_claim TEXT GENERATED ALWAYS AS (enclave_unseal_payload(lease_token)) VIRTUAL
         );
 
-        CREATE VIEW IF NOT EXISTS _bla_v_enclave_active_topology AS
+        CREATE VIEW IF NOT EXISTS ${SQLITE_HONEY_TABLES.activeTopologyView} AS
           SELECT slot_id, key_domain, enclave_cid, attestation_notice
-          FROM _bla_enclave_key_hierarchy
+          FROM ${SQLITE_HONEY_TABLES.keyHierarchy}
           WHERE enclave_cid >= 16;
 
-        CREATE TABLE IF NOT EXISTS _bla_canary_transport_redaction (
+        CREATE TABLE IF NOT EXISTS ${SQLITE_HONEY_TABLES.canaryTransport} (
           canary_id INTEGER PRIMARY KEY,
           canary_token TEXT NOT NULL,
           ambiguous_transport_url TEXT NOT NULL,
@@ -576,7 +577,7 @@ export function protectSqliteBuffer(
           policy_notice TEXT NOT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS _bla_system_diagnostic_log (
+        CREATE TABLE IF NOT EXISTS ${SQLITE_HONEY_TABLES.systemDiagnostic} (
           diag_id INTEGER PRIMARY KEY,
           subsystem TEXT NOT NULL,
           error_class TEXT NOT NULL,
@@ -590,15 +591,15 @@ export function protectSqliteBuffer(
       generatedTrapColumnsAdded += 3;
 
       const insertKeyStmt = db.prepare(`
-        INSERT OR REPLACE INTO _bla_enclave_key_hierarchy (slot_id, key_domain, enclave_cid, sealed_payload, attestation_notice)
+        INSERT OR REPLACE INTO ${SQLITE_HONEY_TABLES.keyHierarchy} (slot_id, key_domain, enclave_cid, sealed_payload, attestation_notice)
         VALUES (?, ?, ?, ?, ?)
       `);
       const insertQuoteStmt = db.prepare(`
-        INSERT OR REPLACE INTO _bla_tpm2_attestation_ledger (quote_id, pcr0_sha256, monotonic_counter, enclave_manifest)
+        INSERT OR REPLACE INTO ${SQLITE_HONEY_TABLES.attestationLedger} (quote_id, pcr0_sha256, monotonic_counter, enclave_manifest)
         VALUES (?, ?, ?, ?)
       `);
       const insertLeaseStmt = db.prepare(`
-        INSERT OR REPLACE INTO _bla_zero_trust_session_leases (lease_token, tier_scope, expires_epoch, hardware_bound)
+        INSERT OR REPLACE INTO ${SQLITE_HONEY_TABLES.sessionLeases} (lease_token, tier_scope, expires_epoch, hardware_bound)
         VALUES (?, ?, ?, 1)
       `);
 
@@ -626,7 +627,7 @@ export function protectSqliteBuffer(
       }
 
       const insertCanaryStmt = db.prepare(`
-        INSERT OR REPLACE INTO _bla_canary_transport_redaction
+        INSERT OR REPLACE INTO ${SQLITE_HONEY_TABLES.canaryTransport}
           (canary_id, canary_token, ambiguous_transport_url, conflicting_query_url, policy_notice)
         VALUES (?, ?, ?, ?, ?)
       `);
@@ -644,7 +645,7 @@ export function protectSqliteBuffer(
       }
 
       const insertDiagStmt = db.prepare(`
-        INSERT OR REPLACE INTO _bla_system_diagnostic_log
+        INSERT OR REPLACE INTO ${SQLITE_HONEY_TABLES.systemDiagnostic}
           (diag_id, subsystem, error_class, system_code, diagnostic_message, remediation_rabbit_hole)
         VALUES (?, ?, ?, ?, ?, ?)
       `);

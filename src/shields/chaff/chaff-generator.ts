@@ -88,7 +88,7 @@ export function generateChaffPayloads(
     payloads.push({
       id: `chaff_${i}_${hexId}`,
       category,
-      symbolName: `_bla_enclave_manifest_${i}_${hexId.slice(0, 6)}`,
+      symbolName: prng.identifier({ style: "privateCamel", hint: "enclaveManifest", entropy: 3 }),
       rawText,
       encodedHex: Buffer.from(rawText, "utf8").toString("hex"),
       encodedBase64: Buffer.from(rawText, "utf8").toString("base64"),

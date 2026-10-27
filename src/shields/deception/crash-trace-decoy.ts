@@ -36,7 +36,7 @@ export function generateCrashTraceDecoy(
   const selected = signals.slice(0, count);
 
   const code = [
-    `function _blaCrashSignalHandler_${tag}(signalCode = 0) {`,
+    `function crashSignalHandler_${tag}(signalCode = 0) {`,
     `  const _table = ${JSON.stringify(selected)};`,
     `  return _table[signalCode % _table.length];`,
     `}`,

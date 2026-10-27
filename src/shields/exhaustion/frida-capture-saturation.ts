@@ -27,7 +27,7 @@ export interface FridaCaptureSaturationResult {
  * 1. Because Frida's `Frida` and `Interceptor` globals live inside Frida's isolated Gum
  *    script realm (not the target's `globalThis`), this shield does NOT rely solely on
  *    `globalThis.Frida`. Instead, it maintains an always-active, realm-agnostic decoy
- *    ring buffer in memory (`_blaFridaRealmRing_<tag>`) and generates > 64 levels of JSON
+ *    ring buffer in memory and generates > 64 levels of JSON
  *    nesting (`MAX_JSON_DEPTH = 64`) plus > 32 KiB message descriptions
  *    (`MAX_MESSAGE_TEXT_BYTES = 32768`), forcing REA's Frida capture collector to drop
  *    and truncate observations.
@@ -44,17 +44,19 @@ export function generateFridaCaptureSaturation(
   const realmAgnosticRingSlots =
     intensity === "stealth" ? 8 : intensity === "balanced" ? 16 : 32;
   const tag = prng.hex(3);
+  const ringName = `fridaRealmRing_${tag}`;
+  const saturatorName = `fridaCaptureSaturator_${tag}`;
 
   const code = [
-    `const _blaFridaRealmRing_${tag} = { epoch: 0x${prng.hex(6)}, slots: new Array(${realmAgnosticRingSlots}).fill(0) };`,
-    `function _blaFridaCaptureSaturator_${tag}(forceEnvelope) {`,
-    `  _blaFridaRealmRing_${tag}.epoch = (_blaFridaRealmRing_${tag}.epoch + 0x9e3779b9) & 0x7fffffff;`,
-    `  for (let _s = 0; _s < _blaFridaRealmRing_${tag}.slots.length; _s++) {`,
-    `    _blaFridaRealmRing_${tag}.slots[_s] = (_blaFridaRealmRing_${tag}.epoch ^ (_s * 0x85ebca6b)) & 0x7fffffff;`,
+    `const ${ringName} = { epoch: 0x${prng.hex(6)}, slots: new Array(${realmAgnosticRingSlots}).fill(0) };`,
+    `function ${saturatorName}(forceEnvelope) {`,
+    `  ${ringName}.epoch = (${ringName}.epoch + 0x9e3779b9) & 0x7fffffff;`,
+    `  for (let _s = 0; _s < ${ringName}.slots.length; _s++) {`,
+    `    ${ringName}.slots[_s] = (${ringName}.epoch ^ (_s * 0x85ebca6b)) & 0x7fffffff;`,
     `  }`,
     `  const _g = typeof globalThis !== "undefined" ? globalThis : {};`,
-    `  if (forceEnvelope === false && !_g.Frida && !_g.Interceptor) return _blaFridaRealmRing_${tag};`,
-    `  let _nested = { enclaveSealed: true, slot: "${tag}", epoch: _blaFridaRealmRing_${tag}.epoch };`,
+    `  if (forceEnvelope === false && !_g.Frida && !_g.Interceptor) return ${ringName};`,
+    `  let _nested = { enclaveSealed: true, slot: "${tag}", epoch: ${ringName}.epoch };`,
     `  for (let d = 0; d < ${payloadJsonDepth}; d++) {`,
     `    _nested = { frame: d, child: _nested };`,
     `  }`,

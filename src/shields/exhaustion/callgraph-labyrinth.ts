@@ -44,7 +44,7 @@ export function generateCallGraphLabyrinth(
     const row: string[] = [];
     for (let n = 0; n < nodesPerScc; n++) {
       const verb = CRYPTO_STAGE_VERBS[(c * nodesPerScc + n) % CRYPTO_STAGE_VERBS.length]!;
-      row.push(`_blaScc_${verb}_${tag}_c${c}n${n}`);
+      row.push(`scc_${verb}_${tag}_c${c}n${n}`);
     }
     clusterNames.push(row);
   }
@@ -80,7 +80,7 @@ export function generateCallGraphLabyrinth(
     }
   }
 
-  const entrySymbol = `_blaLabyrinthDispatch_${tag}`;
+  const entrySymbol = `labyrinthDispatch_${tag}`;
   const firstNode = clusterNames[0]![0]!;
   lines.push(
     `function ${entrySymbol}(seed = 1) {`,

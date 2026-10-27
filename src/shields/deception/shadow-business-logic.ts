@@ -53,7 +53,7 @@ export function generateShadowBusinessLogic(
 
   for (const arch of selected) {
     if (arch === "shamir-ed25519-license-ring") {
-      const fnName = `_blaShadow_verifyShamirEd25519LicenseQuorum_${tag}`;
+      const fnName = `verifyShamirEd25519LicenseQuorum_${tag}`;
       shadowProceduresCreated.push(fnName);
       decoyConstantsCount += 6;
       blocks.push(
@@ -76,7 +76,7 @@ export function generateShadowBusinessLogic(
         `}`,
       );
     } else if (arch === "enterprise-tiered-pricing-matrix") {
-      const fnName = `_blaShadow_computeEnterpriseSettlementLedger_${tag}`;
+      const fnName = `computeEnterpriseSettlementLedger_${tag}`;
       shadowProceduresCreated.push(fnName);
       decoyConstantsCount += 5;
       blocks.push(
@@ -94,7 +94,7 @@ export function generateShadowBusinessLogic(
         `}`,
       );
     } else if (arch === "binary-wire-frame-ratchet") {
-      const fnName = `_blaShadow_decodeRatchetWireFrame_${tag}`;
+      const fnName = `decodeRatchetWireFrame_${tag}`;
       shadowProceduresCreated.push(fnName);
       decoyConstantsCount += 4;
       blocks.push(
@@ -109,7 +109,7 @@ export function generateShadowBusinessLogic(
         `}`,
       );
     } else if (arch === "tpm2-pcr-dongle-handshake") {
-      const fnName = `_blaShadow_validateTpm2Pcr0Quote_${tag}`;
+      const fnName = `validateTpm2Pcr0Quote_${tag}`;
       shadowProceduresCreated.push(fnName);
       decoyConstantsCount += 4;
       blocks.push(

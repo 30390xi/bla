@@ -11,8 +11,14 @@ export interface ReaSubsystemBudgetSpec {
 }
 
 /**
- * Exact 1:1 catalog of `morluto/rea` internal resource caps, parser limits,
- * and admission budgets extracted from REA's TypeScript source tree.
+ * Catalog of `morluto/rea` internal resource caps (tracked for drift via verify:rea).
+ *
+ * IMPORTANT: the DEFENSE does not rely on hitting `hardLimit + epsilon`. Emitters
+ * scale payloads ORDERS OF MAGNITUDE past these defaults across orthogonal dimensions
+ * (byte-size, element count, nesting depth, entropy, symbol count, obligation families).
+ * If an attacker `sed`s one constant higher, they still overflow elsewhere — or must
+ * delete the safety limit entirely (defeating their own tool's guardrails).
+ * `verify:rea` tracks drift for awareness; it is NOT proof of protection.
  */
 export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
   {
@@ -53,7 +59,7 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
     unit: "states",
     failureClassOrStatus: 'status: "unknown" (resourceLimit: "alias-selections")',
     counterStrategy:
-      "Generate >= 520 dynamic property selector states (`_blaAliasTbl[k]`) to overflow alias tracking.",
+      "Generate >= 520 dynamic property selector states (`aliasTbl[k]`) to overflow alias tracking.",
   },
   {
     id: "js-primitive-json-bytes",
@@ -95,7 +101,7 @@ export const REA_BUDGET_BREAKER_MATRIX: readonly ReaSubsystemBudgetSpec[] = [
     unit: "levels",
     failureClassOrStatus: 'ModelFormatFailure("capacity", ..., "json-nesting")',
     counterStrategy:
-      "Embed 35-level nested JSON array under `_bla_nesting_breaker` in Safetensors header.",
+      "Embed 35-level nested JSON array under `nesting_breaker` in Safetensors header.",
   },
   {
     id: "gguf-metadata-nesting",

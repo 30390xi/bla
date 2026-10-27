@@ -38,7 +38,7 @@ export function planDotnetManagedBudgetExhaustion(
   let estimatedReaStringChargeBytes = 0;
 
   for (let i = 0; i < 16; i++) {
-    const sym = `bla_enclave_pinvoke_unseal_ring0_slot_${tag}_${i}`;
+    const sym = `enclave_pinvoke_unseal_ring0_slot_${tag}_${i}`;
     decoyPInvokeImports.push(sym);
   }
 

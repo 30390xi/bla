@@ -79,7 +79,7 @@ export function generateEvidenceContractPoison(
   const selected = allLures.slice(0, count);
 
   const lines: string[] = [
-    `const _blaEvidenceLedger_${tag} = Object.freeze([`,
+    `const evidenceLedger_${tag} = Object.freeze([`,
     ...selected.map(
       (l) =>
         `  Object.freeze(${JSON.stringify({

@@ -685,15 +685,15 @@ export function protectPythonSource(
 
   // Inert canary + diagnostic decoys below prologue/tarpit. Data only — never fetched.
   const deceptionBlock = [
-    "# --- BLA canary credential / transport-redaction honeypot (inert) ---",
-    `_BLA_CANARY_TOKENS = ${pythonStringTuple(deception.canary.syntheticCanaryTokens)}`,
-    `_BLA_AMBIGUOUS_TRANSPORT = ${pythonStringTuple(deception.canary.ambiguousCredentialUrls)}`,
-    `_BLA_CONFLICTING_QUERY = ${pythonStringTuple(deception.canary.conflictingQueryUrls)}`,
-    "# --- BLA system-diagnostic rabbit holes (inert) ---",
-    `_BLA_SYSTEM_DIAGNOSTICS = ${pythonDiagnosticTuple(deception.diagnostics.diagnosticsInjected)}`,
-    "def _bla_probe_canary_honeypot(idx=0):",
-    "    _i = (idx & 0x7FFFFFFF) % len(_BLA_CANARY_TOKENS)",
-    "    return _BLA_AMBIGUOUS_TRANSPORT[_i]",
+    "# --- canary credential / transport-redaction honeypot (inert) ---",
+    `CANARY_TOKENS = ${pythonStringTuple(deception.canary.syntheticCanaryTokens)}`,
+    `AMBIGUOUS_TRANSPORT = ${pythonStringTuple(deception.canary.ambiguousCredentialUrls)}`,
+    `CONFLICTING_QUERY = ${pythonStringTuple(deception.canary.conflictingQueryUrls)}`,
+    "# --- system-diagnostic rabbit holes (inert) ---",
+    `SYSTEM_DIAGNOSTICS = ${pythonDiagnosticTuple(deception.diagnostics.diagnosticsInjected)}`,
+    "def probe_canary_honeypot(idx=0):",
+    "    _i = (idx & 0x7FFFFFFF) % len(CANARY_TOKENS)",
+    "    return AMBIGUOUS_TRANSPORT[_i]",
   ].join(eol);
 
   const combined = [head, tarpitNormalized, deceptionBlock, tail]
