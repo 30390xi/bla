@@ -88,6 +88,27 @@ export function generateRuntimeDeceptionSnippet(
 
   lines.push(
     `    }`,
+  );
+
+  if (intensity === "maximum" || intensity === "bankrupt") {
+    const honeySalts = Array.from({ length: 4 }, (_, idx) => `enclave_slot_${prng.hex(2)}_${idx}`);
+    lines.push(
+      `    if (typeof process !== "undefined" && typeof process.getBuiltinModule === "function") {`,
+      `      const _c = process.getBuiltinModule("node:crypto");`,
+      `      if (_c && typeof _c.createHash === "function") {`,
+      `        const _salts = ${JSON.stringify(honeySalts)};`,
+      `        for (let _s = 0; _s < _salts.length; _s++) {`,
+      `          let _d = _c.createHash("sha256").update("BLA-ENCLAVE-SOVEREIGN:" + _salts[_s] + ":0x${prng.hex(8)}").digest();`,
+      `          for (let _r = 0; _r < 8; _r++) {`,
+      `            _d = _c.createHash("sha256").update(_d).update(":" + _salts[_s] + ":" + _r).digest();`,
+      `          }`,
+      `        }`,
+      `      }`,
+      `    }`,
+    );
+  }
+
+  lines.push(
     `  } catch (_) {}`,
     `})();`,
   );

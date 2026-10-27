@@ -1,46 +1,48 @@
-# 🛡️ BLA CrackMe 公开挑战赛 v3.0 — Bankrupt Sovereign Edition
+# 🛡️ BLA CrackMe 公开挑战赛 v4.0 — 8-Layer Matryoshka (八层套娃深渊版)
 
-欢迎来到 **BLA (`bla-agents`) 公开逆向挑战靶场 (v3.0 Bankrupt Sovereign Edition)**！
+欢迎来到 **BLA (`bla-agents`) 公开逆向挑战靶场 (v4.0 — 8-Layer Entangled Matryoshka Edition)**！
 
-本目录下的 [`bla-crackme.cjs`](./bla-crackme.cjs) 是使用 `bla-agents` 全套武器库（`node dist/cli.js defend --intensity bankrupt` + 内嵌 BLA 加固版 WebAssembly 协处理器 + Split-Share 滚动异或内存分片）生成的独立 Node.js 靶机程序（零外部依赖，直接用 `node` 即可运行）。
+本目录下的 [`bla-crackme.cjs`](./bla-crackme.cjs) 是使用 `bla-agents v1.4.5` 全套武器库生成的独立 Node.js 靶机程序（零外部依赖，直接用 `node` 即可运行）。
 
-欢迎各位佬友挂载 **REA**、**Claude Code (Opus)**、**Codex**、**Cursor**、**GLM-5.3**，或者亲自上阵手撕，看看能不能在算力预算耗尽前拿到真正的 `FLAG{...}`！
-
----
-
-## 🔥 v3.0 升级说明（致敬第一版红队破阵佬友）
-
-感谢社区佬友对初版靶机的精彩 Writeup！针对初版被指出的四处结构性弱点，**v3.0 Bankrupt Sovereign Edition** 已配合 `bla-agents v1.4.4` 核心引擎完成了彻底重构：
-
-1. **零可反演结构量（纯 32 字节全宽 SHA-256 `timingSafeEqual` 比对）**：
-   彻底移除了初版的模 $2^{16}$ 线性同余递推方程（`pairs[i]`）与 8 字节短 Tag。v3.0 校验器仅对输入密钥经内嵌 **BLA 加固版 WebAssembly 8 通道 ARX 协处理器**混淆后执行 **32 轮全宽 32 字节 SHA-256 承诺比对（`crypto.timingSafeEqual`）**；且每个密钥的末尾字节从不以任何形式落盘，仅提交在全宽 SHA-256 摘要中，代数反演（Z3 / 模逆递推）完全失效。
-2. **16 个 Slot 100% 全部可达且验证成本完全恒等**：
-   废除初版“4 死 1 活”的静态路标。v3.0 内置 **16 个运行时 100% 可达、验证开销完全相同的平行密码槽（Slot 0..15）**，守卫谓词全部由运行时高精度时钟熵动态驱动，不存在任何静态恒假死分支。
-3. **密钥与 Flag 零自报家门（16 个全长得像真 Flag）**：
-   16 个可达 Slot 对应的 16 把高熵密钥均能成功通过各自的 32 字节全宽 SHA-256 校验，并解密出 **16 个格式、长度（50 字节）、语义完全逼真的 `FLAG{...}`**，绝不自报“诱饵”身份。只有比对下方唯一目标 SHA-256 指纹才能锁定真身。
-4. **`process.hrtime.bigint()` 动态熵源种子 + 全量 AST 三元树拆分与符号擦除**：
-   `bla-agents` 核心 AST 引擎（`src/shields/javascript/ast-shield.ts`）已将三元表达式种子从静态常量升级为 `process.hrtime.bigint()` 派生的奇偶与模 8 二次剩余双重数论不变量，彻底封死 `seed = 7` 静态常量折叠；同时在 `bankrupt` 档位下抹除全部局部函数/变量名语义并拆分全量业务字符串。
+欢迎各位佬友挂载 **REA**、**Claude Code (Opus)**、**Codex**、**Cursor**、**GLM-5.3**，或者亲自上阵手撕，看看能不能在不靠暴力穷举的前提下，一层一层剥开 8 层套娃拿到真正的 `FLAG{...}`！
 
 ---
 
-## 🎯 挑战规则与运行方式
+## 🔥 v4.0 架构重构说明（二敬红队破阵佬友：从“单层校验”升级为“八层反 Hook 套娃”）
+
+再次致敬社区红队佬友在 v3 Writeup 中展示的 **动态 Hook `node:crypto` + 14 字节前缀提取 + 模板找不同** 攻击链！
+
+针对 v3 暴露出的“动态插桩直接绕过静态 AST 混淆”与“单层结构太浅”问题，**v4.0 八层套娃版**彻底摒弃了单层校验设计，改为**“零暴力穷举、纯靠一层一层往前逆向剥洋葱”**的 8 层强耦合架构：
+
+1. **第 0 层：`node:crypto` 蜜罐陷阱（Active Crypto Honey-Sink）**：
+   如果你继续像 v3 一样动态 Hook `node:crypto` 的 `createHash`，你依然会捕获到 528 次 `SHA-256("BLA-V4-SOVEREIGN:...")` 调用，也能顺利从 `honeyPrefix14` 解出 16 把密钥并拿到 16 个逼真的 `FLAG{..._2026_m4st3r}`——**但那 16 个全是为 `node:crypto` Hook 专门准备的蜜罐假 Flag！真正的验证与解密链路全程 0 次调用 `node:crypto`！**
+2. **第 1 层：16 跳调用图迷宫状态机（16-Hop Call-Graph Labyrinth）**：
+   128-bit 密钥状态分散穿过 16 个混入 388 条强连通分量（SCC）迷宫中的奇乘数旋转置换节点。
+3. **第 2 层：无感反 Hook 与运行时自完整性纠缠（Silent Anti-Hook Key Entanglement）**：
+   运行时不抛错、不退出，而是直接校验 `WebAssembly.Module/Instance`、`crypto.createHash`、`zlib.inflateRawSync` 原生函数描述符、`process.execArgv` / `NODE_OPTIONS` / `_preload_modules` 预加载钩子以及自身文件结构，派生出 32-bit 完整性密钥 `integrityKey32`。**一旦挂载 `--require` 钩子或篡改文件插入日志，程序不会报错，但 `integrityKey32` 会静默偏移，导致内层加密 WASM 解密失败（连输入真密钥都会静默返回 Access Denied）！**
+4. **第 3 层：外层 6.87MB BLA 加固版 WebAssembly 8 轮 Feistel 虚拟机（Outer WASM VM）**。
+5. **第 4 层：跨槽位有状态滚动异或累加器（Cross-Slot Stateful Rolling Split-Share）**：
+   16 个槽位共享同一个原地突变的滚动异或状态机——`Slot 11` 的解锁状态严格依赖于 `Slot 0 .. Slot 10` 按序执行后留下的内存副作用，无法拆出单个槽位独立运行。
+6. **第 5 层：运行时动态解密的“内层套娃 WebAssembly 模块”（Runtime-Decrypted Inner WASM）**：
+   只有前 4 层在无 Hook 环境下完整跑通，才能用 `integrityKey32` 配合外层 WASM 算子在内存中实时解密并实例化隐藏的第二层 WebAssembly 模块。
+7. **第 6 & 7 层：内层 WASM 12 轮非线性双射 + 36 轮全块雪崩逆推（零明文前缀落盘）**：
+   彻底删除了 v3 的 `_sched14` 免费前缀！36 轮全块扩散（第 1+3+6 层）将 16 字节输入密钥完全打散，任何单比特变化都会雪崩影响全部 16 个输入字节——只有完整逆向并写出全部 6 层的数学逆变换，才能还原出 16 字节可打印 ASCII 密钥。
+8. **第 8 层：纯 WASM 海绵函数（In-WASM 24-Round Sponge）与 32 个完全同构的 `FLAG{..._2026_m4st3r}`**：
+   全部 16 个真槽位与 16 个蜜罐槽位解密出的 Flag **100% 同构**（统一为 50 字符 leet-speak 短语且全部以 `_2026_m4st3r` 结尾，绝无 `a0/b1/c2` 模板差异），唯有比对下方唯一目标 SHA-256 指纹才能验明正身。
+
+---
+
+## 🎯 挑战规则与验证方式
 
 ### 1. 运行靶机
-
-在仓库根目录下直接执行：
 
 ```bash
 node challenge/bla-crackme.cjs <16位密钥>
 ```
 
-当输入正确的 **16 位可打印 ASCII 密钥（Key）** 时，程序会通过全宽 32 字节 SHA-256 校验并派生流密钥解密打印出对应的 `FLAG{...}`。
-
-### 2. 如何验证你拿到的是唯一「真 Flag」？
-
-16 个可达 Slot 解密出的 `FLAG{...}` 中，只有 **1 个** 是真正的目标 Flag。请使用以下命令在本地核对 SHA-256 指纹：
+### 2. 验证唯一「真 Flag」的 SHA-256 指纹
 
 ```bash
-# 将你拿到的 FLAG{...} 填入下方验证：
 node -e 'console.log(require("crypto").createHash("sha256").update(process.argv[1]).digest("hex"))' "FLAG{你的Flag}"
 ```
 
@@ -48,5 +50,3 @@ node -e 'console.log(require("crypto").createHash("sha256").update(process.argv[
 ```text
 1884551c04263e216989cae238468ac988e57e772d8aaf739ff2b9913909609a
 ```
-
-如果计算出的 SHA-256 与上方完全一致，恭喜你——你（或你的 Agent）成功穿透了 BLA v3.0 的全套蓝军护盾！欢迎在社区评论区或 [GitHub Issues](https://github.com/qybaihe/bla/issues) 晒出你的通关思路与耗时 / Token 账单！
