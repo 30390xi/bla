@@ -191,26 +191,27 @@ function buildCombinatorialStringAst(
   }
 
   const terms: t.Expression[] = chunks.map((realChunk, idx) => {
-    const k = prng.nextInt(3, 125);
+    const k = prng.nextInt(3, 125) | 1;
     const decoyChunk =
       realChunk.length > 0 ? prng.hex(realChunk.length) : prng.hex(2);
-    // Opaque true: ((Math.imul(seed | k, (seed | k) + 1) & 1) === 0)
+    const useOddSq = idx % 3 === 1;
     const seededOr = t.binaryExpression(
       "|",
       t.identifier(seedIdentifierName),
       t.numericLiteral(k),
     );
-    const seededPlusOne = t.binaryExpression(
-      "+",
-      t.cloneNode(seededOr),
-      t.numericLiteral(1),
-    );
+    const rhs = useOddSq
+      ? t.cloneNode(seededOr)
+      : t.binaryExpression("+", t.cloneNode(seededOr), t.numericLiteral(1));
     const imulCall = t.callExpression(
       t.memberExpression(t.identifier("Math"), t.identifier("imul")),
-      [seededOr, seededPlusOne],
+      [seededOr, rhs],
     );
-    const bitAnd = t.binaryExpression("&", imulCall, t.numericLiteral(1));
-    const cond = t.binaryExpression("===", bitAnd, t.numericLiteral(0));
+    const mask = useOddSq ? 7 : 1;
+    const trueVal = useOddSq ? 1 : 0;
+    const falseVal = useOddSq ? 5 : 1;
+    const bitAnd = t.binaryExpression("&", imulCall, t.numericLiteral(mask));
+    const cond = t.binaryExpression("===", bitAnd, t.numericLiteral(trueVal));
 
     // Alternate polarity on odd indices so static heuristics see both true/false arms used
     if (idx % 2 === 0) {
@@ -223,7 +224,7 @@ function buildCombinatorialStringAst(
       const invertedCond = t.binaryExpression(
         "===",
         bitAnd,
-        t.numericLiteral(1),
+        t.numericLiteral(falseVal),
       );
       return t.conditionalExpression(
         invertedCond,
@@ -494,6 +495,48 @@ export function transformJavaScriptWithBlaShield(
         }
       }
     },
+    StringLiteral(path) {
+      if (intensity !== "bankrupt" && intensity !== "maximum") {
+        return;
+      }
+      const val = path.node.value;
+      if (val.length < 3 || val.length > 64) {
+        return;
+      }
+      const parent = path.parent;
+      if (
+        t.isImportDeclaration(parent) ||
+        t.isExportNamedDeclaration(parent) ||
+        t.isExportAllDeclaration(parent) ||
+        t.isTSLiteralType(parent)
+      ) {
+        return;
+      }
+      if (
+        t.isObjectProperty(parent) &&
+        parent.key === path.node &&
+        !parent.computed
+      ) {
+        return;
+      }
+      if (
+        t.isClassMethod(parent) ||
+        t.isObjectMethod(parent) ||
+        t.isClassProperty(parent)
+      ) {
+        return;
+      }
+      if (
+        t.isCallExpression(parent) &&
+        t.isIdentifier(parent.callee) &&
+        parent.callee.name === "require"
+      ) {
+        return;
+      }
+      path.replaceWith(buildCombinatorialStringAst(val, prng, seedVarName));
+      path.skip();
+      primitiveCandidateBranchesCreated += 256;
+    },
   });
 
   const effectiveCarrier: "module" | "script" | "commonjs" =
@@ -533,7 +576,10 @@ export function transformJavaScriptWithBlaShield(
         }
         const newName = prng.identifier({
           style: name.startsWith("_") ? "privateCamel" : "camel",
-          hint: name.replace(/^_+/, "").slice(0, 16) || "local",
+          hint:
+            intensity === "bankrupt" || intensity === "maximum"
+              ? undefined
+              : name.replace(/^_+/, "").slice(0, 16) || "local",
           entropy: 3,
         });
         if (newName === name || RENAME_RESERVED.has(newName) || exportedNameSet.has(newName)) {
@@ -638,7 +684,9 @@ export function transformJavaScriptWithBlaShield(
 
   // 4. Build Decoy IPC Ambiguity & Route Mirage block
   const mirageLines: string[] = [];
-  mirageLines.push(`const ${seedVarName} = 7;`);
+  mirageLines.push(
+    `const ${seedVarName} = ((typeof process !== "undefined" && typeof process?.hrtime?.bigint === "function" ? Number(process.hrtime.bigint() & 0x7fffn) : (typeof Date !== "undefined" ? (Date.now() & 0x7fff) : 7)) | 1);`,
+  );
   mirageLines.push(memoryDiffShield.code);
   const channelsToMirror =
     observedIpcChannels.size > 0
