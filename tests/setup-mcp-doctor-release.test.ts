@@ -436,6 +436,7 @@ describe("Issue #9: Fail-Closed Config Parsing, Non-Clobbering Backups & Ownersh
 describe("Issue #10: MCP Runtime Argument Validation, Prompts Contract & Subprocess Stdio Verification", () => {
   it("rejects missing, empty, non-string, and invalid-enum arguments across all MCP tools with -32602 and zero engine/FS side effects", async () => {
     const spyHandlers: McpEngineHandlers = {
+      hardenProject: vi.fn(),
       defendTarget: vi.fn(),
       auditTarget: vi.fn(),
       protectTarget: vi.fn(),

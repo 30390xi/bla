@@ -4,6 +4,19 @@ All notable changes to **bla-agents** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] — 2026-10-27
+
+Patch: green the CI pipeline. The v1.4.0 anti-strip work added `hardenProject`
+to the `McpEngineHandlers` contract but a test spy mock omitted it, so the
+`tsc --noEmit` typecheck step failed on CI (local `vitest` does not typecheck).
+
+### Fixed
+
+- **CI typecheck** — `tests/setup-mcp-doctor-release.test.ts` spy handler now
+  includes `hardenProject`, restoring a green `npm run typecheck`. Full CI
+  sequence (typecheck + build + test + benchmark) verified locally on Node 24.22.1:
+  **202 / 202** tests, **612.5×** aggregate benchmark, 14/14 runtime-equivalent.
+
 ## [1.4.0] — 2026-10-27
 
 Counter-REA depth release: drift harness, graceful Node degradation, canary +
