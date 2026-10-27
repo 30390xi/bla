@@ -232,6 +232,7 @@ npm run redteam:rea                        # authoritative (real REA)
 
 ## Community / 友情社区
 
+- 🎯 **[Public BLA CrackMe Challenge (`challenge/`)](challenge/README.md)** — Can your AI reverse-engineering agent beat a `bankrupt`-hardened BLA binary without falling into our Honeypot Flags?
 - [LINUX DO (`linux.do`)](https://linux.do/) — 新的理想型社区
 
 ## License
