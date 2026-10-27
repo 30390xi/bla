@@ -1,34 +1,28 @@
-# 🛡️ BLA CrackMe 公开挑战赛 v4.0 — 8-Layer Matryoshka (八层套娃深渊版)
+# 🛡️ BLA CrackMe 公开挑战赛 v4.1 — Zero-Shortcut Lockbox (零捷径八层套娃闭环版)
 
-欢迎来到 **BLA (`bla-agents`) 公开逆向挑战靶场 (v4.0 — 8-Layer Entangled Matryoshka Edition)**！
+欢迎来到 **BLA (`bla-agents`) 公开逆向挑战靶场 (v4.1 — Zero-Shortcut Lockbox Edition)**！
 
-本目录下的 [`bla-crackme.cjs`](./bla-crackme.cjs) 是使用 `bla-agents v1.4.5` 全套武器库生成的独立 Node.js 靶机程序（零外部依赖，直接用 `node` 即可运行）。
+本目录下的 [`bla-crackme.cjs`](./bla-crackme.cjs) 是使用 `bla-agents v1.4.6` 全套武器库生成的独立 Node.js 靶机程序（零外部依赖，直接用 `node` 即可运行）。
 
-欢迎各位佬友挂载 **REA**、**Claude Code (Opus)**、**Codex**、**Cursor**、**GLM-5.3**，或者亲自上阵手撕，看看能不能在不靠暴力穷举的前提下，一层一层剥开 8 层套娃拿到真正的 `FLAG{...}`！
+> **💡 环境提示**：本靶机内置了原生环境与 Preload Hook 完整性纠缠校验（检测 `--require` / `--import` / `NODE_OPTIONS` / `_preload_modules` / `inspector.url()`）。如果你的终端或 IDE（如 WorkBuddy / Cursor 等）全局注入了 `NODE_OPTIONS=--require=...`，请使用 `env -u NODE_OPTIONS node challenge/bla-crackme.cjs <16位密钥>` 运行，否则反 Hook 纠缠会静默污染内层 WASM 解密密钥。
 
 ---
 
-## 🔥 v4.0 架构重构说明（二敬红队破阵佬友：从“单层校验”升级为“八层反 Hook 套娃”）
+## 🔥 v4.1 补丁说明（三敬红队破阵佬友：堵死 `scope === sponge` 免密钥直通漏洞）
 
-再次致敬社区红队佬友在 v3 Writeup 中展示的 **动态 Hook `node:crypto` + 14 字节前缀提取 + 模板找不同** 攻击链！
+再次给火眼金睛的红队佬友点赞！在 v4.0 中，虽然前七层加固（`node:crypto` 蜜罐分流 + Preload 反 Hook 静默损坏 + 双层加密 WASM）成功生效，但我们在最后一步解密时犯了一个低级失误——**把用于比对的落盘常量 `sponge`（即 `scope === slot.sponge`）直接当成了派生 `keystream` 的唯一种子**，导致攻击者直接拿文件里的 `slot.sponge` 就能跳过前 36 轮逆推直接算出明文 Flag！
 
-针对 v3 暴露出的“动态插桩直接绕过静态 AST 混淆”与“单层结构太浅”问题，**v4.0 八层套娃版**彻底摒弃了单层校验设计，改为**“零暴力穷举、纯靠一层一层往前逆向剥洋葱”**的 8 层强耦合架构：
+**v4.1 (Zero-Shortcut Lockbox Edition)** 已完成以下四项闭环修复：
 
-1. **第 0 层：`node:crypto` 蜜罐陷阱（Active Crypto Honey-Sink）**：
-   如果你继续像 v3 一样动态 Hook `node:crypto` 的 `createHash`，你依然会捕获到 528 次 `SHA-256("BLA-V4-SOVEREIGN:...")` 调用，也能顺利从 `honeyPrefix14` 解出 16 把密钥并拿到 16 个逼真的 `FLAG{..._2026_m4st3r}`——**但那 16 个全是为 `node:crypto` Hook 专门准备的蜜罐假 Flag！真正的验证与解密链路全程 0 次调用 `node:crypto`！**
-2. **第 1 层：16 跳调用图迷宫状态机（16-Hop Call-Graph Labyrinth）**：
-   128-bit 密钥状态分散穿过 16 个混入 388 条强连通分量（SCC）迷宫中的奇乘数旋转置换节点。
-3. **第 2 层：无感反 Hook 与运行时自完整性纠缠（Silent Anti-Hook Key Entanglement）**：
-   运行时不抛错、不退出，而是直接校验 `WebAssembly.Module/Instance`、`crypto.createHash`、`zlib.inflateRawSync` 原生函数描述符、`process.execArgv` / `NODE_OPTIONS` / `_preload_modules` 预加载钩子以及自身文件结构，派生出 32-bit 完整性密钥 `integrityKey32`。**一旦挂载 `--require` 钩子或篡改文件插入日志，程序不会报错，但 `integrityKey32` 会静默偏移，导致内层加密 WASM 解密失败（连输入真密钥都会静默返回 Access Denied）！**
-4. **第 3 层：外层 6.87MB BLA 加固版 WebAssembly 8 轮 Feistel 虚拟机（Outer WASM VM）**。
-5. **第 4 层：跨槽位有状态滚动异或累加器（Cross-Slot Stateful Rolling Split-Share）**：
-   16 个槽位共享同一个原地突变的滚动异或状态机——`Slot 11` 的解锁状态严格依赖于 `Slot 0 .. Slot 10` 按序执行后留下的内存副作用，无法拆出单个槽位独立运行。
-6. **第 5 层：运行时动态解密的“内层套娃 WebAssembly 模块”（Runtime-Decrypted Inner WASM）**：
-   只有前 4 层在无 Hook 环境下完整跑通，才能用 `integrityKey32` 配合外层 WASM 算子在内存中实时解密并实例化隐藏的第二层 WebAssembly 模块。
-7. **第 6 & 7 层：内层 WASM 12 轮非线性双射 + 36 轮全块雪崩逆推（零明文前缀落盘）**：
-   彻底删除了 v3 的 `_sched14` 免费前缀！36 轮全块扩散（第 1+3+6 层）将 16 字节输入密钥完全打散，任何单比特变化都会雪崩影响全部 16 个输入字节——只有完整逆向并写出全部 6 层的数学逆变换，才能还原出 16 字节可打印 ASCII 密钥。
-8. **第 8 层：纯 WASM 海绵函数（In-WASM 24-Round Sponge）与 32 个完全同构的 `FLAG{..._2026_m4st3r}`**：
-   全部 16 个真槽位与 16 个蜜罐槽位解密出的 Flag **100% 同构**（统一为 50 字符 leet-speak 短语且全部以 `_2026_m4st3r` 结尾，绝无 `a0/b1/c2` 模板差异），唯有比对下方唯一目标 SHA-256 指纹才能验明正身。
+1. **存 `H(scope)` 做校验，用 `scope ^ key ^ st1 ^ st3` 做 `keystream`（彻底切断免密钥捷径）**：
+   - 文件中的 `slot.verify` 现在只存储 `scope` 再经一轮 24 轮双层 WASM 海绵折叠后的单向承诺 `H(scope)`；
+   - 解密密钥流 `ks1 ‖ ks2` 则直接将未落盘的 `scope` 与原始 16 字节输入密钥 `[w0, w1, w2, w3]`、第 1 层 16 跳迷宫输出 `st1`、第 3 层外层 WASM 输出 `st3` 深度异或绑定。手里只有落盘的 `slot.verify` 绝对无法派生出 `keystream`，必须真正逆向还原出 16 位密钥！
+2. **全文件 347KB 字节级 FNV-1a 自完整性封印（Full-File FNV-1a Self-Integrity Seal）**：
+   - 修复了 v4.0 仅检查 `length >= 50000` 的虚设校验。现在程序启动时会对自身全部 347,336 字节源码计算真实 32-bit FNV-1a 哈希并与文件内嵌锚点异或合入 `integrityKey32`——哪怕在文件末尾多加一个回车或注释，内层 WASM 都会静默解密失败。
+3. **封堵 `process._debugProcess(pid)` 动态挂载缺口**：
+   - 新增 `node:inspector` 的 `inspector.url()` 实时检测，堵死不经 `execArgv` 的运行时动态调试器挂载。
+4. **内外双层 WASM 扩充至 64 个独立字节码算子（`vm_op_0..63` & `sbox_step_0..63`）**：
+   - 内外两层 WASM 模块均编译了 64 个拥有独立 SLEB128 常数体的真实函数，每轮调用的算子索引由跨槽位滚动状态 `rollingAcc32` 与 `splitMask32` 动态决定。
 
 ---
 
@@ -37,7 +31,7 @@
 ### 1. 运行靶机
 
 ```bash
-node challenge/bla-crackme.cjs <16位密钥>
+env -u NODE_OPTIONS node challenge/bla-crackme.cjs <16位密钥>
 ```
 
 ### 2. 验证唯一「真 Flag」的 SHA-256 指纹
