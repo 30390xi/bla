@@ -17,7 +17,7 @@ Also: `bla_harden` MCP tool with `{ "directory": "." }`.
 
 | Format | Canary + diagnostic + exhaustion | Empirical vs real REA | Notes |
 |--------|----------------------------------|------------------------|-------|
-| JavaScript / TypeScript | ✓ | designed-for (showcase estimates) | AST + semantic budgets |
+| JavaScript / TypeScript | ✓ | **verified** — real REA `resourceLimits` (alias/getter/primitive) + anti-strip | AST + semantic budgets |
 | Electron ASAR | ✓ | **verified** — `DEFAULT_ASAR_MAX_HEADER_BYTES` | |
 | WebAssembly | ✓ export decoys | **verified** — Wabt `WASM_INTERFACE_REPRESENTATION_BYTES` / partial | needs Wabt for REA path |
 | Python `.py` / `.pyc` | ✓ | designed-for | |
@@ -51,13 +51,15 @@ Commodity hardware, sibling REA, Node 24.22.1 + Wabt 1.0.42 + tshark:
 | WASM | 54 → 6 878 763 B | `WASM_INTERFACE_REPRESENTATION_BYTES` |
 | SQLite (N24) | 12 288 → 57 344 B | `SqliteColumnEvaluationFailure` |
 | Electron fuses | same ELF plant | `maximumSentinelsPerSlice` |
+| JavaScript | 761 → 116 210 B | `alias-selections`+`getter-expansion`+`primitive-bytes`+`primitive-candidates` |
 | GPU PTX | 91 → 26 424 B | still soft (`after=ok`) |
 
-`npm run verify:rea` — catalog alignment (42 checks).
+`npm run verify:rea` — catalog **drift harness only** (42 checks). Not protection proof.
+`npm run redteam:rea` — **only** authoritative evidence (real in-process REA exceptions).
 
 ## Benchmark (internal estimates)
 
-14-target Counter-REA showcase: **~597.6×** token amplification, **~285.3×** cost, **100%** runtime-equivalent. Numbers are model estimates, not the empirical table above.
+14-target Counter-REA showcase: **~612.5×** token amplification, **~292.2×** cost, **100%** runtime-equivalent. Numbers are **internal model estimates**, not empirical REA process measurements. Do not cite as red-team proof.
 
 ## Dogfood (local user journey)
 
@@ -67,6 +69,13 @@ Outside the repo, `npm pack` → install tarball → isolated `HOME`:
 2. `bla harden .` → discovered **10** artifacts (dist/* + root `tools.py` / `local.sqlite`), hardened **10/10**, doctor **HEALTHY**
 3. Hardened JS/WASM/SQLite/Safetensors/ELF/ASAR/Python remain valid and runtime-equivalent
 4. MCP `tools/list` includes `bla_harden`; `tools/call bla_harden` succeeds
+
+## Done this critique pass
+
+- Anti-strip / realistic identifiers + CF entanglement (JS AST)
+- Orders-of-magnitude tarpit scaling (not keyed to exact REA consts)
+- `redteam:rea` as sole authoritative evidence; `verify:rea` demoted
+- Honest docs separation verified / designed-for / skipped
 
 ## Nightly roadmap remaining
 

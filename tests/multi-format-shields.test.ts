@@ -84,7 +84,8 @@ describe("Multi-Format Shields (WASM, Python, Native ELF/Mach-O/PE, C/Rust/Go He
     expect(protectedPy.code).toContain("def calculate_dynamic_quote");
     expect(protectedPy.canaryTokensEmbedded).toBeGreaterThanOrEqual(2);
     expect(protectedPy.diagnosticsEmbedded).toBeGreaterThanOrEqual(2);
-    expect(protectedPy.code).toContain("_BLA_CANARY_TOKENS");
+    expect(protectedPy.code).toContain("CANARY_TOKENS");
+    expect(protectedPy.code).toContain("BLA-SHIELD");
     expect(protectedPy.code).toContain("AKIAIOSFODNN7EXAMPLE");
     expect(protectedPy.code).toContain("DarwinProcessOwnershipInspectionError");
     expect(protectedPy.code).toContain("https:/canary_");
@@ -199,7 +200,7 @@ describe("Multi-Format Shields (WASM, Python, Native ELF/Mach-O/PE, C/Rust/Go He
     expect(rustHeader.filename).toBe("bla_shield.rs");
     expect(rustHeader.content).toContain("BLA_RUSTC_OVERFLOW_TABLE");
     expect(goHeader.filename).toBe("bla_shield.go");
-    expect(goHeader.content).toContain("func BlaEnclaveTarpit0");
+    expect(goHeader.content).toContain("func EnclaveTarpit0");
   });
 
   it("protects supported minimal ZIP archives while preserving existing entries", () => {

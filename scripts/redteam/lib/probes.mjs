@@ -187,6 +187,12 @@ export async function loadReaProbes() {
   } catch {
     /* optional */
   }
+  const { analyzeJavaScriptStaticSource } = await import(
+    resolveReaDist("domain/javascript/javascriptStaticAnalysis.js")
+  );
+  const { analyzeJavaScriptSemantics } = await import(
+    resolveReaDist("domain/javascript/javascriptSemanticAnalysis.js")
+  );
   return {
     readGoBinaryImage,
     parseErlangBeam,
@@ -214,6 +220,8 @@ export async function loadReaProbes() {
     SqliteInspectionFailure,
     SqliteColumnEvaluationFailure,
     WabtArtifactProvider,
+    analyzeJavaScriptStaticSource,
+    analyzeJavaScriptSemantics,
   };
 }
 
@@ -728,15 +736,21 @@ export async function probeSqlite(rea, bla, bytes, phase) {
     base.metrics.reaTables = tableNames.length;
     base.metrics.reaTableNames = tableNames.slice(0, 12);
     base.metrics.reaLimitations = (result?.limitations ?? []).slice(0, 3);
-    const honeyVisible = tableNames.filter((n) =>
-      String(n).startsWith("_bla_"),
-    );
+    const HONEY = new Set([
+      "enclave_key_hierarchy",
+      "tpm2_attestation_ledger",
+      "zero_trust_session_leases",
+      "canary_transport_redaction",
+      "system_diagnostic_log",
+      "v_enclave_active_topology",
+    ]);
+    const honeyVisible = tableNames.filter((n) => HONEY.has(String(n)));
     base.metrics.reaHoneyTablesVisible = honeyVisible.length;
 
     // After hardening: select a honey table with generated trap columns —
-    // REA cannot evaluate bla_enclave_unseal() → SqliteColumnEvaluationFailure.
+    // REA cannot evaluate enclave_unseal_payload() → SqliteColumnEvaluationFailure.
     if (phase === "after" && honeyVisible.length > 0) {
-      const honey = "_bla_enclave_key_hierarchy";
+      const honey = "enclave_key_hierarchy";
       try {
         rea.inspectSqliteDatabaseSnapshot(path, {
           schema: true,
@@ -749,13 +763,13 @@ export async function probeSqlite(rea, bla, bytes, phase) {
         const msg = String(err?.message ?? err);
         const isTrap =
           err?.constructor?.name === "SqliteColumnEvaluationFailure" ||
-          /bla_enclave_unseal|cannot evaluate selected column/i.test(msg);
+          /enclave_unseal_payload|cannot evaluate selected column/i.test(msg);
         if (isTrap) {
           base.budgetHit = true;
           base.budgetName = "SqliteColumnEvaluationFailure";
           base.status = "budget_rejected";
           base.redactionOrAmbiguity =
-            "REA cannot evaluate BLA generated trap columns (unknown function bla_enclave_unseal); honey schema still disclosed";
+            "REA cannot evaluate BLA generated trap columns (unknown function enclave_unseal_payload); honey schema still disclosed";
           base.errorName = err?.constructor?.name ?? "SqliteColumnEvaluationFailure";
           base.errorMessage = msg.slice(0, 240);
           base.metrics.trapColumnFailure = true;
@@ -815,6 +829,39 @@ export async function probeElectronFuses(rea, bytes, phase) {
 }
 
 /** Catalog of analyzers that cannot run empirically on this box. */
+
+export async function probeJavascript(rea, bytes, phase) {
+  const base = outcomeBase("javascript", phase, bytes);
+  const text = Buffer.isBuffer(bytes) ? bytes.toString("utf8") : String(bytes);
+  try {
+    const st = rea.analyzeJavaScriptStaticSource(text);
+    const sem = rea.analyzeJavaScriptSemantics(text);
+    const staticLimits = st?.coverage?.examination?.semantic_resource_limits ?? [];
+    const semLimits = sem?.coverage?.resourceLimits ?? [];
+    const allLimits = [...new Set([...staticLimits, ...semLimits])];
+    base.metrics.parseStatus = st?.parse_status;
+    base.metrics.staticCoverage = st?.coverage?.examination?.status;
+    base.metrics.semCoverage = sem?.coverage?.status;
+    base.metrics.semanticResourceLimits = allLimits;
+    base.metrics.unknownFindings = st?.coverage?.semantics?.unknown_findings ?? 0;
+    if (phase === "after" && allLimits.length > 0) {
+      base.budgetHit = true;
+      base.budgetName = allLimits.join("+");
+      base.status = "budget_rejected";
+      base.redactionOrAmbiguity =
+        `REA JS semantic analysis degraded: resourceLimits=[${allLimits.join(", ")}] (real REA exceptions, not simulation)`;
+    } else if (phase === "after" && (st?.parse_status === "partial" || sem?.coverage?.status === "partial")) {
+      base.budgetHit = true;
+      base.budgetName = "javascript-semantic-partial";
+      base.status = "budget_rejected";
+      base.redactionOrAmbiguity = "REA JS analysis returned partial coverage without explicit resourceLimits";
+    }
+  } catch (err) {
+    failOutcome(base, err, "javascript-analysis");
+  }
+  return base;
+}
+
 export function unverifiedAnalyzers() {
   return [
     {

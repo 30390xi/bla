@@ -14,8 +14,8 @@ benchmark. Includes commit `1490af1` and all subsequent work through this tag.
 
 ### Added
 
-- **REA constant drift harness** — catalog alignment checks (`verify:rea`) keep
-  BLA budgets in lockstep with REA source constants.
+- **REA constant drift harness** — catalog alignment checks (`verify:rea`) track
+  whether REA published constants moved. **Not protection proof** — use `redteam:rea`.
 - **Canary credential redaction honeypot + system-diagnostic rabbit hole** —
   extended from the initial landing into Python (`.py`/`.pyc`), WASM custom
   sections, SQLite metadata tables, Safetensors/GGUF model metadata, DEX,
@@ -32,15 +32,15 @@ benchmark. Includes commit `1490af1` and all subsequent work through this tag.
   before/after probes for Go, Flutter, BEAM, EVM, PCAP, GGUF, ASAR, WASM,
   SQLite, Electron fuses; regenerates `docs/redteam/empirical-rea-validation.{md,json}`.
 - **Node 24 SQLite empirical path** — when `DatabaseSync.limits` is present,
-  honey tables with generated `bla_enclave_unseal()` trap columns trip REA's
+  honey tables with generated `enclave_unseal_payload()` trap columns trip REA's
   `SqliteColumnEvaluationFailure` (soft-skips as `capability_gated` on Node 22).
 - **Wabt WASM E2E empirical path** — with `REA_WABT_BIN_DIRECTORY` pointing at
   WABT 1.0.42, `WabtArtifactProvider` runs end-to-end; long-name export decoys
   force `ifaceState=partial` past `WASM_INTERFACE_REPRESENTATION_BYTES`
   (soft-skips to projected `WasmInterfaceBudget` when Wabt is absent).
 - **14-target Counter-REA benchmark** (adds BEAM / EVM / PCAP / PTX to the
-  prior showcase) with aggregate ~597× token amplification and 100% runtime
-  equivalence across all targets.
+  prior showcase) with estimated ~597× token amplification (showcase estimates, not real-REA
+  numbers) and 100% runtime equivalence across all targets.
 - **Launch-ready README** with honest empirical-vs-estimate separation and
   current format coverage matrix (verified / designed-for / skipped).
 - **STATE.md** project snapshot (coverage, empirical headlines, publish checklist).
@@ -58,6 +58,21 @@ benchmark. Includes commit `1490af1` and all subsequent work through this tag.
 
 ### Fixed
 
+- **Anti-strip (critique #1)** — injected identifiers across JS/Python/tarpit/chaff/runtime/deception/
+  exhaustion/format shields no longer share greppable `_bla` / `$00_AAA` / `__bla_` markers.
+  Names are seeded-random realistic identifiers; opaque-true predicates wrap real statements so
+  naive `grep -v` cannot recover clean original source; locals renamed and comments scrambled
+  on the JS AST path.
+- **Constant-brittleness (critique #2)** — tarpit/exhaustion payloads scale **orders of magnitude**
+  past published REA defaults across orthogonal dimensions (alias path-states, primitive candidates,
+  string bytes, getters, symbol counts, obligation families). Bumping one REA const with `sed`
+  does not restore analysis; the attacker must remove the safety limit.
+- **Self-certification (critique #3)** — `verify:rea` explicitly demoted to a drift harness;
+  `npm run redteam:rea` (real in-process REA) is the only authoritative evidence. Sim-derived
+  “2246×”-style claims removed from docs; only real-REA exception strings are quoted.
+
+### Fixed (prior)
+
 - `bla harden .` skipped project-root artifacts whenever `dist/` (or another
   build dir) existed — supplemental root walk now picks up root-level
   `.sqlite` / `.py` / `.wasm` / binaries without sweeping `src/`.
@@ -72,7 +87,7 @@ benchmark. Includes commit `1490af1` and all subsequent work through this tag.
   column-evaluation path — generated trap columns now force
   `SqliteColumnEvaluationFailure` on honey row selects.
 - Safetensors shield that previously left REA `after=ok` — attaches a deep
-  nested `bla_enclave_topology` **extra** key on the first tensor descriptor
+  nested `enclave_topology_seal` **extra** key on the first tensor descriptor
   (HuggingFace ignores unknown fields; tensor bytes unchanged) so REA hits
   `MODEL_JSON_NESTING` / *Safetensors JSON nesting exceeds 32 levels*.
 

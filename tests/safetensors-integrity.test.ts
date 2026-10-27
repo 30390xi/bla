@@ -42,8 +42,8 @@ describe("Safetensors format and tensor preservation (not inference)", () => {
       expect(parsed[key].data_offsets).toEqual(header[key].data_offsets);
     }
     // Nesting breaker is an HF-ignored extra key on the first tensor only.
-    expect(parsed.weights.bla_enclave_topology).toBeDefined();
-    expect(parsed.bias.bla_enclave_topology).toBeUndefined();
+    expect(parsed.weights.enclave_topology_seal).toBeDefined();
+    expect(parsed.bias.enclave_topology_seal).toBeUndefined();
     expect(parsed.__metadata__).toMatchObject(header.__metadata__);
     expect(Object.values(parsed.__metadata__).every(v => typeof v === "string")).toBe(true);
     expect(result.chaffPayloadsEmbedded).toBe(Object.keys(parsed.__metadata__).filter(k => k.startsWith("enclave.manifest.") && !Object.hasOwn(header.__metadata__, k)).length);
@@ -67,7 +67,7 @@ describe("Safetensors format and tensor preservation (not inference)", () => {
     ["non-object", rawHeader("[]")],
     ["non-string metadata", buildSafetensorsBuffer({ ...header, __metadata__: { bad: 1 } }, data)],
     ["array metadata", buildSafetensorsBuffer({ ...header, __metadata__: [] }, data)],
-    ["invalid descriptor", buildSafetensorsBuffer({ ...header, _bla_nesting_breaker: [] }, data)],
+    ["invalid descriptor", buildSafetensorsBuffer({ ...header, nesting_breaker: [] }, data)],
     ["negative dimension", buildSafetensorsBuffer({ x: { dtype: "F32", shape: [-1], data_offsets: [0, 12] } }, data)],
     ["unsafe dimension", buildSafetensorsBuffer({ x: { dtype: "F32", shape: [Number.MAX_SAFE_INTEGER + 1], data_offsets: [0, 12] } }, data)],
     ["overflowing shape product", buildSafetensorsBuffer({ x: { dtype: "F32", shape: [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER], data_offsets: [0, 12] } }, data)],

@@ -25,6 +25,7 @@ import {
   probeWasm,
   probeSqlite,
   probeElectronFuses,
+  probeJavascript,
   unverifiedAnalyzers,
 } from "./lib/probes.mjs";
 import { writeReports } from "./lib/report.mjs";
@@ -180,6 +181,17 @@ async function main() {
       format: "electron_fuses",
       before: await probeElectronFuses(rea, s.before, "before"),
       after: await probeElectronFuses(rea, s.after, "after"),
+      sampleMeta: s.meta,
+      blaLimits: limits,
+    });
+  }
+
+  {
+    const s = samples.javascript;
+    pairs.push({
+      format: "javascript",
+      before: await probeJavascript(rea, s.before, "before"),
+      after: await probeJavascript(rea, s.after, "after"),
       sampleMeta: s.meta,
       blaLimits: limits,
     });

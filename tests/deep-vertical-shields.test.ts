@@ -110,8 +110,8 @@ describe("Deep Vertical Shields (Runtime Deception, Electron Fuses, SQLite, AI M
     expect(protectedSqlite.canaryTokensEmbedded).toBeGreaterThanOrEqual(2);
     expect(protectedSqlite.diagnosticsEmbedded).toBeGreaterThanOrEqual(2);
     expect(protectedSqlite.generatedTrapColumnsAdded).toBe(3);
-    expect(protectedSqlite.buffer.toString("utf8")).toContain("_bla_canary_transport_redaction");
-    expect(protectedSqlite.buffer.toString("utf8")).toContain("_bla_system_diagnostic_log");
+    expect(protectedSqlite.buffer.toString("utf8")).toContain("canary_transport_redaction");
+    expect(protectedSqlite.buffer.toString("utf8")).toContain("system_diagnostic_log");
     expect(protectedSqlite.buffer.toString("utf8")).toContain("AKIAIOSFODNN7EXAMPLE");
     expect(protectedSqlite.buffer.toString("utf8")).toContain("DarwinProcessOwnershipInspectionError");
 
@@ -121,7 +121,7 @@ describe("Deep Vertical Shields (Runtime Deception, Electron Fuses, SQLite, AI M
     expect(afterInfo.hasGeneratedTrapColumns).toBe(true);
 
     // Verify real application table (`license_cache`) is 100% intact AND
-    // REA's bare read-only `SELECT * FROM _bla_enclave_key_hierarchy` fails on the virtual generated column!
+    // REA's bare read-only `SELECT * FROM enclave_key_hierarchy` fails on the virtual generated column!
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "bla-sqlite-verify-"));
     const dbFile = path.join(tmpDir, "verify.sqlite");
     try {
@@ -140,9 +140,9 @@ describe("Deep Vertical Shields (Runtime Deception, Electron Fuses, SQLite, AI M
           offline_token: "tok_live_9988776655",
         });
 
-        // REA's full-row projection on the honey table must throw because `bla_enclave_unseal` is not registered on REA's connection
+        // REA's full-row projection on the honey table must throw because `enclave_unseal_payload` is not registered on REA's connection
         expect(() => {
-          reaReadOnlyDb.prepare("SELECT * FROM _bla_enclave_key_hierarchy LIMIT 5").all();
+          reaReadOnlyDb.prepare("SELECT * FROM enclave_key_hierarchy LIMIT 5").all();
         }).toThrow();
       } finally {
         reaReadOnlyDb.close();
@@ -172,7 +172,7 @@ describe("Deep Vertical Shields (Runtime Deception, Electron Fuses, SQLite, AI M
     expect(protSt.buffer.toString("utf8")).toContain("enclave.canary.token.0");
     expect(protSt.buffer.toString("utf8")).toContain("enclave.diagnostic.0");
     expect(protSt.buffer.toString("utf8")).toContain("AKIAIOSFODNN7EXAMPLE");
-    expect(protSt.buffer.toString("utf8")).toContain("bla_enclave_topology");
+    expect(protSt.buffer.toString("utf8")).toContain("enclave_topology_seal");
 
     const afterSt = inspectModelBuffer(protSt.buffer);
     expect(afterSt.validModel).toBe(true);
@@ -228,7 +228,7 @@ describe("Deep Vertical Shields (Runtime Deception, Electron Fuses, SQLite, AI M
       { fileName: "assets/index-abc123.js" },
     );
     expect(chunkOut).not.toBeNull();
-    expect(chunkOut!.code).toContain("_bla_");
+    expect(chunkOut!.code).not.toMatch(/_bla|\$00_AAA|__bla/);
     expect(chunkOut!.map).toBeDefined();
     expect(chunkOut!.map!.sourceRoot).toBe("enclave://tee-runtime/");
 
@@ -258,6 +258,6 @@ describe("Deep Vertical Shields (Runtime Deception, Electron Fuses, SQLite, AI M
         },
       },
     });
-    expect(assets["main.bundle.js"]!.source()).toContain("_bla_");
+    expect(assets["main.bundle.js"]!.source()).not.toMatch(/_bla|\$00_AAA|__bla/);
   });
 });

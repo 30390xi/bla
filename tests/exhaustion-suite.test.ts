@@ -33,7 +33,9 @@ describe("Counter-REA Resource Exhaustion Suite", () => {
     expect(flood.code).toContain("serviceWorker");
 
     // Verify safe O(1) runtime execution
-    const fn = new Function(`${flood.code}; return typeof _blaObligationFlood_ !== "undefined";`);
+    const nameMatch = flood.code.match(/function\s+(obligationFlood_[a-f0-9]+)/);
+    expect(nameMatch).not.toBeNull();
+    const fn = new Function(`${flood.code}; return typeof ${nameMatch![1]} === "function";`);
     expect(fn).not.toThrow();
   });
 

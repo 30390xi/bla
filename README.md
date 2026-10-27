@@ -91,7 +91,8 @@ Recorded under **Node v24.22.1** with optional **Wabt 1.0.42** + **tshark 4.4** 
 | **PCAP** | 24 B → 1.29 MiB | budget rejected | `TSHARK_JSON_MAX_BYTES` (>8 MiB) → `AnalysisResourceConstraintError` (tshark present) |
 | **Electron ASAR** | 607 B → **16.9 MiB** | capacity error | `DEFAULT_ASAR_MAX_HEADER_BYTES` (16 MiB) |
 | **WASM + Wabt** | 54 B → **6.56 MiB** · 251 exports | `ifaceState=partial` | `WASM_INTERFACE_REPRESENTATION_BYTES` — *Typed WASM interface decoding exceeds the WABT output representation budget* |
-| **SQLite** (Node 24) | 12 KiB → 56 KiB | redaction / column eval | `SqliteColumnEvaluationFailure` — unknown `bla_enclave_unseal()` on honey trap columns |
+| **SQLite** (Node 24) | 12 KiB → 56 KiB | redaction / column eval | `SqliteColumnEvaluationFailure` — unknown `enclave_unseal_payload()` on honey trap columns |
+| **JavaScript** | 761 B → 116 KiB | budget rejected | `alias-selections` + `getter-expansion` + `primitive-bytes` + `primitive-candidates` (real REA `resourceLimits`) |
 | **Safetensors** | 128 B → 10.1 KiB | capacity error | `MODEL_JSON_NESTING` — *Safetensors JSON nesting exceeds 32 levels* (HF-loadable; tensor bytes unchanged) |
 | **GGUF** | 24 B → 7.7 KiB | capacity error | `MODEL_METADATA_NESTING` — *GGUF metadata nesting exceeds 32 array frames* |
 | **Electron fuses** | 50 KiB → 1.16 MiB | budget rejected | `ELECTRON_FUSE_LIMITS.maximumSentinelsPerSlice` (>32) |
@@ -126,7 +127,7 @@ We do **not** claim those paths are empirically bankrupt until `redteam:rea` (or
 
 | Format | Canary + diagnostic | Exhaustion / budget trip | Empirically vs REA | Notes |
 | --- | :---: | :---: | :---: | --- |
-| JavaScript / TypeScript | ✓ | ✓ semantic budgets | designed-for | Babel AST; showcase estimates |
+| JavaScript / TypeScript | ✓ | ✓ semantic budgets | **verified** (in-process) | Babel AST; anti-strip; real REA resourceLimits |
 | Electron `.asar` | ✓ | ✓ header 16 MiB | **verified** | |
 | Electron fuses | ✓ | ✓ >32 sentinels | **verified** | |
 | WASM | ✓ custom sections | ✓ export-name decoys → Wabt | **verified** (Wabt) | Soft-skips to projected budget without Wabt |
@@ -147,15 +148,15 @@ We do **not** claim those paths are empirically bankrupt until `redteam:rea` (or
 
 ## Benchmark (14 targets, internal estimates)
 
-`npx bla-agents benchmark` runs a **local Counter-REA showcase**: exposure scores, **estimated** token/cost multipliers, and **measured** runtime equivalence. Token/$ columns are **internal estimates** derived from BLA's catalog of REA limits — they are **not** the same as the empirical REA process measurements above (those are byte-level analyzer failures with real error strings).
+`npx bla-agents benchmark` runs a **local Counter-REA showcase**: exposure scores, **estimated** token/cost multipliers, and **measured** runtime equivalence. Token/$ columns are **internal estimates** derived from BLA's catalog of REA limits — they are **not** the same as the empirical REA process measurements above (those are byte-level analyzer failures with real error strings). `npm run verify:rea` is a **constant-drift harness only** and must never be cited as protection evidence; the only authoritative gate is `npm run redteam:rea`.
 
-Latest local run (bla-agents **v1.4.0**): aggregate **~597.6×** tokens · **~285.3×** cost · **14/14** runtime-exact.
+Latest local run (bla-agents **v1.4.0**): aggregate **~612.5×** tokens · **~292.2×** cost · **14/14** runtime-exact.
 
 | Target | Unprotected (est.) | Protected (est.) | Token mult (est.) | Runtime |
 | --- | --- | --- | ---: | :---: |
-| DX-Ball sound-pan (`.js`) | 84/100 · 4,800 tok · $0.20 | 2/100 · 12.6M tok · $198.86 · LIMITED | **2630.2×** | 100% |
+| DX-Ball sound-pan (`.js`) | 84/100 · 4,800 tok · $0.20 | 2/100 · 13.5M tok · $212.82 · LIMITED | **2822.7×** | 100% |
 | Notion Electron clipboard (`.asar`) | 98/100 · 9,132 tok · $0.34 | 2/100 · 23.1M tok · $358.28 · LIMITED | **2532.3×** | 100% |
-| Enterprise license validator | 84/100 · 4,800 tok · $0.20 | 2/100 · 12.6M tok · $198.86 · LIMITED | **2630.2×** | 100% |
+| Enterprise license validator | 84/100 · 4,800 tok · $0.20 | 2/100 · 13.5M tok · $212.82 · LIMITED | **2822.7×** | 100% |
 | WASM crypto kernel | 81/100 · 4,800 tok · $0.20 | 6/100 · 1.83M tok · $30.23 · LIMITED | **381.5×** | 100% |
 | Native ELF64 (Rust/Go/Fuse/Dart) | 81/100 · 35,222 tok · $0.73 | 2/100 · 3.72M tok · $60.03 · LIMITED | **105.6×** | 100% |
 | SQLite entitlement DB | 81/100 · 10,568 tok · $0.29 | 7/100 · 1.71M tok · $28.39 · LIMITED | **162.1×** | 100% |
@@ -225,7 +226,8 @@ Issues and PRs welcome at [qybaihe/bla](https://github.com/qybaihe/bla). Before 
 ```bash
 export PATH=$HOME/node22.23.4/bin:$PATH   # or node24
 npm run build && npm test && node dist/cli.js benchmark
-npm run verify:rea && npm run redteam:rea   # when sibling REA is present
+npm run redteam:rea                        # authoritative (real REA)
+# npm run verify:rea                       # drift harness only — NOT protection proof
 ```
 
 ## License

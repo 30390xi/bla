@@ -134,7 +134,7 @@ describe("Counter-REA Runtime Memory Diff & Heap Churn Shield", () => {
     expect(sat.realmAgnosticRingSlots).toBe(32);
 
     // Run in a clean context with NO globalThis.Frida and NO globalThis.Interceptor
-    const fnNameMatch = sat.code.match(/function\s+(_blaFridaCaptureSaturator_[a-f0-9]+)/);
+    const fnNameMatch = sat.code.match(/function\s+(fridaCaptureSaturator_[a-f0-9]+)/);
     expect(fnNameMatch).not.toBeNull();
     const fnName = fnNameMatch![1]!;
 
@@ -165,9 +165,9 @@ describe("Counter-REA Runtime Memory Diff & Heap Churn Shield", () => {
     expect(matrixIds).toContain("environment-compare-step-diff");
 
     const cHeader = emitCompileTimeNativeHeader("c", { intensity: "balanced", seed: "c-mem" });
-    expect(cHeader.content).toContain("_bla_shadow_heap_slots[32]");
+    expect(cHeader.content).toContain("shadow_heap_slots[32]");
 
     const goHeader = emitCompileTimeNativeHeader("go", { intensity: "balanced", seed: "go-mem" });
-    expect(goHeader.content).toContain("BlaShadowHeapSlots = [16]uint32");
+    expect(goHeader.content).toContain("ShadowHeapSlots = [16]uint32");
   });
 });

@@ -52,7 +52,7 @@ describe("Counter-REA Model-Misjudgment Induction Suite", () => {
       "bankrupt",
     );
     expect(suite.totalDeceptionNodesInjected).toBeGreaterThanOrEqual(44);
-    expect(suite.combinedJsCode).toContain("_blaGrpcServiceMirage_");
+    expect(suite.combinedJsCode).toMatch(/grpcServiceMirage_[a-f0-9]+/);
   });
 
   it("generates Canary Credential Honeypots triggering REA recordedTransportUrl ambiguous redaction and System-Diagnostic Rabbit Holes", () => {

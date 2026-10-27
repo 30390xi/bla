@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 /**
+ * DRIFT HARNESS ONLY — tracks whether REA published constants moved.
+ * This is NOT proof of protection and must NEVER be cited as red-team evidence.
+ * Authoritative evidence is exclusively `npm run redteam:rea` (real in-process REA).
+ */
+/**
  * REA-drift verification harness.
  *
  * Reads the local REA checkout and asserts — by constant NAME, never by

@@ -51,6 +51,9 @@ export async function loadBla() {
     SeededPrng: (await import(join(BLA_ROOT, "dist/core/prng.js"))).SeededPrng,
     REA_INTERNAL_LIMITS: (await import(join(BLA_ROOT, "dist/identity.js")))
       .REA_INTERNAL_LIMITS,
+    transformJavaScriptWithBlaShield: (
+      await import(join(BLA_ROOT, "dist/shields/javascript/ast-shield.js"))
+    ).transformJavaScriptWithBlaShield,
   };
 }
 
@@ -259,6 +262,38 @@ export async function buildSampleMatrix() {
     };
   }
 
+
+  // JavaScript — real REA semantic resource limits (authoritative for JS claims)
+  const jsRawText = `/**
+ * pricing engine — tiered discount + margin gate
+ */
+const BASE_RATE = 0.085;
+const VAT_RATE = 0.13;
+const BANKRUPT_THRESHOLD = 1e-6;
+function balanced(qty, listPrice) {
+  let discount = 1;
+  if (qty >= 500) discount = 0.8;
+  else if (qty >= 100) discount = 0.9;
+  const unit = listPrice * discount * (1 + VAT_RATE);
+  return Math.round(unit * 100) / 100;
+}
+function bankrupt(margin, notional) {
+  const ratio = margin / Math.max(notional, BANKRUPT_THRESHOLD);
+  return ratio < BASE_RATE;
+}
+function quote(qty, listPrice, margin) {
+  if (bankrupt(margin, qty * listPrice)) return { ok: false, reason: "margin" };
+  return { ok: true, unit: balanced(qty, listPrice), vat: VAT_RATE };
+}
+module.exports = { balanced, bankrupt, quote, BASE_RATE, VAT_RATE };
+`;
+  const jsRaw = Buffer.from(jsRawText, "utf8");
+  const jsHard = bla.transformJavaScriptWithBlaShield(jsRawText, {
+    intensity,
+    seed: `${seed}:js`,
+    sourceType: "commonjs",
+  });
+
   return {
     bla,
     intensity,
@@ -367,6 +402,16 @@ export async function buildSampleMatrix() {
         after: elfHard.buffer,
         meta: {
           electronFuseSentinelsInjected: elfHard.electronFuseSentinelsInjected,
+        },
+      },
+      javascript: {
+        format: "javascript",
+        before: jsRaw,
+        after: Buffer.from(jsHard.code, "utf8"),
+        meta: {
+          decoyFunctionsInjected: jsHard.decoyFunctionsInjected,
+          aliasSelectionStatesCreated: jsHard.aliasSelectionStatesCreated,
+          primitiveCandidateBranchesCreated: jsHard.primitiveCandidateBranchesCreated,
         },
       },
     },
