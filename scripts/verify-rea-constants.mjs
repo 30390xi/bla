@@ -92,8 +92,9 @@ function findAssignments(files, name) {
 
 function findObjectProperty(files, objectName, propName) {
   const hits = [];
+  // Accept both `{ ... } as const` and `Object.freeze({ ... })` forms.
   const objRe = new RegExp(
-    String.raw`(?:export\s+)?const\s+${objectName}\s*=\s*\{([\s\S]*?)\n\}\s*(?:as\s+const)?\s*;`,
+    String.raw`(?:export\s+)?const\s+${objectName}\s*=\s*(?:Object\.freeze\s*\()?\{([\s\S]*?)\n\}\s*\)?\s*(?:as\s+const)?\s*;`,
     "g",
   );
   for (const file of files) {
@@ -176,6 +177,8 @@ const NUMERIC_EXPECTATIONS = [
   { name: "GPU_OBJECT_BYTES", expected: 128 * 1024 * 1024 },
   { name: "MAX_FIRMWARE_STAGING_BYTES", expected: 512 * 1024 * 1024 },
   { name: "MAX_FIRMWARE_EXTRACTION_DEPTH", expected: 10 },
+  { name: "ANDROID_JNI_REPORT_BYTES", expected: 16 * 1024 * 1024 },
+  { name: "MAX_NATIVE_EXPORT_ROWS", expected: 262_144 },
 ];
 
 const OBJECT_PROP_EXPECTATIONS = [
@@ -208,6 +211,66 @@ const OBJECT_PROP_EXPECTATIONS = [
     propName: "diagnosticBytes",
     expected: 1 * 1024 * 1024,
     label: "EVM_INTERFACE_LIMITS.diagnosticBytes",
+  },
+  {
+    objectName: "PROGUARD_MAPPING_LIMITS",
+    propName: "indexBytes",
+    expected: 128 * 1024 * 1024,
+    label: "PROGUARD_MAPPING_LIMITS.indexBytes",
+  },
+  {
+    objectName: "PROGUARD_MAPPING_LIMITS",
+    propName: "projectionBytes",
+    expected: 8 * 1024 * 1024,
+    label: "PROGUARD_MAPPING_LIMITS.projectionBytes",
+  },
+  {
+    objectName: "PROGUARD_MAPPING_LIMITS",
+    propName: "malformedSamples",
+    expected: 16,
+    label: "PROGUARD_MAPPING_LIMITS.malformedSamples",
+  },
+  {
+    objectName: "PROGUARD_MAPPING_LIMITS",
+    propName: "candidates",
+    expected: 8,
+    label: "PROGUARD_MAPPING_LIMITS.candidates",
+  },
+  {
+    objectName: "ANDROID_MAPPING_LIMITS",
+    propName: "fileBytes",
+    expected: 64 * 1024 * 1024,
+    label: "ANDROID_MAPPING_LIMITS.fileBytes",
+  },
+  {
+    objectName: "ANDROID_JNI_LIBRARY_LIMITS",
+    propName: "libraryBytes",
+    expected: 64 * 1024 * 1024,
+    label: "ANDROID_JNI_LIBRARY_LIMITS.libraryBytes",
+  },
+  {
+    objectName: "ANDROID_JNI_LIBRARY_LIMITS",
+    propName: "totalBytes",
+    expected: 256 * 1024 * 1024,
+    label: "ANDROID_JNI_LIBRARY_LIMITS.totalBytes",
+  },
+  {
+    objectName: "ANDROID_JNI_LIBRARY_LIMITS",
+    propName: "factsBytes",
+    expected: 16 * 1024 * 1024,
+    label: "ANDROID_JNI_LIBRARY_LIMITS.factsBytes",
+  },
+  {
+    objectName: "ANDROID_JNI_LIBRARY_LIMITS",
+    propName: "entries",
+    expected: 100_000,
+    label: "ANDROID_JNI_LIBRARY_LIMITS.entries",
+  },
+  {
+    objectName: "ANDROID_JNI_LIBRARY_LIMITS",
+    propName: "libraries",
+    expected: 2048,
+    label: "ANDROID_JNI_LIBRARY_LIMITS.libraries",
   },
 ];
 

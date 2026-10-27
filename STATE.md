@@ -1,6 +1,6 @@
 # BLA state of the project
 
-**Version:** 1.4.0 (`package.json` ↔ `src/identity.ts`, verified by build)  
+**Version:** 1.4.6 (`package.json` ↔ `src/identity.ts`, verified by build)  
 **Status:** Launch-ready locally. Gates green on Node 22.23.4 and Node 24.22.1.  
 **Blocker to publish:** GitHub token (no push / tag / npm publish / GitHub Release yet).
 
@@ -29,7 +29,7 @@ Also: `bla_harden` MCP tool with `{ "directory": "." }`.
 | EVM bytecode | ✓ | **verified** — `EVM_INTERFACE_LIMITS.inputBytes` | |
 | PCAP | ✓ | **verified** — `TSHARK_JSON_MAX_BYTES` (needs tshark) | |
 | GPU PTX | ✓ canary/exhaustion | soft — REA still `after=ok` | densifies but no hard budget trip |
-| DEX / IL2CPP / bplist / .NET / JVM / ZIP | ✓ | designed-for | signed APK refused (by design) |
+| DEX / IL2CPP / bplist / .NET / JVM / ZIP / **Android R8+JNI** | ✓ | designed-for (R8/JNI new in 1.4.6) | signed APK refused (by design); unsigned APK gets mapping.txt + decoy JNI .so |
 | Firmware / SPIR-V / CUDA / AMD GPU objects | — | **skipped** | no stable REA analyzer / not in scope yet |
 
 **Designed-for but not empirically verified here** (need native tooling on the REA side): Ghidra, Frida, LLDB, Rizin, JADX.
@@ -77,13 +77,25 @@ Outside the repo, `npm pack` → install tarball → isolated `HOME`:
 - `redteam:rea` as sole authoritative evidence; `verify:rea` demoted
 - Honest docs separation verified / designed-for / skipped
 
+## Nightly progress (2026-10-28 Asia/Shanghai)
+
+- Pulled both repos. REA delta since last local tip: **325 commits** on `main`
+  (dd7a2da5b → 0cd7ef456). Headline new analyzers: Android R8/ProGuard mapping
+  (#7456), JNI native-declaration ↔ `.so` export linking (#7472), manifest
+  component declarations (#7379). Most other delta is evidence/contract refactors.
+- Shipped **v1.4.6** counter: `android-r8.ts` + unsigned-APK wiring + identity
+  constants + `verify:rea` drift entries.
+
 ## Nightly roadmap remaining
 
-1. **GPU objects** — make PTX (and later CUDA/SPIR-V/AMD) trip a real REA budget without breaking validity  
-2. **Firmware** — decide scope or keep skipped  
-3. **Native-tool REA verification** — Ghidra / Frida / LLDB / Rizin / JADX empirical probes  
-4. **Signed APK** — keep refuse-by-default; optional resign workflow documentation  
-5. Polish doctor subsystem list (SQLite / models / BEAM / EVM) for parity with shields  
+1. **Empirical JADX / Android red-team** — run real REA Android mapping + JNI
+   tools against a BLA-hardened unsigned APK fixture; record before/after.
+2. **Manifest-component decoys** — counter REA #7379 selected manifest component
+   declarations (binary AndroidManifest.xml decoys for unsigned APKs).
+3. **GPU objects** — make PTX (and later CUDA/SPIR-V/AMD) trip a real REA budget without breaking validity  
+4. **Firmware** — decide scope or keep skipped  
+5. **Signed APK** — keep refuse-by-default; optional resign workflow documentation  
+6. Polish doctor subsystem list (SQLite / models / BEAM / EVM / Android R8) for parity with shields  
 
 ## Publish checklist (once a GitHub token exists)
 

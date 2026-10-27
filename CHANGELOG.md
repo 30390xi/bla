@@ -4,6 +4,33 @@ All notable changes to **bla-agents** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.6] — 2026-10-28
+
+Counter for REA's new Android R8/ProGuard mapping ingestion (#7456) and JNI
+native-declaration ↔ `.so` export linking (#7472). Unsigned APK hardening now
+plants a caller-tempting `mapping.txt` (residual conflicts past `candidates: 8`,
+malformed samples past `malformedSamples: 16`) plus a decoy
+`lib/arm64-v8a/libbla_enclave_jni.so` with real `Java_*` dynsym exports. DEX
+trailers also receive matching JNI-mangled names. Existing developer `.so`
+members are never rewritten (red line).
+
+### Added
+
+- **`src/shields/formats/android-r8.ts`** — ProGuard/R8 mapping generator +
+  minimal ELF64 AArch64 ET_DYN builder for JNI decoy exports.
+- **`REA_INTERNAL_LIMITS` Android constants** — `PROGUARD_MAPPING_*`,
+  `ANDROID_MAPPING_FILE_BYTES`, `ANDROID_JNI_*`, `MAX_NATIVE_EXPORT_ROWS`.
+- **`verify:rea` drift checks** for the new Android mapping / JNI limits
+  (including `Object.freeze({...})` object forms).
+
+### Changed
+
+- **Unsigned APK path** (`protectZipOrApkBuffer`) injects
+  `assets/bla-shield/mapping.txt`, `proguard-mapping.txt`, and
+  `lib/arm64-v8a/libbla_enclave_jni.so`.
+- **DEX shield** plants JNI-mangled `Java_*` names alongside enclave class decoys.
+- Classic ZIP entry-count reservation widened (9 → 16) for the new decoys.
+
 ## [1.4.2] — 2026-10-27
 
 Patch: stop CI from treating an absent sibling REA checkout as "REA = this

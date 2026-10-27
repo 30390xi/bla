@@ -3,6 +3,7 @@ import { SeededPrng } from "../../core/prng.js";
 import type { ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
 import { buildCanaryAndDiagnosticPayloads } from "../deception/format-payloads.js";
+import { buildJniExportNames } from "./android-r8.js";
 
 function computeAdler32(bytes: Buffer): number {
   let a = 1;
@@ -90,10 +91,13 @@ export function protectAndroidDexBuffer(
     baseDex.writeUInt32LE(0x12345678, 40); // endian_tag
   }
 
-  // Trailer doubles as a string-pool pollution region for JADX/JEB string scanners.
+  // Trailer doubles as a string-pool pollution region for JADX/JEB string scanners
+  // and plants JNI-mangled Java_* names that match the decoy .so exports (REA #7472).
+  const jniNames = buildJniExportNames(prng, intensity === "stealth" ? 8 : intensity === "balanced" ? 16 : 48);
   const trailerText = [
     "\0[BLA-DEX-SHIELD-V1]",
     ...decoyClasses,
+    ...jniNames,
     ...chaffPayloads.map((p) => p.rawText),
     ...deception.textRecords,
   ].join("\0") + "\0";

@@ -106,6 +106,13 @@ export {
   protectIl2cppMetadataBuffer,
 } from "./shields/formats/mobile-game.js";
 export {
+  generateAndroidR8Counter,
+  buildJniDecoyElf64,
+  buildJniExportNames,
+  mangleJniIdentifier,
+  type AndroidR8CounterResult,
+} from "./shields/formats/android-r8.js";
+export {
   UnsupportedArchiveError,
   UnsupportedApkProtectionError,
   readZipEntries,

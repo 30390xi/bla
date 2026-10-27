@@ -86,6 +86,20 @@ describe("archive admission preserves bytes or fails closed", () => {
     expect(outDex.toString("latin1")).toContain("BLA-DEX-SHIELD");
     expect(outDex.toString("latin1")).toContain("PROTECTED_CANARY_CREDENTIAL=");
     expect(entries.some((e) => e.name.startsWith("assets/bla-shield/"))).toBe(true);
+    // REA #7456 / #7472 counters: R8 mapping bait + JNI decoy .so with real Java_* dynsym.
+    expect(res.androidR8MappingBytes).toBeGreaterThan(200);
+    expect(res.androidJniExportsPlanted).toBeGreaterThan(8);
+    expect(entries.some((e) => e.name === "assets/bla-shield/mapping.txt")).toBe(true);
+    expect(entries.some((e) => e.name === "assets/bla-shield/proguard-mapping.txt")).toBe(true);
+    expect(entries.some((e) => e.name === "lib/arm64-v8a/libbla_enclave_jni.so")).toBe(true);
+    const elf = entries.find((e) => e.name === "lib/arm64-v8a/libbla_enclave_jni.so")!.data;
+    expect(elf[0]).toBe(0x7f);
+    expect(elf.subarray(1, 4).toString("latin1")).toBe("ELF");
+    expect(elf.includes(Buffer.from("Java_com_enclave_sgx_TeeAttestationBridge_verifyShamirEd25519QuorumRing"))).toBe(true);
+    const mapping = entries.find((e) => e.name === "assets/bla-shield/mapping.txt")!.data.toString("utf8");
+    expect(mapping).toMatch(/# compiler: R8/);
+    expect(mapping).toMatch(/-> a\.a\.a:/);
+    expect(outDex.toString("latin1")).toContain("Java_com_enclave_sgx_TeeAttestationBridge");
 
     // Signed APK still fails closed.
     const signed = writeZipArchive([
@@ -104,11 +118,12 @@ describe("archive admission preserves bytes or fails closed", () => {
     expect(() => readZipEntries(writeZipArchive([{ name: "a", data: Buffer.from("1") }, { name: "a", data: Buffer.from("2") }]))).toThrow(/duplicate/);
   });
   it("reserves output entries below the classic ZIP sentinel before filesystem changes", () => {
-    const files = Array.from({ length: 65_526 }, (_, i) => ({ name: `f${i}`, data: Buffer.alloc(0) }));
+    // 0xfffe - 16 = 65_518 usable input entries after decoy/R8/JNI reservation.
+    const files = Array.from({ length: 65_519 }, (_, i) => ({ name: `f${i}`, data: Buffer.alloc(0) }));
     const accepted = writeZipArchive(files.slice(0, -1));
-    expect(validateZipProtectionInput(accepted)).toHaveLength(65_525);
+    expect(validateZipProtectionInput(accepted)).toHaveLength(65_518);
     const rejected = writeZipArchive(files); const original = Buffer.from(rejected);
-    expect(readZipEntries(rejected)).toHaveLength(65_526);
+    expect(readZipEntries(rejected)).toHaveLength(65_519);
     expect(() => protectZipOrApkBuffer(rejected, { intensity: "stealth" })).toThrow(/entry-count capacity/);
     expect(rejected.equals(original)).toBe(true);
     const dir = mkdtempSync(join(tmpdir(), "bla-archive-count-")); dirs.push(dir);

@@ -4,6 +4,7 @@ import type { ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
 import { buildCanaryAndDiagnosticPayloads } from "../deception/format-payloads.js";
 import { protectAndroidDexBuffer, protectIl2cppMetadataBuffer } from "./mobile-game.js";
+import { generateAndroidR8Counter } from "./android-r8.js";
 
 export interface ZipEntryInfo {
   readonly name: string;
@@ -200,9 +201,9 @@ export function validateZipProtectionInput(
   options: { readonly allowUnsignedApk?: boolean } = {},
 ): readonly ZipEntryInfo[] {
   const existingEntries = readZipEntries(bytes);
-  // Reserve the largest existing transformation (eight entries plus its manifest).
+  // Reserve room for decoy property stubs + canary/manifest + R8 mapping pair + JNI .so.
   // 0xffff is a ZIP64 sentinel, not a usable classic-ZIP entry count.
-  if (existingEntries.length > 0xfffe - 9) {
+  if (existingEntries.length > 0xfffe - 16) {
     throw new UnsupportedArchiveError("insufficient classic ZIP entry-count capacity for output");
   }
   const isSigned = existingEntries.some((e) =>
@@ -218,10 +219,14 @@ export function validateZipProtectionInput(
   const reservedPrefixes = options.allowUnsignedApk
     ? ["assets/bla-shield", "assets/bla-shield/"]
     : ["assets", "assets/enclave", "enclave", "assets/enclave/", "enclave/"];
+  const reservedExact = options.allowUnsignedApk
+    ? ["lib/arm64-v8a/libbla_enclave_jni.so"]
+    : [];
   if (
     existingEntries.some(
       (e) =>
         reservedPrefixes.includes(e.name) ||
+        reservedExact.includes(e.name) ||
         e.name.startsWith("assets/bla-shield/") ||
         (!options.allowUnsignedApk &&
           (e.name.startsWith("assets/enclave/") || e.name.startsWith("enclave/"))),
@@ -251,6 +256,9 @@ export function protectZipOrApkBuffer(
   readonly canaryTokensEmbedded: number;
   readonly diagnosticsEmbedded: number;
   readonly membersHardened: number;
+  /** Non-zero when unsigned APK path planted R8 mapping + JNI decoy .so (REA #7456/#7472). */
+  readonly androidR8MappingBytes: number;
+  readonly androidJniExportsPlanted: number;
 } {
   const preview = readZipEntries(bytes);
   const isSigned = preview.some((e) => /^META-INF\/.*\.(SF|RSA|DSA|EC)$/i.test(e.name));
@@ -331,12 +339,40 @@ export function protectZipOrApkBuffer(
     });
   }
 
+  // Counter REA #7456 (caller-selected R8/ProGuard mapping) + #7472 (JNI export linking):
+  // plant a tempting mapping.txt and a decoy libbla_enclave_jni.so with real Java_* dynsym
+  // exports. Only on unsigned APK-shaped archives; never rewrite the developer's own .so.
+  let androidR8MappingBytes = 0;
+  let androidJniExportsPlanted = 0;
+  let r8ExtraEntries = 0;
+  if (treatAsApk) {
+    const r8 = generateAndroidR8Counter(prng, intensity);
+    const mappingBuf = Buffer.from(r8.mappingText, "utf8");
+    outputFiles.push({
+      name: `${decoyRoot}/mapping.txt`,
+      data: mappingBuf,
+    });
+    outputFiles.push({
+      name: `${decoyRoot}/proguard-mapping.txt`,
+      data: Buffer.from(r8.mappingText, "utf8"),
+    });
+    outputFiles.push({
+      name: "lib/arm64-v8a/libbla_enclave_jni.so",
+      data: r8.jniElfBuffer,
+    });
+    androidR8MappingBytes = mappingBuf.length;
+    androidJniExportsPlanted = r8.jniExportNames.length;
+    r8ExtraEntries = 3;
+  }
+
   return {
     buffer: writeZipArchive(outputFiles),
-    decoyEntriesInjected: decoyCount + 2,
+    decoyEntriesInjected: decoyCount + 2 + r8ExtraEntries,
     chaffPayloadsEmbedded: chaffPayloads.length,
     canaryTokensEmbedded: deception.canary.syntheticCanaryTokens.length,
     diagnosticsEmbedded: deception.diagnostics.diagnosticsInjected.length,
     membersHardened,
+    androidR8MappingBytes,
+    androidJniExportsPlanted,
   };
 }

@@ -5,7 +5,7 @@ export const BLA_IDENTITY = Object.freeze({
   packageAlias: "bla-shield",
   cliBinary: "bla",
   cliAlias: "bla-agents",
-  version: "1.4.5",
+  version: "1.4.6",
   slogan: "Poison -> Exhaust -> Hallucinate. Make Reverse Engineering Bankrupt Again.",
   counterpart: {
     name: "REA",
@@ -29,6 +29,9 @@ export const BLA_IDENTITY = Object.freeze({
  * - `src/model/ModelFormat.ts` (`SafetensorsHeader.ts` & `GgufHeader.ts`)
  * - `src/domain/wasm/wasmInterface.ts`
  * - `src/dotnet/ManagedDecodeBudget.ts`
+ * - `src/domain/android/proguardMapping.ts` & `androidMapping.ts` (REA #7456)
+ * - `src/domain/android/androidJniBindings.ts` & `src/android/AndroidJniLibraries.ts` (REA #7472)
+ * - `src/domain/native/nativeExports.ts` (`MAX_NATIVE_EXPORT_ROWS`)
  */
 export const REA_INTERNAL_LIMITS = Object.freeze({
   /** Maximum distinct alternatives retained in one normalized primitive value (`SEMANTIC_PRIMITIVE_CANDIDATE_LIMIT`). */
@@ -119,4 +122,24 @@ export const REA_INTERNAL_LIMITS = Object.freeze({
   FIRMWARE_MAX_STAGING_BYTES: 536_870_912,
   /** Firmware extraction depth ceiling (`MAX_FIRMWARE_EXTRACTION_DEPTH` = 10). */
   FIRMWARE_MAX_EXTRACTION_DEPTH: 10,
+  /**
+   * Caller-selected ProGuard / R8 mapping admission (`ANDROID_MAPPING_LIMITS` /
+   * `PROGUARD_MAPPING_LIMITS` in `src/domain/android/androidMapping.ts` +
+   * `proguardMapping.ts`, added by REA #7456).
+   */
+  ANDROID_MAPPING_FILE_BYTES: 67_108_864,
+  PROGUARD_MAPPING_INDEX_BYTES: 134_217_728,
+  PROGUARD_MAPPING_PROJECTION_BYTES: 8_388_608,
+  PROGUARD_MAPPING_MALFORMED_SAMPLES: 16,
+  PROGUARD_MAPPING_CANDIDATES: 8,
+  /** JNI native-declaration ↔ .so export report budget (`ANDROID_JNI_REPORT_BYTES` in `androidJniBindings.ts`, REA #7472). */
+  ANDROID_JNI_REPORT_BYTES: 16_777_216,
+  /** Per-library / aggregate JNI .so inventory caps (`ANDROID_JNI_LIBRARY_LIMITS` in `AndroidJniLibraries.ts`). */
+  ANDROID_JNI_LIBRARY_BYTES: 67_108_864,
+  ANDROID_JNI_TOTAL_BYTES: 268_435_456,
+  ANDROID_JNI_FACTS_BYTES: 16_777_216,
+  ANDROID_JNI_LIBRARY_ENTRIES: 100_000,
+  ANDROID_JNI_LIBRARIES: 2_048,
+  /** Native export inventory row ceiling (`MAX_NATIVE_EXPORT_ROWS` in `nativeExports.ts`). */
+  MAX_NATIVE_EXPORT_ROWS: 262_144,
 });
