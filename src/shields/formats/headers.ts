@@ -36,9 +36,11 @@ export function emitCompileTimeNativeHeader(
     const rustcAnchorStem = "rustc_path_anchor";
     const shadowHeapName = "shadow_heap_slots";
     const tarpitStem = "enclave_tarpit_fn";
+    const dataTableCount = chaffPayloads.length * 2 + 1;
     const lines: string[] = [
       "/* ==========================================================================",
       " * BLA-SHIELD: Adversarial Defense Header for C/C++ Native Binaries",
+      " * Compatible with GCC (__GNUC__), Clang (__clang__), and MSVC (_MSC_VER / cl.exe)",
       " * Counter-REA Native Decompilation Tarpit & Read-Only Section Shield",
       " * ========================================================================== */",
       "#ifndef BLA_SHIELD_H",
@@ -46,26 +48,40 @@ export function emitCompileTimeNativeHeader(
       "#include <stdint.h>",
       "#include <stddef.h>",
       "",
-      "#if defined(__GNUC__) || defined(__clang__)",
-      "#define BLA_USED __attribute__((used, noinline))",
+      "#ifdef __cplusplus",
+      'extern "C" {',
+      "#endif",
+      "",
+      "#if defined(_MSC_VER) && !defined(__clang__)",
+      "#pragma warning(push)",
+      "#pragma warning(disable: 4100 4127 4189 4505)",
+      "#define BLA_USED",
+      "#define BLA_NOINLINE __declspec(noinline)",
+      "#elif defined(__GNUC__) || defined(__clang__)",
+      "#define BLA_USED __attribute__((used))",
+      "#define BLA_NOINLINE __attribute__((used, noinline))",
       "#else",
       "#define BLA_USED",
+      "#define BLA_NOINLINE",
       "#endif",
       "",
       "/* Architectural Chaff & Enclave Delegation Manifests */",
     ];
 
+    const dataTableEntries: string[] = [];
     chaffPayloads.forEach((p, idx) => {
       lines.push(
         `static const char ${p.symbolName}[] BLA_USED = ${JSON.stringify(p.rawText)};`,
       );
+      dataTableEntries.push(`(const void*)${p.symbolName}`);
       const hash = idx.toString(16).padStart(8, "0") + prng.hex(32);
       lines.push(
         `static const char ${rustcAnchorStem}_${idx}[] BLA_USED = "/rustc/${hash}/library/core/src/enclave.rs";`,
       );
+      dataTableEntries.push(`(const void*)${rustcAnchorStem}_${idx}`);
     });
 
-    // Mutable .data shadow heap slots to defeat GDB/Rizin/Frida before/after memory diffing
+    // Mutable .data shadow heap slots to defeat GDB/Rizin/Frida/WinDbg before/after memory diffing
     const slotInit = Array.from(
       { length: 32 },
       () => `0x${prng.hex(8)}u`,
@@ -73,12 +89,27 @@ export function emitCompileTimeNativeHeader(
     lines.push(
       `static volatile uint32_t ${shadowHeapName}[32] BLA_USED = { ${slotInit} };`,
     );
+    dataTableEntries.push(`(const void*)${shadowHeapName}`);
     lines.push("");
 
     // Forward declarations for mutual cross-references (Fake XRefs in Ghidra/IDA)
     for (let i = 0; i < decoyCount; i++) {
-      lines.push(`BLA_USED static uint32_t ${tarpitStem}_${i}(uint32_t seed, int depth);`);
+      lines.push(`BLA_NOINLINE static uint32_t ${tarpitStem}_${i}(uint32_t seed, int depth);`);
     }
+    lines.push("");
+
+    // Keep-tables prevent MSVC (/O2 /GL + link.exe /OPT:REF), Clang, and GCC from stripping static symbols
+    lines.push(`typedef uint32_t (*enclave_tarpit_fn_t)(uint32_t, int);`);
+    lines.push(
+      `static const void* const enclave_keep_data_table[${dataTableCount}] BLA_USED = { ${dataTableEntries.join(", ")} };`,
+    );
+    const fnTableEntries = Array.from(
+      { length: decoyCount },
+      (_, i) => `&${tarpitStem}_${i}`,
+    ).join(", ");
+    lines.push(
+      `static const enclave_tarpit_fn_t enclave_keep_fn_table[${decoyCount}] BLA_USED = { ${fnTableEntries} };`,
+    );
     lines.push("");
 
     for (let i = 0; i < decoyCount; i++) {
@@ -86,14 +117,16 @@ export function emitCompileTimeNativeHeader(
       const next2 = (i + 3) % decoyCount;
       const k = prng.nextInt(0x1000, 0xffff);
       const chaffSym = chaffPayloads[i % chaffPayloads.length]!.symbolName;
-      lines.push(`BLA_USED static uint32_t ${tarpitStem}_${i}(uint32_t seed, int depth) {`);
-      lines.push(`    uint32_t acc = seed ^ 0x${k.toString(16)}u ^ (uint32_t)${chaffSym}[0];`);
+      lines.push(`BLA_NOINLINE static uint32_t ${tarpitStem}_${i}(uint32_t seed, int depth) {`);
+      lines.push(`    const char* _anchor_str = (const char*)enclave_keep_data_table[(seed + ${i}u) % ${dataTableCount}u];`);
+      lines.push(`    uint32_t acc = seed ^ 0x${k.toString(16)}u ^ (uint32_t)(unsigned char)${chaffSym}[0] ^ (uint32_t)(unsigned char)_anchor_str[0];`);
       lines.push(`    for (int r = 0; r < 4; ++r) {`);
       lines.push(`        acc = (acc * 0x9E3779B9u) ^ (acc >> 13) ^ (uint32_t)r;`);
       lines.push(`        ${shadowHeapName}[(${i} * 4 + r) & 31] ^= acc;`);
       lines.push(`    }`);
       lines.push(`    if (depth > 0 && ((7u * (seed | 3u) * (seed | 3u) - 1u) == (seed ^ 5u) * (seed ^ 5u))) {`);
-      lines.push(`        return ${tarpitStem}_${next1}(acc, depth - 1) ^ ${tarpitStem}_${next2}(acc ^ 0x5Au, depth - 1);`);
+      lines.push(`        enclave_tarpit_fn_t _fn_ptr = enclave_keep_fn_table[(seed ^ (uint32_t)depth) % ${decoyCount}u];`);
+      lines.push(`        return ${tarpitStem}_${next1}(acc, depth - 1) ^ ${tarpitStem}_${next2}(acc ^ 0x5Au, depth - 1) ^ _fn_ptr(acc, depth - 1);`);
       lines.push(`    }`);
       lines.push(`    return acc;`);
       lines.push(`}`);
@@ -101,6 +134,9 @@ export function emitCompileTimeNativeHeader(
 
     lines.push("");
     lines.push(`#define BLA_SHIELD_ANCHOR(x) (${tarpitStem}_0((uint32_t)(x), 0))`);
+    lines.push("");
+    lines.push("#if defined(_MSC_VER) && !defined(__clang__)", "#pragma warning(pop)", "#endif");
+    lines.push("#ifdef __cplusplus", "}", "#endif");
     lines.push("#endif /* BLA_SHIELD_H */");
     return {
       language: "c",
