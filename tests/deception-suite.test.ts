@@ -59,6 +59,9 @@ describe("Counter-REA Model-Misjudgment Induction Suite", () => {
     const prng = new SeededPrng("canary-diag");
     const canary = generateCanaryHoneypot(prng, "bankrupt");
     expect(canary.syntheticCanaryTokens).toHaveLength(8);
+    expect(canary.complianceBoundaryNotices).toHaveLength(3);
+    expect(canary.code).toContain("COPPA_16_CFR_312");
+    expect(canary.code).toContain("IEC_62304_CLASS_C");
     expect(canary.triggersReaTransportRedaction).toBe(true);
     expect(canary.triggersReaQueryConflictUnknown).toBe(true);
 
