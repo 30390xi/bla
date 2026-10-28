@@ -4,6 +4,38 @@ All notable changes to **bla-agents** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.9] — 2026-10-29
+
+Counter for REA's AndroidManifest component inventory (`parseAndroidManifestComponents`,
+#7379) and its spelling-preserving binary-XML decode path (#7818, which landed in
+the 73-commit REA delta since 1.4.6). Unsigned APK hardening now plants a
+well-formed decoy `AndroidManifest.xml` under `assets/bla-shield/` that saturates
+`ANDROID_MANIFEST_LIMITS` (components: 512, resolvedNameBytes: 1 MiB, authorities,
+intentFilters/intentValues) so REA itself admits `status: "partial"`. Nested `$`
+class names exercise #7818 spelling retention. The developer's root
+`AndroidManifest.xml` is never rewritten (red line).
+
+Empirical vitest loads REA's compiled `parseAndroidManifestComponents` against
+the decoy and asserts the partial admission + `$` spelling retention.
+
+### Added
+
+- **`src/shields/formats/android-manifest.ts`** — decoy AndroidManifest.xml
+  generator (capacity flood, name-budget burn, unresolved-token / unnamed /
+  authority / intent-filter floods, nested `$` honeypot activities).
+- **`REA_INTERNAL_LIMITS` AndroidManifest constants** —
+  `ANDROID_MANIFEST_COMPONENTS`, `ANDROID_MANIFEST_INTENT_*`,
+  `ANDROID_MANIFEST_AUTHORITIES`, `ANDROID_MANIFEST_*_BYTES`.
+- **`verify:rea` drift checks** for all nine `ANDROID_MANIFEST_LIMITS` props.
+- **`tests/android-manifest-counter.test.ts`** — unit gates + empirical REA
+  red-team (soft-skips when sibling REA dist is absent).
+
+### Changed
+
+- **Unsigned APK path** (`protectZipOrApkBuffer`) injects
+  `assets/bla-shield/AndroidManifest.xml` and `AndroidManifest-decoy.xml`.
+- New return fields: `androidManifestDecoyBytes`, `androidManifestNamedComponents`.
+
 ## [1.4.6] — 2026-10-28
 
 Counter for REA's new Android R8/ProGuard mapping ingestion (#7456) and JNI

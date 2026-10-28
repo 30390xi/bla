@@ -272,6 +272,60 @@ const OBJECT_PROP_EXPECTATIONS = [
     expected: 2048,
     label: "ANDROID_JNI_LIBRARY_LIMITS.libraries",
   },
+  {
+    objectName: "ANDROID_MANIFEST_LIMITS",
+    propName: "components",
+    expected: 512,
+    label: "ANDROID_MANIFEST_LIMITS.components",
+  },
+  {
+    objectName: "ANDROID_MANIFEST_LIMITS",
+    propName: "intentFilters",
+    expected: 32,
+    label: "ANDROID_MANIFEST_LIMITS.intentFilters",
+  },
+  {
+    objectName: "ANDROID_MANIFEST_LIMITS",
+    propName: "intentValues",
+    expected: 64,
+    label: "ANDROID_MANIFEST_LIMITS.intentValues",
+  },
+  {
+    objectName: "ANDROID_MANIFEST_LIMITS",
+    propName: "authorities",
+    expected: 64,
+    label: "ANDROID_MANIFEST_LIMITS.authorities",
+  },
+  {
+    objectName: "ANDROID_MANIFEST_LIMITS",
+    propName: "resolvedNameBytes",
+    expected: 1024 * 1024,
+    label: "ANDROID_MANIFEST_LIMITS.resolvedNameBytes",
+  },
+  {
+    objectName: "ANDROID_MANIFEST_LIMITS",
+    propName: "authorityBytes",
+    expected: 1024 * 1024,
+    label: "ANDROID_MANIFEST_LIMITS.authorityBytes",
+  },
+  {
+    objectName: "ANDROID_MANIFEST_LIMITS",
+    propName: "permissionBytes",
+    expected: 1024 * 1024,
+    label: "ANDROID_MANIFEST_LIMITS.permissionBytes",
+  },
+  {
+    objectName: "ANDROID_MANIFEST_LIMITS",
+    propName: "processBytes",
+    expected: 1024 * 1024,
+    label: "ANDROID_MANIFEST_LIMITS.processBytes",
+  },
+  {
+    objectName: "ANDROID_MANIFEST_LIMITS",
+    propName: "detailBytes",
+    expected: 1024 * 1024,
+    label: "ANDROID_MANIFEST_LIMITS.detailBytes",
+  },
 ];
 
 const SYMBOL_EXPECTATIONS = [

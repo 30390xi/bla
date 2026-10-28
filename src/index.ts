@@ -113,6 +113,10 @@ export {
   type AndroidR8CounterResult,
 } from "./shields/formats/android-r8.js";
 export {
+  generateAndroidManifestCounter,
+  type AndroidManifestCounterResult,
+} from "./shields/formats/android-manifest.js";
+export {
   UnsupportedArchiveError,
   UnsupportedApkProtectionError,
   readZipEntries,

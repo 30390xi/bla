@@ -5,7 +5,7 @@ export const BLA_IDENTITY = Object.freeze({
   packageAlias: "bla-shield",
   cliBinary: "bla",
   cliAlias: "bla-agents",
-  version: "1.4.8",
+  version: "1.4.9",
   slogan: "Poison -> Exhaust -> Hallucinate. Make Reverse Engineering Bankrupt Again.",
   counterpart: {
     name: "REA",
@@ -142,4 +142,19 @@ export const REA_INTERNAL_LIMITS = Object.freeze({
   ANDROID_JNI_LIBRARIES: 2_048,
   /** Native export inventory row ceiling (`MAX_NATIVE_EXPORT_ROWS` in `nativeExports.ts`). */
   MAX_NATIVE_EXPORT_ROWS: 262_144,
+  /**
+   * AndroidManifest component inventory bounds (`ANDROID_MANIFEST_LIMITS` in
+   * `src/android/AndroidManifestComponents.ts`, REA #7379 / refined by #7818).
+   * Exceeding any of these flips the inventory to `status: "partial"` so REA
+   * itself admits the component map is unestablished.
+   */
+  ANDROID_MANIFEST_COMPONENTS: 512,
+  ANDROID_MANIFEST_INTENT_FILTERS: 32,
+  ANDROID_MANIFEST_INTENT_VALUES: 64,
+  ANDROID_MANIFEST_AUTHORITIES: 64,
+  ANDROID_MANIFEST_RESOLVED_NAME_BYTES: 1_048_576,
+  ANDROID_MANIFEST_AUTHORITY_BYTES: 1_048_576,
+  ANDROID_MANIFEST_PERMISSION_BYTES: 1_048_576,
+  ANDROID_MANIFEST_PROCESS_BYTES: 1_048_576,
+  ANDROID_MANIFEST_DETAIL_BYTES: 1_048_576,
 });

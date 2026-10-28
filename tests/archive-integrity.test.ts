@@ -100,6 +100,15 @@ describe("archive admission preserves bytes or fails closed", () => {
     expect(mapping).toMatch(/# compiler: R8/);
     expect(mapping).toMatch(/-> a\.a\.a:/);
     expect(outDex.toString("latin1")).toContain("Java_com_enclave_sgx_TeeAttestationBridge");
+    // REA #7379 / #7818: decoy AndroidManifest.xml under assets/bla-shield/ (root untouched).
+    expect(res.androidManifestDecoyBytes).toBeGreaterThan(2_000);
+    expect(res.androidManifestNamedComponents).toBeGreaterThan(512);
+    expect(entries.some((e) => e.name === "assets/bla-shield/AndroidManifest.xml")).toBe(true);
+    expect(entries.some((e) => e.name === "assets/bla-shield/AndroidManifest-decoy.xml")).toBe(true);
+    const rootMf = entries.find((e) => e.name === "AndroidManifest.xml")!.data.toString("utf8");
+    expect(rootMf).toBe("<manifest/>");
+    const decoyMf = entries.find((e) => e.name === "assets/bla-shield/AndroidManifest.xml")!.data.toString("utf8");
+    expect(decoyMf).toContain("TeeAttestationBridge$DetailsActivity");
 
     // Signed APK still fails closed.
     const signed = writeZipArchive([

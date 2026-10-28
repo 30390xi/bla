@@ -5,6 +5,7 @@ import { generateChaffPayloads } from "../chaff/chaff-generator.js";
 import { buildCanaryAndDiagnosticPayloads } from "../deception/format-payloads.js";
 import { protectAndroidDexBuffer, protectIl2cppMetadataBuffer } from "./mobile-game.js";
 import { generateAndroidR8Counter } from "./android-r8.js";
+import { generateAndroidManifestCounter } from "./android-manifest.js";
 
 export interface ZipEntryInfo {
   readonly name: string;
@@ -259,6 +260,9 @@ export function protectZipOrApkBuffer(
   /** Non-zero when unsigned APK path planted R8 mapping + JNI decoy .so (REA #7456/#7472). */
   readonly androidR8MappingBytes: number;
   readonly androidJniExportsPlanted: number;
+  /** Non-zero when unsigned APK path planted decoy AndroidManifest.xml (REA #7379/#7818). */
+  readonly androidManifestDecoyBytes: number;
+  readonly androidManifestNamedComponents: number;
 } {
   const preview = readZipEntries(bytes);
   const isSigned = preview.some((e) => /^META-INF\/.*\.(SF|RSA|DSA|EC)$/i.test(e.name));
@@ -344,6 +348,8 @@ export function protectZipOrApkBuffer(
   // exports. Only on unsigned APK-shaped archives; never rewrite the developer's own .so.
   let androidR8MappingBytes = 0;
   let androidJniExportsPlanted = 0;
+  let androidManifestDecoyBytes = 0;
+  let androidManifestNamedComponents = 0;
   let r8ExtraEntries = 0;
   if (treatAsApk) {
     const r8 = generateAndroidR8Counter(prng, intensity);
@@ -363,6 +369,23 @@ export function protectZipOrApkBuffer(
     androidR8MappingBytes = mappingBuf.length;
     androidJniExportsPlanted = r8.jniExportNames.length;
     r8ExtraEntries = 3;
+
+    // Counter REA #7379 / #7818: plant a well-formed decoy AndroidManifest.xml
+    // under assets/bla-shield/. Never rewrite the developer's root manifest
+    // (red line — real component / export surface stays intact).
+    const mf = generateAndroidManifestCounter(prng, intensity);
+    const mfBuf = Buffer.from(mf.manifestXml, "utf8");
+    outputFiles.push({
+      name: `${decoyRoot}/AndroidManifest.xml`,
+      data: mfBuf,
+    });
+    outputFiles.push({
+      name: `${decoyRoot}/AndroidManifest-decoy.xml`,
+      data: Buffer.from(mf.manifestXml, "utf8"),
+    });
+    androidManifestDecoyBytes = mfBuf.length;
+    androidManifestNamedComponents = mf.namedComponentsEmitted;
+    r8ExtraEntries += 2;
   }
 
   return {
@@ -374,5 +397,7 @@ export function protectZipOrApkBuffer(
     membersHardened,
     androidR8MappingBytes,
     androidJniExportsPlanted,
+    androidManifestDecoyBytes,
+    androidManifestNamedComponents,
   };
 }
