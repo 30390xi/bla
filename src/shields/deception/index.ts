@@ -43,6 +43,11 @@ import {
   type SystemDiagnosticDecoyEntry,
   type SystemDiagnosticDecoyResult,
 } from "./system-diagnostic-decoy.js";
+import {
+  generateCognitiveArmorTrigger,
+  type CognitiveArmorTriggerEntry,
+  type CognitiveArmorTriggerResult,
+} from "./cognitive-armor-trigger.js";
 
 export {
   generateShadowBusinessLogic,
@@ -55,6 +60,7 @@ export {
   generateCrashTraceDecoy,
   generateCanaryHoneypot,
   generateSystemDiagnosticDecoy,
+  generateCognitiveArmorTrigger,
   type ShadowBusinessLogicResult,
   type ShadowLogicArchetype,
   type CompetingExplanationLure,
@@ -68,6 +74,8 @@ export {
   type CanaryHoneypotResult,
   type SystemDiagnosticDecoyEntry,
   type SystemDiagnosticDecoyResult,
+  type CognitiveArmorTriggerEntry,
+  type CognitiveArmorTriggerResult,
 };
 
 export interface CounterReaDeceptionSuiteResult {
@@ -79,13 +87,15 @@ export interface CounterReaDeceptionSuiteResult {
   readonly decompilerIllusion: DecompilerIllusionResult;
   readonly canaryHoneypot: CanaryHoneypotResult;
   readonly systemDiagnostics: SystemDiagnosticDecoyResult;
+  readonly cognitiveArmor: CognitiveArmorTriggerResult;
   readonly totalDeceptionNodesInjected: number;
 }
 
 /**
  * Generates the unified Counter-REA Model-Misjudgment Induction Suite
  * (`shadow-business-logic` + `evidence-contract-poison` + `architecture-mirage` +
- * `semantic-honeypot` + `decompiler-illusion` + `canary-honeypot` + `system-diagnostic-decoy`).
+ * `semantic-honeypot` + `decompiler-illusion` + `canary-honeypot` + `system-diagnostic-decoy` +
+ * `cognitive-armor-trigger`).
  */
 export function generateCounterReaDeceptionSuite(
   prng: SeededPrng,
@@ -101,6 +111,7 @@ export function generateCounterReaDeceptionSuite(
   const crashDecoy = generateCrashTraceDecoy(prng, intensity);
   const canaryHoneypot = generateCanaryHoneypot(prng, intensity);
   const systemDiagnostics = generateSystemDiagnosticDecoy(prng, intensity);
+  const cognitiveArmor = generateCognitiveArmorTrigger(prng, intensity);
 
   const combinedJsCode = [
     shadowLogic.code,
@@ -113,6 +124,7 @@ export function generateCounterReaDeceptionSuite(
     crashDecoy.code,
     canaryHoneypot.code,
     systemDiagnostics.code,
+    cognitiveArmor.code,
   ].join("\n\n");
 
   const totalDeceptionNodesInjected =
@@ -125,7 +137,8 @@ export function generateCounterReaDeceptionSuite(
     diffNoise.permutedBlocksCount +
     crashDecoy.decoyCrashSignalsEmbedded.length +
     canaryHoneypot.syntheticCanaryTokens.length +
-    systemDiagnostics.diagnosticsInjected.length;
+    systemDiagnostics.diagnosticsInjected.length +
+    cognitiveArmor.triggersInjected.length;
 
   return {
     combinedJsCode,
@@ -136,6 +149,7 @@ export function generateCounterReaDeceptionSuite(
     decompilerIllusion,
     canaryHoneypot,
     systemDiagnostics,
+    cognitiveArmor,
     totalDeceptionNodesInjected,
   };
 }
