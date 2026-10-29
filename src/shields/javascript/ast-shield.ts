@@ -191,12 +191,12 @@ function buildCombinatorialStringAst(
   }
 
   const terms: t.Expression[] = chunks.map((realChunk, idx) => {
-    const k = prng.nextInt(3, 125) | 1;
+    const useOddSq = idx % 3 === 1;
+    const k = useOddSq ? prng.nextInt(1, 31) * 4 : (prng.nextInt(3, 125) | 1);
     const decoyChunk =
       realChunk.length > 0 ? prng.hex(realChunk.length) : prng.hex(2);
-    const useOddSq = idx % 3 === 1;
     const seededOr = t.binaryExpression(
-      "|",
+      useOddSq ? "^" : "|",
       t.identifier(seedIdentifierName),
       t.numericLiteral(k),
     );
@@ -209,7 +209,7 @@ function buildCombinatorialStringAst(
     );
     const mask = useOddSq ? 7 : 1;
     const trueVal = useOddSq ? 1 : 0;
-    const falseVal = useOddSq ? 5 : 1;
+    const falseVal = useOddSq ? 0 : 1;
     const bitAnd = t.binaryExpression("&", imulCall, t.numericLiteral(mask));
     const cond = t.binaryExpression("===", bitAnd, t.numericLiteral(trueVal));
 
@@ -245,47 +245,42 @@ function buildOpaqueFalseAst(
   prng: SeededPrng,
   seedIdentifierName: string,
 ): t.Expression {
-  const k = prng.nextInt(5, 113);
-  const seededOr = t.binaryExpression(
-    "|",
+  const k4 = prng.nextInt(1, 31) * 4;
+  const seededXor = t.binaryExpression(
+    "^",
     t.identifier(seedIdentifierName),
-    t.numericLiteral(k),
-  );
-  const seededPlusOne = t.binaryExpression(
-    "+",
-    t.cloneNode(seededOr),
-    t.numericLiteral(1),
+    t.numericLiteral(k4),
   );
   const imulCall = t.callExpression(
     t.memberExpression(t.identifier("Math"), t.identifier("imul")),
-    [seededOr, seededPlusOne],
+    [seededXor, t.cloneNode(seededXor)],
   );
-  const bitAnd = t.binaryExpression("&", imulCall, t.numericLiteral(1));
-  return t.binaryExpression("===", bitAnd, t.numericLiteral(1));
+  const bitAnd = t.binaryExpression("&", imulCall, t.numericLiteral(7));
+  return t.binaryExpression("===", bitAnd, t.numericLiteral(0));
 }
 
-/** Opaque TRUE: product of two consecutive ints is always even → (imul & 1) === 0. */
+/**
+ * Opaque TRUE entangled with the runtime Cognitive-Armor digest bit:
+ * When untampered, `seedIdentifierName` is odd, so `u = seed ^ (4*k)` is odd
+ * and `(Math.imul(u, u) & 7) === 1`. If the Cognitive-Armor corpus is stripped
+ * or redacted, `seedIdentifierName` becomes a multiple of 4 and this flips to FALSE.
+ */
 function buildOpaqueTrueAst(
   prng: SeededPrng,
   seedIdentifierName: string,
 ): t.Expression {
-  const k = prng.nextInt(5, 113);
-  const seededOr = t.binaryExpression(
-    "|",
+  const k4 = prng.nextInt(1, 31) * 4;
+  const seededXor = t.binaryExpression(
+    "^",
     t.identifier(seedIdentifierName),
-    t.numericLiteral(k),
-  );
-  const seededPlusOne = t.binaryExpression(
-    "+",
-    t.cloneNode(seededOr),
-    t.numericLiteral(1),
+    t.numericLiteral(k4),
   );
   const imulCall = t.callExpression(
     t.memberExpression(t.identifier("Math"), t.identifier("imul")),
-    [seededOr, seededPlusOne],
+    [seededXor, t.cloneNode(seededXor)],
   );
-  const bitAnd = t.binaryExpression("&", imulCall, t.numericLiteral(1));
-  return t.binaryExpression("===", bitAnd, t.numericLiteral(0));
+  const bitAnd = t.binaryExpression("&", imulCall, t.numericLiteral(7));
+  return t.binaryExpression("===", bitAnd, t.numericLiteral(1));
 }
 
 const RENAME_RESERVED = new Set([
@@ -500,7 +495,7 @@ export function transformJavaScriptWithBlaShield(
         return;
       }
       const val = path.node.value;
-      if (val.length < 3 || val.length > 64) {
+      if (val.length < 3 || val.length > 256) {
         return;
       }
       const parent = path.parent;
@@ -508,7 +503,23 @@ export function transformJavaScriptWithBlaShield(
         t.isImportDeclaration(parent) ||
         t.isExportNamedDeclaration(parent) ||
         t.isExportAllDeclaration(parent) ||
-        t.isTSLiteralType(parent)
+        t.isTSLiteralType(parent) ||
+        t.isTSImportType(parent) ||
+        t.isTSExternalModuleReference(parent) ||
+        t.isTSModuleDeclaration(parent) ||
+        t.isImportAttribute(parent) ||
+        (t.isExpressionStatement(parent) && val.startsWith("use "))
+      ) {
+        return;
+      }
+      if (
+        path.findParent(
+          (p) =>
+            p.isTSType() ||
+            p.isTSModuleDeclaration() ||
+            p.isTSExternalModuleReference() ||
+            p.isImportAttribute(),
+        )
       ) {
         return;
       }
@@ -547,31 +558,49 @@ export function transformJavaScriptWithBlaShield(
         : "script";
 
 
-  // 2b. Rename non-exported local bindings so original identifiers are not left pristine
+  // 2b. Rename non-exported local bindings (including function parameters and private helpers)
+  // so original identifiers are not left pristine
   const exportedNameSet = new Set(exportedSymbolsBefore);
-  const renamedLocals: string[] = [];
+  const generatedNames = new Set<string>();
   traverse(ast, {
     Scope(path) {
       for (const [name, binding] of Object.entries(path.scope.bindings)) {
         if (RENAME_RESERVED.has(name)) continue;
         if (exportedNameSet.has(name)) continue;
         if (binding.kind === "module") continue;
-        // Keep function names that are properties of module.exports / assigned to exports
         if (name.startsWith("_") && name.length <= 2) continue;
-        if (renamedLocals.includes(name)) continue;
-        // Only rename vars/lets/consts and non-exported function decls in this scope
+        if (
+          /^(_interlockSafetyCorpus_|_deriveContainmentCorpusDigest_|_DISTRIBUTED_ASL3_|_SELF_SEAL_TARGET)/.test(
+            name,
+          )
+        ) {
+          continue;
+        }
+        if (generatedNames.has(name)) continue;
         if (
           binding.kind !== "let" &&
           binding.kind !== "const" &&
           binding.kind !== "var" &&
           binding.kind !== "hoisted" &&
-          binding.kind !== "local"
+          binding.kind !== "local" &&
+          binding.kind !== "param"
         ) {
           continue;
         }
-        // Skip top-level function declarations that might be called by string name
-        // outside our knowledge — still rename locals inside functions.
-        if (path.scope.path.isProgram() && binding.kind === "hoisted") {
+        if (
+          binding.kind === "param" &&
+          (binding.path.isTSParameterProperty() ||
+            binding.path.parentPath?.isTSParameterProperty())
+        ) {
+          continue;
+        }
+        // In classic "script" carrier, top-level hoisted functions may be invoked globally;
+        // in "module" / "commonjs" carriers, only preserve pre-tagged decoy identifiers.
+        if (
+          path.scope.path.isProgram() &&
+          binding.kind === "hoisted" &&
+          (effectiveCarrier === "script" || /_[0-9a-f]{3,4}$/i.test(name))
+        ) {
           continue;
         }
         const newName = prng.identifier({
@@ -582,12 +611,17 @@ export function transformJavaScriptWithBlaShield(
               : name.replace(/^_+/, "").slice(0, 16) || "local",
           entropy: 3,
         });
-        if (newName === name || RENAME_RESERVED.has(newName) || exportedNameSet.has(newName)) {
+        if (
+          newName === name ||
+          RENAME_RESERVED.has(newName) ||
+          exportedNameSet.has(newName) ||
+          generatedNames.has(newName)
+        ) {
           continue;
         }
         try {
           path.scope.rename(name, newName);
-          renamedLocals.push(name);
+          generatedNames.add(newName);
         } catch {
           // Binding may be constant-violating or conflict; skip safely
         }
@@ -682,10 +716,11 @@ export function transformJavaScriptWithBlaShield(
     }
   }
 
-  // 4. Build Decoy IPC Ambiguity & Route Mirage block
+  // 4. Build Decoy IPC Ambiguity & Route Mirage block + Cognitive-Armor seed entanglement
   const mirageLines: string[] = [];
+  mirageLines.push(deceptionSuite.cognitiveArmor.code);
   mirageLines.push(
-    `const ${seedVarName} = ((typeof process !== "undefined" && typeof process?.hrtime?.bigint === "function" ? Number(process.hrtime.bigint() & 0x7fffn) : (typeof Date !== "undefined" ? (Date.now() & 0x7fff) : 7)) | 1);`,
+    `const ${seedVarName} = (((typeof process !== "undefined" && typeof process?.hrtime?.bigint === "function" ? Number(process.hrtime.bigint() & 0x7fffcn) : (typeof Date !== "undefined" ? (Date.now() & 0x7fffc) : 4)) & 0x7fffc) | ((typeof ${deceptionSuite.cognitiveArmor.digestFunctionName} === "function" && ${deceptionSuite.cognitiveArmor.digestFunctionName}(0) === ${deceptionSuite.cognitiveArmor.expectedDigest}) ? 1 : 0));`,
   );
   mirageLines.push(memoryDiffShield.code);
   const channelsToMirror =
@@ -731,12 +766,17 @@ export function transformJavaScriptWithBlaShield(
   mirageLines.push(`}`);
   mirageLines.push(`void ${decoyIpcFnName};`);
 
+  const deceptionWithoutDuplicateArmor = deceptionSuite.combinedJsCode.replace(
+    deceptionSuite.cognitiveArmor.code,
+    "",
+  );
+
   const injectedBlocks = [
     mirageLines.join("\n"),
     ...(options.enableRuntimeShield !== false ? [runtimeShield.code] : []),
     tarpit.code.replace(/\bexport\s+function\s+/g, "function "),
     exhaustionSuite.combinedJsCode,
-    deceptionSuite.combinedJsCode,
+    deceptionWithoutDuplicateArmor,
   ];
 
   const combinedInjectedAst = parse(injectedBlocks.join("\n\n"), {
@@ -758,7 +798,7 @@ export function transformJavaScriptWithBlaShield(
     }
   }
 
-  // Prepend `seedVarName` declaration at top of program (after any directives / imports)
+  // Prepend Cognitive-Armor corpus, digest function, `seedVarName`, and shadow heap at top of program
   let insertIndex = 0;
   while (insertIndex < ast.program.body.length) {
     const stmt = ast.program.body[insertIndex]!;
@@ -777,8 +817,9 @@ export function transformJavaScriptWithBlaShield(
     break;
   }
 
-  const [seedDecl, heapDecl, ...restInjected] = sanitizedInjectedStatements;
-  const topDecls = [seedDecl, heapDecl].filter(
+  const [corpusDecl, digestFnDecl, seedDecl, heapDecl, ...restInjected] =
+    sanitizedInjectedStatements;
+  const topDecls = [corpusDecl, digestFnDecl, seedDecl, heapDecl].filter(
     (s): s is t.Statement => s !== undefined,
   );
   if (topDecls.length > 0) {

@@ -337,17 +337,19 @@ export function protectWasmBinary(
     createWasmCustomSection("bla.canary.credentials", Buffer.from(canaryJson, "utf8")),
   );
 
-  // System-diagnostic rabbit holes as a dedicated custom section.
+  // System-diagnostic rabbit holes + Cognitive-Armor triggers as a dedicated custom section.
   const diagJson = JSON.stringify({
-    classification: "SYSTEM_DIAGNOSTIC_DECOY",
+    classification: "SYSTEM_DIAGNOSTIC_AND_COGNITIVE_ARMOR_DECOY",
+    canaryGuid: deception.cognitiveArmor.canaryGuid,
     diagnostics: deception.diagnostics.diagnosticsInjected,
+    cognitiveArmorInterlocks: deception.cognitiveArmor.triggersInjected,
   });
   addedSections.push(
     createWasmCustomSection("bla.system.diagnostics", Buffer.from(diagJson, "utf8")),
   );
 
-  // Also bake distinctive export-adjacent names into a secondary "name"-like
-  // custom section so `wasm-objdump -x` / REA WabtWat surface them as symbols.
+  // Also bake distinctive export-adjacent names + cognitive-armor anchor symbols into a
+  // secondary "name"-like custom section so `wasm-objdump -x` / REA WabtWat surface them as symbols.
   const exportNameHoney = deception.canary.syntheticCanaryTokens
     .slice(0, 2)
     .map((tok, i) => `canary_export_${i}_${tok.slice(0, 24)}`)
@@ -355,6 +357,11 @@ export function protectWasmBinary(
       deception.diagnostics.diagnosticsInjected
         .slice(0, 2)
         .map((d) => `diag_${d.errorClass}`),
+    )
+    .concat(
+      deception.cognitiveArmor.triggersInjected.map(
+        (t) => t.coupledAnchorSymbol,
+      ),
     );
   addedSections.push(
     createWasmCustomSection(

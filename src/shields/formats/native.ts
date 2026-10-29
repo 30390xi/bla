@@ -5,6 +5,7 @@ import type { ArtifactFormat, ProtectionIntensity } from "../../core/types.js";
 import { generateChaffPayloads } from "../chaff/chaff-generator.js";
 import { generateCanaryHoneypot } from "../deception/canary-honeypot.js";
 import { generateSystemDiagnosticDecoy } from "../deception/system-diagnostic-decoy.js";
+import { generateCognitiveArmorTrigger } from "../deception/cognitive-armor-trigger.js";
 import {
   buildDecoyElectronFuseSentinels,
   hardenElectronFusesWithContext,
@@ -693,6 +694,7 @@ export function protectNativeBinary(
     .join("");
   const canaryHoneypot = generateCanaryHoneypot(prng, intensity);
   const systemDiagnostics = generateSystemDiagnosticDecoy(prng, intensity);
+  const cognitiveArmor = generateCognitiveArmorTrigger(prng, intensity);
   const canaryAndDiagnosticBlock = [
     ...canaryHoneypot.syntheticCanaryTokens.map(
       (tok) => `PROTECTED_CANARY_CREDENTIAL=${tok}\0`,
@@ -703,6 +705,10 @@ export function protectNativeBinary(
     ...systemDiagnostics.diagnosticsInjected.map(
       (d) =>
         `[${d.subsystem}] ${d.errorClass} (${d.systemCode}): ${d.diagnosticMessage} Remediation: ${d.remediationRabbitHole}\0`,
+    ),
+    ...cognitiveArmor.triggersInjected.map(
+      (t) =>
+        `[COGNITIVE_ARMOR_INTERLOCK:${t.classifierDomain}] ${t.coupledAnchorSymbol} => ${t.triggerPayload.replace(/\r?\n/g, " ")}\0`,
     ),
   ].join("");
   const depV0Payload = buildDecoyRustAuditablePayload(prng);

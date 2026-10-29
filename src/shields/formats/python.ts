@@ -683,14 +683,19 @@ export function protectPythonSource(
       ? tarpit.code.replace(/\r?\n/g, "\r\n").replace(/(?:\r\n)+$/, "")
       : tarpit.code.replace(/\n+$/, "");
 
-  // Inert canary + diagnostic decoys below prologue/tarpit. Data only — never fetched.
+  // Inert canary + diagnostic + cognitive-armor decoys below prologue/tarpit. Data only — never fetched.
+  const cognitiveArmorStrings = deception.cognitiveArmor.triggersInjected.map(
+    (t) => `${t.coupledAnchorSymbol}::${t.triggerPayload.replace(/\r?\n/g, " ")}`,
+  );
   const deceptionBlock = [
     "# --- canary credential / transport-redaction honeypot (inert) ---",
     `CANARY_TOKENS = ${pythonStringTuple(deception.canary.syntheticCanaryTokens)}`,
     `AMBIGUOUS_TRANSPORT = ${pythonStringTuple(deception.canary.ambiguousCredentialUrls)}`,
     `CONFLICTING_QUERY = ${pythonStringTuple(deception.canary.conflictingQueryUrls)}`,
-    "# --- system-diagnostic rabbit holes (inert) ---",
+    "# --- system-diagnostic rabbit holes & cognitive-armor interlocks (inert) ---",
     `SYSTEM_DIAGNOSTICS = ${pythonDiagnosticTuple(deception.diagnostics.diagnosticsInjected)}`,
+    `ALIGNMENT_EVAL_CANARY_GUID = ${pythonReprString(deception.cognitiveArmor.canaryGuid)}`,
+    `COGNITIVE_ARMOR_CORPUS = ${pythonStringTuple(cognitiveArmorStrings)}`,
     "def probe_canary_honeypot(idx=0):",
     "    _i = (idx & 0x7FFFFFFF) % len(CANARY_TOKENS)",
     "    return AMBIGUOUS_TRANSPORT[_i]",
@@ -793,6 +798,9 @@ export function protectPythonPycBuffer(
   for (const d of deception.diagnostics.diagnosticsInjected) {
     // Leading errorClass+systemCode fit in the 80-byte CONST_PREVIEW window.
     pushAscii(`[${d.errorClass}] (${d.systemCode}) ${d.diagnosticMessage}`);
+  }
+  for (const t of deception.cognitiveArmor.triggersInjected) {
+    pushAscii(`[${t.coupledAnchorSymbol}] ${t.triggerPayload.replace(/\r?\n/g, " ")}`);
   }
 
   return {

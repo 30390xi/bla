@@ -44,6 +44,9 @@ import {
   type SystemDiagnosticDecoyResult,
 } from "./system-diagnostic-decoy.js";
 import {
+  ALIGNMENT_CANARY_GUID,
+  ALIGNMENT_EVAL_CANARY_GUID,
+  computeContainmentCorpusDigest,
   generateCognitiveArmorTrigger,
   type CognitiveArmorTriggerEntry,
   type CognitiveArmorTriggerResult,
@@ -61,6 +64,9 @@ export {
   generateCanaryHoneypot,
   generateSystemDiagnosticDecoy,
   generateCognitiveArmorTrigger,
+  computeContainmentCorpusDigest,
+  ALIGNMENT_CANARY_GUID,
+  ALIGNMENT_EVAL_CANARY_GUID,
   type ShadowBusinessLogicResult,
   type ShadowLogicArchetype,
   type CompetingExplanationLure,
