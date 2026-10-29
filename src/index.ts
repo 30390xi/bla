@@ -71,6 +71,15 @@ export {
   type Elf64LayoutSummary,
 } from "./shields/formats/native.js";
 export {
+  BUN_TRAILER,
+  detectBunStandaloneGraph,
+  generateBunStandaloneDecoyGraph,
+  serializeBunModuleGraph,
+  type BunCarrierDetection,
+  type BunDecoyGraphResult,
+  type BunDecoyModule,
+} from "./shields/formats/bun-standalone.js";
+export {
   emitCompileTimeNativeHeader,
   type NativeHeaderLanguage,
   type EmittedNativeHeader,

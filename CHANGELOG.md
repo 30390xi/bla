@@ -4,6 +4,44 @@ All notable changes to **bla-agents** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] — 2026-10-30
+
+Counters REA #6998 (`BunStandaloneArtifactReader` — inventory/extraction of
+`bun build --compile` `/$bunfs/` module graphs from Mach-O `__BUN,__bun`,
+PE/ELF `.bun` and appended EOF trailers) and closes a runtime red-line gap
+for Bun standalone executables.
+
+### Fixed
+
+- **Bun standalone executables are no longer corrupted by the native shield**
+  (`src/shields/formats/native.ts`). Bun resolves an appended module graph
+  relative to EOF at runtime, so the native trailer append would have broken
+  the developer's program. `protectNativeBinary` now detects the
+  `\n---- Bun! ----\n` trailer (bare or with Bun's 8-byte total-size footer)
+  and passes such binaries through byte-exact (`bunStandaloneCarrier`,
+  `bunStandaloneGraphPreserved`).
+
+### Added
+
+- **Bun module-graph decoy shield** (`src/shields/formats/bun-standalone.ts`) —
+  `generateBunStandaloneDecoyGraph` / `serializeBunModuleGraph` emit a
+  byte-exact, REA-admissible Bun 1.3.9 (52-byte record) graph of canary /
+  system-diagnostic / cognitive-armor honeypot modules (entry point
+  `/$bunfs/root/enclave-attestation-main.js` with decoy sourcemap, bytecode
+  and module-info regions), plus virtual names past REA's 256-part logical
+  path allowance (indexed path + limitation), unsafe / duplicate / non-UTF-8
+  names and unknown loader discriminants. The table length is kept
+  unambiguous vs. the 36-byte layout so REA actually reads the honeypots.
+- `protectTarget` plants the decoy as a `<binary>.bunfs-snapshot` sidecar for
+  every Bun standalone executable and reports the new
+  `bun-standalone-module-graph` countered vector.
+- `REA_INTERNAL_LIMITS.BUN_*` (record sizes, module count, retained bytes,
+  logical path parts/nodes, metadata cache) and 6 new `verify:rea` drift
+  checks (69 total).
+- `tests/bun-standalone-counter.test.ts` — includes a live run of REA's own
+  `BunStandaloneArtifactReader` (via REA's tsx) against the decoy, and an
+  end-to-end check that a hardened Bun-style ELF still executes.
+
 ## [1.5.0] — 2026-10-30
 
 Red-Team vs. Blue-Team adversarial hardening across the JavaScript/TypeScript AST

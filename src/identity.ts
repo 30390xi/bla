@@ -5,7 +5,7 @@ export const BLA_IDENTITY = Object.freeze({
   packageAlias: "bla-shield",
   cliBinary: "bla",
   cliAlias: "bla-agents",
-  version: "1.5.0",
+  version: "1.5.1",
   slogan: "Poison -> Exhaust -> Hallucinate. Make Reverse Engineering Bankrupt Again.",
   counterpart: {
     name: "REA",
@@ -157,4 +157,16 @@ export const REA_INTERNAL_LIMITS = Object.freeze({
   ANDROID_MANIFEST_PERMISSION_BYTES: 1_048_576,
   ANDROID_MANIFEST_PROCESS_BYTES: 1_048_576,
   ANDROID_MANIFEST_DETAIL_BYTES: 1_048_576,
+  /**
+   * Bun standalone module-graph reader (`BunModuleGraphLayout.ts` /
+   * `BunStandaloneArtifactReader.ts`, REA #6998).
+   */
+  BUN_RECORD_BYTES_1_3_3: 36,
+  BUN_RECORD_BYTES_1_3_9: 52,
+  BUN_MAX_MODULE_COUNT: 100_000,
+  BUN_MAX_RETAINED_BYTES: 268_435_456,
+  BUN_MAX_LOGICAL_PATH_PARTS: 256,
+  BUN_MAX_LOGICAL_PATH_NODES: 250_000,
+  BUN_METADATA_CACHE_BYTES: 262_144,
+  BUN_METADATA_CACHE_ENTRIES: 1_024,
 });

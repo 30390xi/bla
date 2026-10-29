@@ -24,6 +24,7 @@ import { planAsarHeaderAmplification } from "../shields/exhaustion/asar-header-a
 import { protectWasmBinary } from "../shields/formats/wasm.js";
 import { findPythonPrologueInsertionOffset, protectPythonPycBuffer, protectPythonSource } from "../shields/formats/python.js";
 import { protectNativeBinary, validateElf64Layout } from "../shields/formats/native.js";
+import { generateBunStandaloneDecoyGraph } from "../shields/formats/bun-standalone.js";
 import { protectZipOrApkBuffer, validateZipProtectionInput, UnsupportedApkProtectionError } from "../shields/formats/archive.js";
 import { protectSqliteBuffer, validateSqliteFileInput } from "../shields/formats/sqlite.js";
 import { protectGgufBuffer, protectSafetensorsBuffer } from "../shields/formats/model.js";
@@ -287,15 +288,30 @@ export function protectTarget(options: ProtectionOptions): ProtectionResult {
     const rawBin = readFileSync(absInput);
     const res = protectNativeBinary(rawBin, { intensity, seed });
     writeFileSync(absOutput, res.buffer);
-    decoyFunctionsInjected = 24;
-    fakeCrossReferencesCreated = 48;
+    const passthrough = res.binarySectionsPatched === 0;
+    decoyFunctionsInjected = passthrough ? 0 : 24;
+    fakeCrossReferencesCreated = passthrough ? 0 : 48;
     chaffPayloadsEmbedded = res.chaffPayloadsEmbedded;
     binarySectionsPatched = res.binarySectionsPatched;
-    counteredVectors.add("native-rust-auditable");
-    counteredVectors.add("native-go-buildinfo");
-    counteredVectors.add("native-decompiler-pseudocode");
-    counteredVectors.add("electron-fuses-inspection");
-    counteredVectors.add("flutter-dart-aot-snapshot");
+    if (!passthrough) {
+      counteredVectors.add("native-rust-auditable");
+      counteredVectors.add("native-go-buildinfo");
+      counteredVectors.add("native-decompiler-pseudocode");
+      counteredVectors.add("electron-fuses-inspection");
+      counteredVectors.add("flutter-dart-aot-snapshot");
+    }
+    if (res.bunStandaloneCarrier !== "none") {
+      // REA #6998: the real Bun module graph is left byte-exact; plant a
+      // sidecar decoy graph (appended-trailer carrier) full of honeypots.
+      const decoy = generateBunStandaloneDecoyGraph(
+        new SeededPrng(`${seed}:bun-standalone`),
+        intensity,
+      );
+      writeFileSync(`${absOutput}.bunfs-snapshot`, decoy.buffer);
+      decoyFunctionsInjected += decoy.moduleCount;
+      chaffPayloadsEmbedded += decoy.chaffPayloadsEmbedded;
+      counteredVectors.add("bun-standalone-module-graph");
+    }
   } else if (format === "sqlite") {
     const rawDb = readFileSync(absInput);
     const res = protectSqliteBuffer(rawDb, { intensity, seed });

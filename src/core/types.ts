@@ -55,7 +55,8 @@ export type ReaAttackVectorId =
   | "erlang-beam-inspection"
   | "evm-bytecode-inspection"
   | "pcap-capture-inspection"
-  | "gpu-ptx-inspection";
+  | "gpu-ptx-inspection"
+  | "bun-standalone-module-graph";
 
 export interface ExposedSymbolOrModule {
   readonly id: string;

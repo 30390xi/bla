@@ -1,3 +1,7 @@
+import {
+  detectBunStandaloneGraph,
+  type BunCarrierDetection,
+} from "./bun-standalone.js";
 import { deflateSync } from "node:zlib";
 import { REA_INTERNAL_LIMITS } from "../../identity.js";
 import { SeededPrng } from "../../core/prng.js";
@@ -628,7 +632,35 @@ export function protectNativeBinary(
   readonly chaffPayloadsEmbedded: number;
   readonly binarySectionsPatched: number;
   readonly electronHardeningReport?: ElectronHardeningReport;
+  /**
+   * Bun standalone carrier observed in the input (REA #6998). When the graph
+   * rides an EOF trailer, nothing is appended or patched: Bun resolves that
+   * graph from EOF at runtime, so the binary is passed through byte-exact.
+   */
+  readonly bunStandaloneCarrier: BunCarrierDetection["kind"];
+  readonly bunStandaloneGraphPreserved: boolean;
 } {
+  const bunCarrier = detectBunStandaloneGraph(bytes);
+  if (
+    bunCarrier.kind === "appended-trailer" ||
+    bunCarrier.kind === "appended-trailer-sized"
+  ) {
+    return {
+      buffer: Buffer.from(bytes),
+      rustcHashesInjected: 0,
+      electronFuseSentinelsInjected: 0,
+      dartSnapshotHashesInjected: 0,
+      dartPoolUrisInjected: 0,
+      dartPoolTokensInjected: 0,
+      goBuildInfoExceedsLimit: false,
+      mappedGoBuildInfoPlanted: false,
+      mappedFlutterPoolPlanted: false,
+      chaffPayloadsEmbedded: 0,
+      binarySectionsPatched: 0,
+      bunStandaloneCarrier: bunCarrier.kind,
+      bunStandaloneGraphPreserved: true,
+    };
+  }
   const isElfMagic =
     bytes.length >= 4 &&
     bytes[0] === 0x7f &&
@@ -780,6 +812,8 @@ export function protectNativeBinary(
     chaffPayloadsEmbedded: chaffPayloads.length,
     binarySectionsPatched,
     ...(electronHardeningReport ? { electronHardeningReport } : {}),
+    bunStandaloneCarrier: bunCarrier.kind,
+    bunStandaloneGraphPreserved: bunCarrier.kind !== "none",
   };
 }
 

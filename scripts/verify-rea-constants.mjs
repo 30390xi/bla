@@ -179,6 +179,13 @@ const NUMERIC_EXPECTATIONS = [
   { name: "MAX_FIRMWARE_EXTRACTION_DEPTH", expected: 10 },
   { name: "ANDROID_JNI_REPORT_BYTES", expected: 16 * 1024 * 1024 },
   { name: "MAX_NATIVE_EXPORT_ROWS", expected: 262_144 },
+  // Bun standalone module graph reader (REA #6998).
+  { name: "BUN_RECORD_BYTES_1_3_3", expected: 36 },
+  { name: "BUN_RECORD_BYTES_1_3_9", expected: 52 },
+  { name: "MAX_BUN_MODULE_COUNT", expected: 100_000 },
+  { name: "MAX_BUN_RETAINED_BYTES", expected: 256 * 1024 * 1024 },
+  { name: "MAX_LOGICAL_PATH_PARTS", expected: 256 },
+  { name: "MAX_LOGICAL_PATH_NODES", expected: 250_000 },
 ];
 
 const OBJECT_PROP_EXPECTATIONS = [
