@@ -4,6 +4,30 @@ All notable changes to **bla-agents** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] — 2026-10-31
+
+Counters REA #8154 (`feat(android): trace callers of external DEX methods` —
+`MAX_EXTERNAL_XREF_BYTES` ≈ 1 MiB caller/prototype inventory in
+`bridge/android/ReaJadxBridge.java`).
+
+### Added
+
+- **Android DEX external-invoke decoy** (`src/shields/formats/android-dex-xref.ts`) —
+  emits a structurally valid `dex\n035\0` multidex member whose decoy caller
+  classes each contain a real `invoke-static` to `android.util.Log.d(String,String)`.
+  Planted as the next free `classesN.dex` on unsigned APKs only; the developer's
+  root `AndroidManifest.xml` and own `classes.dex` export/behavior surface stay
+  intact (trailer shield on existing DEX unchanged).
+- `REA_INTERNAL_LIMITS.ANDROID_EXTERNAL_XREF_BYTES` / `ANDROID_XREF_TEXT_BYTES`
+  plus `verify:rea` coverage (now walks `bridge/**/*.java`; **72** checks).
+- `tests/android-dex-xref-counter.test.ts` — DEX checksum/signature validity,
+  intensity scaling past the 1 MiB budget, multidex naming, unsigned-APK planting.
+
+### Notes
+
+- Signed APKs remain refuse-by-default. Empirical JADX red-team of the decoy
+  against a live REA session is queued for the next nightly (needs JADX on box).
+
 ## [1.5.1] — 2026-10-30
 
 Counters REA #6998 (`BunStandaloneArtifactReader` — inventory/extraction of

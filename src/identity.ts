@@ -5,7 +5,7 @@ export const BLA_IDENTITY = Object.freeze({
   packageAlias: "bla-shield",
   cliBinary: "bla",
   cliAlias: "bla-agents",
-  version: "1.5.1",
+  version: "1.5.2",
   slogan: "Poison -> Exhaust -> Hallucinate. Make Reverse Engineering Bankrupt Again.",
   counterpart: {
     name: "REA",
@@ -32,6 +32,7 @@ export const BLA_IDENTITY = Object.freeze({
  * - `src/domain/android/proguardMapping.ts` & `androidMapping.ts` (REA #7456)
  * - `src/domain/android/androidJniBindings.ts` & `src/android/AndroidJniLibraries.ts` (REA #7472)
  * - `src/domain/native/nativeExports.ts` (`MAX_NATIVE_EXPORT_ROWS`)
+ * - `bridge/android/ReaJadxBridge.java` (`MAX_EXTERNAL_XREF_BYTES`, REA #8154)
  */
 export const REA_INTERNAL_LIMITS = Object.freeze({
   /** Maximum distinct alternatives retained in one normalized primitive value (`SEMANTIC_PRIMITIVE_CANDIDATE_LIMIT`). */
@@ -157,6 +158,13 @@ export const REA_INTERNAL_LIMITS = Object.freeze({
   ANDROID_MANIFEST_PERMISSION_BYTES: 1_048_576,
   ANDROID_MANIFEST_PROCESS_BYTES: 1_048_576,
   ANDROID_MANIFEST_DETAIL_BYTES: 1_048_576,
+  /**
+   * External DEX invoke prototype + caller inventory budget
+   * (`MAX_EXTERNAL_XREF_BYTES` in `bridge/android/ReaJadxBridge.java`, REA #8154).
+   * Derived as `(MAX_XREF_TEXT_BYTES = 8 MiB - 1 KiB) / 8`.
+   */
+  ANDROID_EXTERNAL_XREF_BYTES: 1_048_448,
+  ANDROID_XREF_TEXT_BYTES: 8_387_584,
   /**
    * Bun standalone module-graph reader (`BunModuleGraphLayout.ts` /
    * `BunStandaloneArtifactReader.ts`, REA #6998).

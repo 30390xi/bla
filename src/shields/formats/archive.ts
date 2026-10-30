@@ -6,6 +6,10 @@ import { buildCanaryAndDiagnosticPayloads } from "../deception/format-payloads.j
 import { protectAndroidDexBuffer, protectIl2cppMetadataBuffer } from "./mobile-game.js";
 import { generateAndroidR8Counter } from "./android-r8.js";
 import { generateAndroidManifestCounter } from "./android-manifest.js";
+import {
+  generateAndroidDexXrefCounter,
+  nextMultidexName,
+} from "./android-dex-xref.js";
 
 export interface ZipEntryInfo {
   readonly name: string;
@@ -263,6 +267,9 @@ export function protectZipOrApkBuffer(
   /** Non-zero when unsigned APK path planted decoy AndroidManifest.xml (REA #7379/#7818). */
   readonly androidManifestDecoyBytes: number;
   readonly androidManifestNamedComponents: number;
+  /** Non-zero when unsigned APK path planted decoy classesN.dex for REA #8154. */
+  readonly androidDexXrefBytes: number;
+  readonly androidDexXrefCallers: number;
 } {
   const preview = readZipEntries(bytes);
   const isSigned = preview.some((e) => /^META-INF\/.*\.(SF|RSA|DSA|EC)$/i.test(e.name));
@@ -350,6 +357,8 @@ export function protectZipOrApkBuffer(
   let androidJniExportsPlanted = 0;
   let androidManifestDecoyBytes = 0;
   let androidManifestNamedComponents = 0;
+  let androidDexXrefBytes = 0;
+  let androidDexXrefCallers = 0;
   let r8ExtraEntries = 0;
   if (treatAsApk) {
     const r8 = generateAndroidR8Counter(prng, intensity);
@@ -386,6 +395,17 @@ export function protectZipOrApkBuffer(
     androidManifestDecoyBytes = mfBuf.length;
     androidManifestNamedComponents = mf.namedComponentsEmitted;
     r8ExtraEntries += 2;
+
+    // Counter REA #8154: plant a standalone multidex classesN.dex whose decoy
+    // caller classes each invoke-static android.util.Log.d — saturating
+    // MAX_EXTERNAL_XREF_BYTES caller inventory. Never rewrite the developer's
+    // own classes.dex beyond the existing trailer shield above.
+    const xref = generateAndroidDexXrefCounter(prng, intensity);
+    const xrefName = nextMultidexName(outputFiles.map((f) => f.name));
+    outputFiles.push({ name: xrefName, data: xref.dexBuffer });
+    androidDexXrefBytes = xref.dexBuffer.length;
+    androidDexXrefCallers = xref.callerClassesEmitted;
+    r8ExtraEntries += 1;
   }
 
   return {
@@ -399,5 +419,7 @@ export function protectZipOrApkBuffer(
     androidJniExportsPlanted,
     androidManifestDecoyBytes,
     androidManifestNamedComponents,
+    androidDexXrefBytes,
+    androidDexXrefCallers,
   };
 }

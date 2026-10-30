@@ -1,5 +1,33 @@
 # BLA nightly development log
 
+## 2026-10-31 (Asia/Shanghai)
+
+### Recovery
+- Investigated reported "last night failed" claim: working tree was **clean** at
+  `b2d6436` (v1.5.1), in sync with `origin/main`, CI green. No dirty state /
+  merge conflict / uncommitted junk to recover. Proceeded with new work.
+
+### REA delta
+- Pulled `morluto/rea`: `c0c390220` → `69bf61f7c` (**46 commits**).
+- Headline new analyzer: **#8154** external DEX method caller tracing
+  (`MAX_XREF_TEXT_BYTES` = 8 MiB − 1 KiB, `MAX_EXTERNAL_XREF_BYTES` = that / 8).
+- Also noted: #8015 .NET field constant defaults (no new trip-able budget);
+  #8117 Apple `.appex`/`.framework`/`.xpc`/`.plugin` bundle open (admission
+  expansion, not a densify target tonight).
+
+### Done tonight
+- `src/shields/formats/android-dex-xref.ts` + unsigned-APK wiring in `archive.ts`.
+- `src/identity.ts` + `verify:rea` (.java walk) + tests.
+- Release **bla-agents@1.5.2**.
+
+### Next step (2026-11-01)
+1. Empirical red-team: point sibling REA JADX external-references tool at a
+   BLA-hardened unsigned APK fixture; capture before/after in `docs/redteam/`.
+2. Optionally densify decoy callers further / add overload prototype bait for
+   the method_inventory stage of #8154.
+3. Continue roadmap: ESP32 / Godot PCK / process-echo evidence deception, or
+   MCP one-click polish.
+
 ## 2026-10-28 (Asia/Shanghai)
 
 ### REA delta

@@ -180,6 +180,8 @@ const NUMERIC_EXPECTATIONS = [
   { name: "ANDROID_JNI_REPORT_BYTES", expected: 16 * 1024 * 1024 },
   { name: "MAX_NATIVE_EXPORT_ROWS", expected: 262_144 },
   // Bun standalone module graph reader (REA #6998).
+  // REA #8154 — external DEX invoke inventories (ReaJadxBridge.java)
+  { name: "MAX_XREF_TEXT_BYTES", expected: 8 * 1024 * 1024 - 1024 },
   { name: "BUN_RECORD_BYTES_1_3_3", expected: 36 },
   { name: "BUN_RECORD_BYTES_1_3_9", expected: 52 },
   { name: "MAX_BUN_MODULE_COUNT", expected: 100_000 },
@@ -339,6 +341,8 @@ const SYMBOL_EXPECTATIONS = [
   "SqliteColumnEvaluationFailure",
   "parseRecordedTransportUrl",
   "singleQueryValues",
+  "MAX_EXTERNAL_XREF_BYTES",
+  "ReferenceLimit",
 ];
 
 const EXPECTED_OBLIGATION_FAMILIES = [
@@ -388,7 +392,7 @@ function main() {
 
   const files = [
     ...walkFiles(join(REA_ROOT, "src"), [".ts", ".js"]),
-    ...walkFiles(join(REA_ROOT, "bridge"), [".ts", ".js", ".py"]),
+    ...walkFiles(join(REA_ROOT, "bridge"), [".ts", ".js", ".py", ".java"]),
   ];
 
   const rows = [];
